@@ -1,7 +1,7 @@
--- AutoAreaConfig.lua
+-- AutoAreaTheta.lua
 
--- 这个配置文件定义了自动区的属性，包括名称、经验倍率和解锁条件。
-local AutoAreaConfig = {
+-- 自动锻炼区规则参数：名称、倍率、解锁所需重生次数。
+local AutoAreaTheta = {
 	R1 = {
 		Name = "R1",
 		Multiplier = 1.1,
@@ -44,4 +44,4 @@ local AutoAreaConfig = {
 	},
 }
 
-return AutoAreaConfig
+return AutoAreaTheta

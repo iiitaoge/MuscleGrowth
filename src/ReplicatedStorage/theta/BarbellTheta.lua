@@ -1,7 +1,7 @@
-local BarbellConfig = {
+local BarbellTheta = {
 	WoodBarbell = {
 		StrengthMultiplier = 1,
 	},
 }
 
-return BarbellConfig
+return BarbellTheta

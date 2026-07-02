@@ -1,5 +1,5 @@
--- LevelConfig.lua (ModuleScript)
-local LevelConfig = {
+-- LevelTheta.lua (ModuleScript)
+local LevelTheta = {
 
 	-- 最大等级作为全局默认值，会被重生配置覆盖
 	DefaultMaxLevel = 100,
@@ -206,27 +206,4 @@ local LevelConfig = {
 		{ Level = 200, Exp = "4.67E+21" },
 	}
 }
-return LevelConfig
-
-
--- local LevelConfig = {
--- 	-- 最大等级作为全局默认值，会被重生配置覆盖
--- 	DefaultMaxLevel = 100,
-
--- 	-- 所需累计经验表：[等级] = 所需总经验
--- 	RequiredExp = {
--- 		[1] = 0,
--- 		[2] = 100,
--- 		[3] = 250,
--- 		[4] = 500,
--- 		[5] = 900,
--- 		[6] = 1500,
--- 		[7] = 2300,
--- 		[8] = 3400,
--- 		[9] = 4800,
--- 		[10] = 6500,
--- 		-- ... 可扩展到100级或更高
--- 	}
--- }
-
--- return LevelConfig
+return LevelTheta

@@ -1,5 +1,5 @@
--- BodyQualityConfig.lua (ModuleScript)
-local BodyQualityConfig = {	-- 身体素质配置表（影响经验获取倍率）
+-- BodyQualityTheta.lua (ModuleScript)
+local BodyQualityTheta = { -- 身体素质规则参数：影响经验获取倍率。
 	Normal = {
 		DisplayName = "普通体质",
 		ExpMultiplier = 1,
@@ -14,4 +14,4 @@ local BodyQualityConfig = {	-- 身体素质配置表（影响经验获取倍率�
 	},
 }
 
-return BodyQualityConfig
+return BodyQualityTheta

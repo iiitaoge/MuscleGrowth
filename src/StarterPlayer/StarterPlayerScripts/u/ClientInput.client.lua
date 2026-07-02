@@ -3,20 +3,36 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
+local theta = ReplicatedStorage:WaitForChild("theta")
 
-local getData = ReplicatedStorage:WaitForChild("GetData")
-local moveStart = ReplicatedStorage:WaitForChild("MoveStart")
-local moveStop = ReplicatedStorage:WaitForChild("MoveStop")
-local onAutoArea = ReplicatedStorage:WaitForChild("OnAutoArea")
-local leaveAutoArea = ReplicatedStorage:WaitForChild("LeaveAutoArea")
-local requestRebirth = ReplicatedStorage:WaitForChild("RequestRebirth")
+local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
+local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
+local DebugStatsRender = require(script.Parent.Parent.T.DebugStatsRender)
 
-local AutoAreaConfig = require(ReplicatedStorage:WaitForChild("Configs"):WaitForChild("AutoAreaConfig"))
+local function waitForRemote(remoteId)
+	local remoteSpec = RemoteTheta[remoteId]
+	assert(remoteSpec, "Missing remote theta: " .. tostring(remoteId))
 
+	return ReplicatedStorage:WaitForChild(remoteSpec.Name)
+end
+
+local getData = waitForRemote("GetData")
+local moveStart = waitForRemote("MoveStart")
+local moveStop = waitForRemote("MoveStop")
+local onAutoArea = waitForRemote("OnAutoArea")
+local leaveAutoArea = waitForRemote("LeaveAutoArea")
+local requestRebirth = waitForRemote("RequestRebirth")
+
+local view = DebugStatsRender.Init(player)
 local latestData = nil
 local isMoving = false
 local touchingAreas = {}
 local trainAreas = Workspace:WaitForChild("World1"):WaitForChild("TrainAreas")
+
+local function refreshUi(data)
+	latestData = data
+	view.Refresh(data)
+end
 
 local function setMoving(nextIsMoving)
 	if isMoving == nextIsMoving then
@@ -97,63 +113,13 @@ end
 
 player.CharacterAdded:Connect(bindMovingDetection)
 
-for areaId, areaConfig in pairs(AutoAreaConfig) do
+for areaId, areaConfig in pairs(AutoAreaTheta) do
 	if type(areaId) == "string" and type(areaConfig) == "table" then
 		bindAutoArea(areaId)
 	end
 end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "DebugStatsGui"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 240, 0, 90)
-label.Position = UDim2.new(0, 10, 0, 10)
-label.BackgroundColor3 = Color3.new(0, 0, 0)
-label.BackgroundTransparency = 0.5
-label.TextColor3 = Color3.new(1, 1, 1)
-label.TextXAlignment = Enum.TextXAlignment.Left
-label.TextYAlignment = Enum.TextYAlignment.Top
-label.Text = "Waiting for data..."
-label.Parent = gui
-
-local rebirthButton = Instance.new("TextButton")
-rebirthButton.Size = UDim2.new(0, 240, 0, 36)
-rebirthButton.Position = UDim2.new(0, 10, 0, 110)
-rebirthButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-rebirthButton.TextColor3 = Color3.new(1, 1, 1)
-rebirthButton.Text = "Rebirth"
-rebirthButton.Parent = gui
-
-local function refreshUi(data)
-	latestData = data
-
-	if not data then
-		label.Text = "No data"
-		rebirthButton.Active = false
-		rebirthButton.AutoButtonColor = false
-		rebirthButton.Text = "Rebirth unavailable"
-		return
-	end
-
-	label.Text = string.format(
-		"Strength: %d\nExp: %d / %d\nLevel: %d / %d\nRebirth: %d",
-		data.Strength,
-		data.Exp,
-		data.MaxExp,
-		data.Level,
-		data.MaxLevel,
-		data.RebirthCount
-	)
-
-	rebirthButton.Active = data.CanRebirth
-	rebirthButton.AutoButtonColor = data.CanRebirth
-	rebirthButton.Text = if data.CanRebirth then "Rebirth" else "Reach max level first"
-end
-
-rebirthButton.Activated:Connect(function()
+view.GetRebirthButton().Activated:Connect(function()
 	if not latestData or not latestData.CanRebirth then
 		return
 	end
