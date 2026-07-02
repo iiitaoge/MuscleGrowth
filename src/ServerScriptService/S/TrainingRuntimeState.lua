@@ -1,34 +1,26 @@
 local TrainingRuntimeState = {}
 local states = {}
 
-local function cloneContacts(contacts)
-	local copy = {}
-
-	if type(contacts) ~= "table" then
-		return copy
+local function cloneState(state)
+	if type(state) ~= "table" then
+		return nil
 	end
 
-	for areaId, isActive in pairs(contacts) do
-		if type(areaId) == "string" and isActive == true then
-			copy[areaId] = true
+	local copy = {}
+
+	for key, value in pairs(state) do
+		if type(value) == "table" then
+			copy[key] = table.clone(value)
+		else
+			copy[key] = value
 		end
 	end
 
 	return copy
 end
 
-local function cloneRuntimeState(state)
-	state = state or {}
-
-	return {
-		IsMoving = state.IsMoving == true,
-		AutoAreaContacts = cloneContacts(state.AutoAreaContacts),
-		GrowthLoopActive = state.GrowthLoopActive == true,
-	}
-end
-
-function TrainingRuntimeState.Init(player)
-	states[player] = cloneRuntimeState()
+function TrainingRuntimeState.Init(player, initialState)
+	states[player] = cloneState(initialState) or {}
 end
 
 function TrainingRuntimeState.Remove(player)
@@ -41,7 +33,7 @@ function TrainingRuntimeState.Get(player)
 		return nil
 	end
 
-	return cloneRuntimeState(state)
+	return cloneState(state)
 end
 
 function TrainingRuntimeState.Set(player, nextState)
@@ -50,7 +42,7 @@ function TrainingRuntimeState.Set(player, nextState)
 		return
 	end
 
-	states[player] = cloneRuntimeState(nextState)
+	states[player] = cloneState(nextState) or {}
 end
 
 return TrainingRuntimeState

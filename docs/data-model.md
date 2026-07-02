@@ -20,12 +20,14 @@
 
 ## 所有权
 
-- `S/PlayerProgressState.lua` 拥有 `S_p`，只提供 `Init`、`Remove`、`Get`、`Set`。
-- `S/TrainingRuntimeState.lua` 拥有 `S_r`，只提供 `Init`、`Remove`、`Get`、`Set`。
+- `S/PlayerProgressState.lua` 拥有 `S_p`，只提供 `Init(player, state)`、`Remove`、`Get`、`Set`。
+- `S/TrainingRuntimeState.lua` 拥有 `S_r`，只提供 `Init(player, state)`、`Remove`、`Get`、`Set`。
+- `S` 不读取 `theta`，不认识字段业务含义，不负责状态是否合法；它只隔离保存和复制状态。
 - `theta/*.lua` 只保存参数表，不保存玩家状态，不访问 Workspace，不执行业务转移。
 - `y/TrainingAreaObservation.lua` 把不可信的区域声明转成服务端观测结果，不写状态。
 - `u/*.lua` 只接输入并调用 `T`，不能直接写 `S`。
 - `T/*.lua` 是唯一能根据 `S`、`u`、`y`、`theta` 产生 `S'` 和 `O` 的层。
+- `T` 可以创建临时局部值，但长期事实只能写回 `S`，规则参数只能来自 `theta`，观测事实只能来自 `y`。
 
 ## 派生值
 
@@ -38,6 +40,7 @@
 - `AutoAreaMultiplier` 从服务端确认的区域接触、自动区配置和 `RebirthCount` 推导。
 
 这些计算都在 `T` 内部完成。`FormulaService`、`LevelService` 不再作为独立架构类别存在。
+训练收益和增长决策使用直接返回值传递，不再创建 `growthContext`、`gains` 这类隐形数据模型。
 
 ## 不变量
 

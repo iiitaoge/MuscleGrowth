@@ -9,13 +9,33 @@ local ProgressionRules = require(script.Parent.ProgressionRules)
 
 local TrainingTransition = {}
 
+local function createInitialRuntimeState()
+	return {
+		IsMoving = false,
+		AutoAreaContacts = {},
+		GrowthLoopActive = false,
+	}
+end
+
+local function normalizeRuntimeState(runtimeState)
+	runtimeState = runtimeState or createInitialRuntimeState()
+	runtimeState.IsMoving = runtimeState.IsMoving == true
+
+	if type(runtimeState.AutoAreaContacts) ~= "table" then
+		runtimeState.AutoAreaContacts = {}
+	end
+
+	runtimeState.GrowthLoopActive = runtimeState.GrowthLoopActive == true
+	return runtimeState
+end
+
 local function getRuntimeOrInit(player)
 	local runtimeState = TrainingRuntimeState.Get(player)
 	if runtimeState then
-		return runtimeState
+		return normalizeRuntimeState(runtimeState)
 	end
 
-	TrainingRuntimeState.Init(player)
+	TrainingRuntimeState.Init(player, createInitialRuntimeState())
 	return TrainingRuntimeState.Get(player)
 end
 
@@ -47,42 +67,35 @@ end
 
 local function getBestAutoArea(progressState, runtimeState)
 	local bestAreaId = nil
-	local bestAreaConfig = nil
 	local bestMultiplier = 1
 
 	for areaId in pairs(runtimeState.AutoAreaContacts) do
 		local areaConfig = AutoAreaTheta[areaId]
 		if isAutoAreaUnlocked(progressState, areaConfig) then
 			local multiplier = tonumber(areaConfig.Multiplier) or 1
-			if not bestAreaConfig or multiplier > bestMultiplier then
+			if not bestAreaId or multiplier > bestMultiplier then
 				bestAreaId = areaId
-				bestAreaConfig = areaConfig
 				bestMultiplier = multiplier
 			end
 		end
 	end
 
-	return bestAreaId, bestAreaConfig, bestMultiplier
+	return bestAreaId, bestMultiplier
 end
 
-local function getGrowthContext(player)
+local function getGrowthDecision(player)
 	local progressState = PlayerProgressState.Get(player)
 	if not progressState then
-		return nil
+		return false, 1
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
 	pruneInvalidAutoAreaContacts(player, runtimeState)
 
-	local bestAreaId, bestAreaConfig, bestMultiplier = getBestAutoArea(progressState, runtimeState)
+	local bestAreaId, bestMultiplier = getBestAutoArea(progressState, runtimeState)
+	local shouldGrow = runtimeState.IsMoving or bestAreaId ~= nil
 
-	return {
-		IsMoving = runtimeState.IsMoving,
-		AutoAreaId = bestAreaId,
-		AutoAreaName = bestAreaConfig and bestAreaConfig.Name or nil,
-		AutoAreaMultiplier = bestMultiplier,
-		ShouldGrow = runtimeState.IsMoving or bestAreaId ~= nil,
-	}
+	return shouldGrow, bestMultiplier
 end
 
 local function setGrowthLoopActive(player, isActive)
@@ -95,14 +108,12 @@ local function setGrowthLoopActive(player, isActive)
 	TrainingRuntimeState.Set(player, runtimeState)
 end
 
-local function applyTrainingGains(player, progressState, gains)
+local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	local nextProgressState = table.clone(progressState)
-	local strengthGain = gains and gains.StrengthGain or 0
-	local expGain = gains and gains.ExpGain or 0
 
-	nextProgressState.Strength = math.max(0, nextProgressState.Strength + strengthGain)
+	nextProgressState.Strength = math.max(0, nextProgressState.Strength + (strengthGain or 0))
 	nextProgressState.Exp = ProgressionRules.ClampExp(
-		nextProgressState.Exp + expGain,
+		nextProgressState.Exp + (expGain or 0),
 		nextProgressState.RebirthCount
 	)
 
@@ -111,6 +122,15 @@ end
 
 function TrainingTransition.StopGrowth(player)
 	setGrowthLoopActive(player, false)
+end
+
+function TrainingTransition.InitRuntime(player)
+	TrainingRuntimeState.Init(player, createInitialRuntimeState())
+end
+
+function TrainingTransition.RemoveRuntime(player)
+	TrainingTransition.StopGrowth(player)
+	TrainingRuntimeState.Remove(player)
 end
 
 local function startGrowthLoop(player)
@@ -131,8 +151,8 @@ local function startGrowthLoop(player)
 				break
 			end
 
-			local context = getGrowthContext(player)
-			if not context or not context.ShouldGrow then
+			local shouldGrow, autoAreaMultiplier = getGrowthDecision(player)
+			if not shouldGrow then
 				TrainingTransition.StopGrowth(player)
 				break
 			end
@@ -143,8 +163,11 @@ local function startGrowthLoop(player)
 				break
 			end
 
-			local gains = ProgressionRules.CalculateTrainingGains(progressState, context)
-			applyTrainingGains(player, progressState, gains)
+			local strengthGain, expGain = ProgressionRules.CalculateTrainingGainValues(
+				progressState,
+				autoAreaMultiplier
+			)
+			applyTrainingGains(player, progressState, strengthGain, expGain)
 		end
 	end)
 end
@@ -187,8 +210,8 @@ function TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 end
 
 function TrainingTransition.RefreshGrowth(player)
-	local context = getGrowthContext(player)
-	if context and context.ShouldGrow then
+	local shouldGrow = getGrowthDecision(player)
+	if shouldGrow then
 		startGrowthLoop(player)
 	else
 		TrainingTransition.StopGrowth(player)

@@ -1,42 +1,16 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local theta = ReplicatedStorage:WaitForChild("theta")
-local PlayerProgressInitialTheta = require(theta:WaitForChild("PlayerProgressInitialTheta"))
-
 local PlayerProgressState = {}
 local states = {}
 
-local function nonNegativeNumber(value, fallback)
-	local numberValue = tonumber(value)
-	if numberValue == nil then
-		return fallback
+local function cloneState(state)
+	if type(state) ~= "table" then
+		return nil
 	end
 
-	return math.max(0, numberValue)
+	return table.clone(state)
 end
 
-local function stringOrFallback(value, fallback)
-	if type(value) == "string" then
-		return value
-	end
-
-	return fallback
-end
-
-local function cloneProgressState(state)
-	state = state or PlayerProgressInitialTheta
-
-	return {
-		Strength = nonNegativeNumber(state.Strength, PlayerProgressInitialTheta.Strength),
-		Exp = nonNegativeNumber(state.Exp, PlayerProgressInitialTheta.Exp),
-		RebirthCount = nonNegativeNumber(state.RebirthCount, PlayerProgressInitialTheta.RebirthCount),
-		CurrentBarbellId = stringOrFallback(state.CurrentBarbellId, PlayerProgressInitialTheta.CurrentBarbellId),
-		BodyQuality = stringOrFallback(state.BodyQuality, PlayerProgressInitialTheta.BodyQuality),
-	}
-end
-
-function PlayerProgressState.Init(player)
-	states[player] = cloneProgressState(PlayerProgressInitialTheta)
+function PlayerProgressState.Init(player, initialState)
+	states[player] = cloneState(initialState) or {}
 end
 
 function PlayerProgressState.Remove(player)
@@ -49,7 +23,7 @@ function PlayerProgressState.Get(player)
 		return nil
 	end
 
-	return cloneProgressState(state)
+	return cloneState(state)
 end
 
 function PlayerProgressState.Set(player, nextState)
@@ -58,7 +32,7 @@ function PlayerProgressState.Set(player, nextState)
 		return
 	end
 
-	states[player] = cloneProgressState(nextState)
+	states[player] = cloneState(nextState) or {}
 end
 
 return PlayerProgressState

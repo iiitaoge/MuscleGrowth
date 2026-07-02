@@ -39,8 +39,8 @@ local function normalizeLevel(level)
 	return math.max(1, math.floor(tonumber(level) or 1))
 end
 
-local function getAutoAreaMultiplier(growthContext)
-	local multiplier = growthContext and tonumber(growthContext.AutoAreaMultiplier) or 1
+local function normalizeMultiplier(multiplier)
+	multiplier = tonumber(multiplier) or 1
 	if multiplier == nil then
 		return 1
 	end
@@ -131,7 +131,7 @@ function ProgressionRules.CanRebirth(progressState)
 		>= ProgressionRules.GetMaxLevel(progressState.RebirthCount)
 end
 
-function ProgressionRules.CalculateTrainingGains(progressState, growthContext)
+function ProgressionRules.CalculateTrainingGainValues(progressState, autoAreaMultiplier)
 	local rebirthRule = ProgressionRules.ResolveRebirthRule(progressState and progressState.RebirthCount or 0)
 	local barbell = progressState and BarbellTheta[progressState.CurrentBarbellId]
 	local bodyQuality = progressState and BodyQualityTheta[progressState.BodyQuality]
@@ -141,12 +141,10 @@ function ProgressionRules.CalculateTrainingGains(progressState, growthContext)
 	local rebirthStrengthMult = rebirthRule and rebirthRule.StrengthMultiplier or 1
 	local rebirthExpMult = rebirthRule and rebirthRule.ExpMultiplier or 1
 	local testExpMult = 50
-	local autoAreaMult = getAutoAreaMultiplier(growthContext)
+	local autoAreaMult = normalizeMultiplier(autoAreaMultiplier)
 
-	return {
-		StrengthGain = barbellMult * rebirthStrengthMult * autoAreaMult,
-		ExpGain = bodyMult * rebirthExpMult * testExpMult * autoAreaMult,
-	}
+	return barbellMult * rebirthStrengthMult * autoAreaMult,
+		bodyMult * rebirthExpMult * testExpMult * autoAreaMult
 end
 
 return ProgressionRules
