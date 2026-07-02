@@ -12,6 +12,7 @@ local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
 local HUDRender = require(script.Parent.Parent.T.HUDRender)
 
 local BARBELL_EQUIP_DISTANCE = 18
+local WORLD_ROOT_NAME = "World1"
 
 -- 这个函数用于等待并获取指定的远程事件或远程函数
 local function waitForRemote(remoteId)
@@ -37,6 +38,14 @@ local isRequestingBarbellEquip = false
 local touchingAreas = {}
 local trainAreas = Workspace:WaitForChild("World1"):WaitForChild("TrainAreas")
 
+local function getWorldChild(childName)
+	local worldRoot = Workspace:FindFirstChild(WORLD_ROOT_NAME)
+
+	return (worldRoot and worldRoot:FindFirstChild(childName))
+		or Workspace:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName, true)
+end
+
 local function getInstancePosition(instance)
 	if not instance then
 		return nil
@@ -57,7 +66,7 @@ end
 local function getNearestBarbellId()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local gameDumbbell = Workspace:FindFirstChild("GameDumbbell")
+	local gameDumbbell = getWorldChild("GameDumbbell")
 
 	if not root or not gameDumbbell then
 		return nil
@@ -69,7 +78,8 @@ local function getNearestBarbellId()
 	for barbellId, barbellConfig in pairs(BarbellTheta) do
 		if type(barbellId) == "string" and type(barbellConfig) == "table" then
 			local barbellNode = gameDumbbell:FindFirstChild(barbellId)
-			local displayNode = barbellNode and (barbellNode:FindFirstChild("DisplayModel") or barbellNode)
+			local displayNode = barbellNode
+				and (barbellNode:FindFirstChild("PromptPart") or barbellNode:FindFirstChild("DisplayModel") or barbellNode)
 			local displayPosition = getInstancePosition(displayNode)
 
 			if displayPosition then
@@ -85,9 +95,64 @@ local function getNearestBarbellId()
 	return nearestBarbellId
 end
 
+local function formatNumber(value)
+	local numberValue = tonumber(value) or 0
+	if numberValue == math.floor(numberValue) then
+		return string.format("%.0f", numberValue)
+	end
+
+	return string.format("%.2f", numberValue)
+end
+
+local function formatMultiplier(value)
+	local numberValue = tonumber(value) or 1
+	return "x" .. string.format("%.1f", numberValue)
+end
+
+local function setDisplayText(root, labelName, value)
+	local label = root and root:FindFirstChild(labelName, true)
+	if label and label:IsA("TextLabel") then
+		label.Text = value
+	end
+end
+
+local function setDisplayVisible(root, labelName, isVisible)
+	local label = root and root:FindFirstChild(labelName, true)
+	if label and label:IsA("GuiObject") then
+		label.Visible = isVisible == true
+	end
+end
+
+local function refreshBarbellDisplays(data)
+	local gameDumbbell = getWorldChild("GameDumbbell")
+	if not gameDumbbell then
+		return
+	end
+
+	local trophies = data and tonumber(data.Trophies) or 0
+	local currentBarbellId = data and data.CurrentBarbellId
+
+	for barbellId, barbellConfig in pairs(BarbellTheta) do
+		if type(barbellId) == "string" and type(barbellConfig) == "table" then
+			local barbellNode = gameDumbbell:FindFirstChild(barbellId)
+			local displayNode = barbellNode and (barbellNode:FindFirstChild("DisplayModel") or barbellNode)
+			local requiredTrophies = tonumber(barbellConfig.RequiredTrophies) or 0
+			local isEquipped = currentBarbellId == barbellId
+			local isUnlocked = trophies >= requiredTrophies
+
+			setDisplayText(displayNode, "power", formatMultiplier(barbellConfig.StrengthMultiplier) .. " Power")
+			setDisplayText(displayNode, "num", formatNumber(requiredTrophies))
+			setDisplayVisible(displayNode, "Locked", not isUnlocked)
+			setDisplayVisible(displayNode, "Equip", isUnlocked and not isEquipped)
+			setDisplayVisible(displayNode, "Equipped", isEquipped)
+		end
+	end
+end
+
 local function refreshUi(data)
 	latestData = data
 	view.Refresh(data)
+	refreshBarbellDisplays(data)
 end
 
 local function setMoving(nextIsMoving)

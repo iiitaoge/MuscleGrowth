@@ -9,6 +9,7 @@ local TROPHY_MODEL_NAME = "trophy1"
 local FREE_RETURN_PART_NAME = "FreeReturn"
 local FREE_RETURN_REWARD = 130
 local TOUCH_COOLDOWN_SECONDS = 1
+local WORLD_ROOT_NAME = "World1"
 local WORLD_WAIT_SECONDS = 10
 
 local touchDebounceByPlayer = setmetatable({}, {
@@ -17,6 +18,10 @@ local touchDebounceByPlayer = setmetatable({}, {
 
 local isWorldBound = false
 local isWorldBindingStarted = false
+
+local function getWorldRoot()
+	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
+end
 
 local function findDescendantByName(root, childName, timeoutSeconds)
 	local endTime = os.clock() + timeoutSeconds
@@ -33,18 +38,44 @@ local function findDescendantByName(root, childName, timeoutSeconds)
 	return nil
 end
 
+local function getTouchParts(root)
+	local touchParts = {}
+
+	if not root then
+		return touchParts
+	end
+
+	if root:IsA("BasePart") then
+		table.insert(touchParts, root)
+		return touchParts
+	end
+
+	local mainPart = root:FindFirstChild("Main", true)
+	if mainPart and mainPart:IsA("BasePart") then
+		table.insert(touchParts, mainPart)
+	end
+
+	for _, descendant in ipairs(root:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant ~= mainPart and descendant.CanTouch then
+			table.insert(touchParts, descendant)
+		end
+	end
+
+	return touchParts
+end
+
 local function getPlayerFromHit(hit)
-	local character = hit and hit:FindFirstAncestorOfClass("Model")
-	if not character then
-		return nil
+	local current = hit
+
+	while current and current ~= Workspace do
+		if current:IsA("Model") and current:FindFirstChildWhichIsA("Humanoid") then
+			return Players:GetPlayerFromCharacter(current)
+		end
+
+		current = current.Parent
 	end
 
-	local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-	if not humanoid then
-		return nil
-	end
-
-	return Players:GetPlayerFromCharacter(character)
+	return nil
 end
 
 local function getCharacterRoot(player)
@@ -125,16 +156,21 @@ function TrophyTransition.InitWorld()
 	isWorldBindingStarted = true
 
 	task.spawn(function()
-		local trophy = findDescendantByName(Workspace, TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
+		local trophy = findDescendantByName(getWorldRoot(), TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
+			or findDescendantByName(Workspace, TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
 		local freeReturn = trophy and trophy:FindFirstChild(FREE_RETURN_PART_NAME, true)
+		local touchParts = getTouchParts(freeReturn)
 
-		if not freeReturn or not freeReturn:IsA("BasePart") then
+		if #touchParts == 0 then
 			warn("trophy1.FreeReturn was not found. Trophy reward touch is disabled.")
 			return
 		end
 
 		isWorldBound = true
-		freeReturn.Touched:Connect(onFreeReturnTouched)
+		for _, touchPart in ipairs(touchParts) do
+			touchPart.CanTouch = true
+			touchPart.Touched:Connect(onFreeReturnTouched)
+		end
 	end)
 end
 

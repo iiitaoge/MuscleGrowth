@@ -5,6 +5,7 @@ local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild
 
 local BarbellTransition = require(script.Parent.Parent.T.BarbellTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.PlayerLifecycleTransition)
+local PetTransition = require(script.Parent.Parent.T.PetTransition)
 local RebirthTransition = require(script.Parent.Parent.T.RebirthTransition)
 local SnapshotTransition = require(script.Parent.Parent.T.SnapshotTransition)
 local TrophyTransition = require(script.Parent.Parent.T.TrophyTransition)
@@ -38,6 +39,7 @@ local getData = getOrCreateRemote("GetData")
 local rebirthEvent = getOrCreateRemote("ReBirth")
 local requestRebirth = getOrCreateRemote("RequestRebirth")
 local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
+local requestPetEquip = getOrCreateRemote("RequestPetEquip")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -80,6 +82,10 @@ end
 
 requestBarbellEquip.OnServerInvoke = function(player, barbellId)
 	return BarbellTransition.RequestEquip(player, barbellId)
+end
+
+requestPetEquip.OnServerInvoke = function(player, petId)
+	return PetTransition.RequestEquip(player, petId)
 end
 
 Players.PlayerAdded:Connect(initPlayer)

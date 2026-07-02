@@ -4,6 +4,7 @@ local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
 local BodyQualityTheta = require(theta:WaitForChild("BodyQualityTheta"))
 local LevelTheta = require(theta:WaitForChild("LevelTheta"))
+local PetTheta = require(theta:WaitForChild("PetTheta"))
 local RebirthTheta = require(theta:WaitForChild("RebirthTheta"))
 
 local ProgressionRules = {}	--创建模块表。后面所有对外函数都会挂到这个表上。
@@ -110,6 +111,20 @@ function ProgressionRules.GetBarbellRequiredTrophies(currentBarbellId)
 	return math.max(0, tonumber(barbell and barbell.RequiredTrophies) or 0)
 end
 
+-- 获取当前宠物通用训练倍率。当前设计为同时影响力量和经验。
+function ProgressionRules.GetPetMultiplier(currentPetId)
+	local pet = PetTheta[currentPetId]
+
+	return normalizeMultiplier(pet and pet.Multiplier or 1)
+end
+
+-- 获取当前宠物的奖杯需求，用于快照和服务端切换校验。
+function ProgressionRules.GetPetRequiredTrophies(currentPetId)
+	local pet = PetTheta[currentPetId]
+
+	return math.max(0, tonumber(pet and pet.RequiredTrophies) or 0)
+end
+
 -- 获取升级所需的经验值
 function ProgressionRules.GetRequiredExp(level)
 	level = normalizeLevel(level)
@@ -189,6 +204,13 @@ local function resolveBodyQualityMultipliers(progressState)
 	return 1, bodyQuality and bodyQuality.ExpMultiplier or 1
 end
 
+-- 宠物使用同一个通用倍率，同时影响力量和经验。
+local function resolvePetMultipliers(progressState)
+	local multiplier = ProgressionRules.GetPetMultiplier(progressState and progressState.CurrentPetId)
+
+	return multiplier, multiplier
+end
+
 -- 重生使用同一个通用倍率，同时影响力量和经验。
 local function resolveRebirthMultipliers(progressState)
 	local multiplier = ProgressionRules.GetRebirthMultiplier(progressState and progressState.RebirthCount or 0)
@@ -225,6 +247,7 @@ local function resolveTrainingMultipliers(progressState, autoAreaMultiplier)
 
 	apply(resolveBarbellMultipliers(progressState))
 	apply(resolveBodyQualityMultipliers(progressState))
+	apply(resolvePetMultipliers(progressState))
 	apply(resolveRebirthMultipliers(progressState))
 	apply(resolveAutoAreaMultipliers(autoAreaMultiplier))
 

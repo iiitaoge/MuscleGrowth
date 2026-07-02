@@ -8,13 +8,38 @@ local BarbellObservation = {}
 local DISPLAY_ROOT_NAME = "GameDumbbell"
 local TRAIN_ROOT_NAME = "Dumbbell"
 local DISPLAY_MODEL_NAME = "DisplayModel"
+local PROMPT_PART_NAME = "PromptPart"
 local TRAIN_MODEL_NAME = "Train"
+local WORLD_ROOT_NAME = "World1"
 local WORLD_WAIT_SECONDS = 10
 local MAX_EQUIP_DISTANCE = 18
 
 local function getCharacterRoot(player)
 	local character = player.Character
 	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function getWorldRoot()
+	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
+end
+
+local function findWorldChild(childName)
+	local worldRoot = getWorldRoot()
+
+	return worldRoot:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName, true)
+end
+
+local function waitForWorldChild(childName)
+	local worldRoot = Workspace:WaitForChild(WORLD_ROOT_NAME, WORLD_WAIT_SECONDS) or Workspace
+	local child = worldRoot:WaitForChild(childName, WORLD_WAIT_SECONDS)
+
+	if child then
+		return child
+	end
+
+	return Workspace:WaitForChild(childName, WORLD_WAIT_SECONDS)
 end
 
 function BarbellObservation.GetBaseParts(instance)
@@ -71,21 +96,21 @@ function BarbellObservation.IsValidBarbellId(barbellId)
 end
 
 function BarbellObservation.WaitForWorldRoots()
-	local dumbbellRoot = Workspace:WaitForChild(TRAIN_ROOT_NAME, WORLD_WAIT_SECONDS)
-	local displayRoot = Workspace:WaitForChild(DISPLAY_ROOT_NAME, WORLD_WAIT_SECONDS)
+	local dumbbellRoot = waitForWorldChild(TRAIN_ROOT_NAME)
+	local displayRoot = waitForWorldChild(DISPLAY_ROOT_NAME)
 
 	return dumbbellRoot, displayRoot
 end
 
 function BarbellObservation.GetTrainSource(barbellId)
-	local dumbbellRoot = Workspace:FindFirstChild(TRAIN_ROOT_NAME)
+	local dumbbellRoot = findWorldChild(TRAIN_ROOT_NAME)
 	local barbellNode = dumbbellRoot and dumbbellRoot:FindFirstChild(barbellId)
 
 	return barbellNode and barbellNode:FindFirstChild(TRAIN_MODEL_NAME)
 end
 
 function BarbellObservation.GetDisplayHolder(barbellId)
-	local displayRoot = Workspace:FindFirstChild(DISPLAY_ROOT_NAME)
+	local displayRoot = findWorldChild(DISPLAY_ROOT_NAME)
 
 	return displayRoot and displayRoot:FindFirstChild(barbellId)
 end
@@ -99,14 +124,25 @@ function BarbellObservation.GetDisplayNode(barbellId)
 	return barbellNode:FindFirstChild(DISPLAY_MODEL_NAME) or barbellNode
 end
 
+function BarbellObservation.GetInteractionNode(barbellId)
+	local barbellNode = BarbellObservation.GetDisplayHolder(barbellId)
+	if not barbellNode then
+		return nil
+	end
+
+	return barbellNode:FindFirstChild(PROMPT_PART_NAME)
+		or BarbellObservation.GetDisplayNode(barbellId)
+		or barbellNode
+end
+
 function BarbellObservation.IsPlayerNearDisplay(player, barbellId)
 	if not BarbellObservation.IsValidBarbellId(barbellId) then
 		return false
 	end
 
 	local root = getCharacterRoot(player)
-	local displayNode = BarbellObservation.GetDisplayNode(barbellId)
-	local displayPivot = BarbellObservation.GetInstancePivot(displayNode)
+	local interactionNode = BarbellObservation.GetInteractionNode(barbellId)
+	local displayPivot = BarbellObservation.GetInstancePivot(interactionNode)
 
 	if not root or not displayPivot then
 		return false

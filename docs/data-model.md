@@ -10,13 +10,13 @@
 
 ## 映射关系
 
-- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`BodyQuality`。
+- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`CurrentPetId`、`BodyQuality`。
 - `S_r` 服务端运行时状态：`IsMoving`、`AutoAreaContacts`、`GrowthLoopActive`。
-- `theta` 规则参数：自动区、杠铃、身体素质、重生、等级经验、初始状态、Remote 协议。
-- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求。
+- `theta` 规则参数：自动区、杠铃、宠物、身体素质、重生、等级经验、初始状态、Remote 协议。
+- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物切换请求。
 - `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证。
-- `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、奖杯奖励、快照生成、UI 渲染。
-- `O` 输出数据：玩家数据快照、重生响应、杠铃切换响应、客户端 UI 实例和文本状态。
+- `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、宠物切换、奖杯奖励、快照生成、UI 渲染。
+- `O` 输出数据：玩家数据快照、重生响应、杠铃切换响应、宠物切换响应、客户端 UI 实例和文本状态。
 
 ## 所有权
 
@@ -40,6 +40,8 @@
 - `AutoAreaMultiplier` 从服务端确认的区域接触、自动区配置和 `RebirthCount` 推导。
 - `BarbellMultiplier`
 - `BarbellRequiredTrophies`
+- `PetMultiplier`
+- `PetRequiredTrophies`
 
 这些计算都在 `T` 内部完成。`FormulaService`、`LevelService` 不再作为独立架构类别存在。
 训练收益和增长决策使用直接返回值传递，不再创建 `growthContext`、`gains` 这类隐形数据模型。

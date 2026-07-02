@@ -37,6 +37,7 @@ local function createInitialProgressState()
 		Exp = nonNegativeNumber(PlayerProgressInitialTheta.Exp, 0),
 		RebirthCount = nonNegativeNumber(PlayerProgressInitialTheta.RebirthCount, 0),
 		CurrentBarbellId = stringOrFallback(PlayerProgressInitialTheta.CurrentBarbellId, "T1"),
+		CurrentPetId = stringOrFallback(PlayerProgressInitialTheta.CurrentPetId, "P1"),
 		BodyQuality = stringOrFallback(PlayerProgressInitialTheta.BodyQuality, "Normal"),
 	}
 end

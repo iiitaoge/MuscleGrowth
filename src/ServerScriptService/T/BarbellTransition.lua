@@ -10,6 +10,7 @@ local BarbellTransition = {}
 
 local DISPLAY_MODEL_NAME = "DisplayModel"
 local EQUIPPED_MODEL_NAME = "EquippedBarbell"
+local PROMPT_BOUND_ATTRIBUTE = "MuscleGrowthBarbellPromptBound"
 
 local function getEquipHand(character)
 	return character:FindFirstChild("RightHand")
@@ -57,6 +58,29 @@ local function disableScripts(instance)
 	end
 end
 
+local function formatNumber(value)
+	local numberValue = tonumber(value) or 0
+	if numberValue == math.floor(numberValue) then
+		return string.format("%.0f", numberValue)
+	end
+
+	return string.format("%.2f", numberValue)
+end
+
+local function formatMultiplier(value)
+	local numberValue = tonumber(value) or 1
+	return "x" .. string.format("%.1f", numberValue)
+end
+
+local function findTextLabel(root, labelName)
+	local label = root and root:FindFirstChild(labelName, true)
+	if label and label:IsA("TextLabel") then
+		return label
+	end
+
+	return nil
+end
+
 local function prepareDisplayModel(instance)
 	disableScripts(instance)
 
@@ -65,6 +89,57 @@ local function prepareDisplayModel(instance)
 		part.CanCollide = false
 		part.CanTouch = false
 	end
+end
+
+local function cloneDisplayChildren(oldDisplay, nextDisplay)
+	if not oldDisplay or not nextDisplay then
+		return
+	end
+
+	for _, child in ipairs(oldDisplay:GetChildren()) do
+		local childCopy = child:Clone()
+		childCopy.Parent = nextDisplay
+	end
+end
+
+local function renderDisplayBillboard(displayNode, barbellId)
+	local barbellConfig = BarbellTheta[barbellId]
+	if not barbellConfig or not displayNode then
+		return
+	end
+
+	local powerText = findTextLabel(displayNode, "power")
+	local trophiesText = findTextLabel(displayNode, "num")
+
+	if powerText then
+		powerText.Text = formatMultiplier(barbellConfig.StrengthMultiplier) .. " Power"
+	end
+
+	if trophiesText then
+		trophiesText.Text = formatNumber(barbellConfig.RequiredTrophies)
+	end
+end
+
+local function configurePrompt(displayHolder, barbellId)
+	local prompt = displayHolder and displayHolder:FindFirstChildWhichIsA("ProximityPrompt", true)
+	if not prompt then
+		return
+	end
+
+	local barbellConfig = BarbellTheta[barbellId]
+	prompt.Enabled = true
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.ActionText = "Equip"
+	prompt.ObjectText = barbellConfig and barbellConfig.DisplayName or barbellId
+
+	if prompt:GetAttribute(PROMPT_BOUND_ATTRIBUTE) then
+		return
+	end
+
+	prompt:SetAttribute(PROMPT_BOUND_ATTRIBUTE, true)
+	prompt.Triggered:Connect(function(player)
+		BarbellTransition.TryEquip(player, barbellId)
+	end)
 end
 
 local function prepareEquippedModel(instance)
@@ -151,15 +226,22 @@ function BarbellTransition.RefreshDisplays()
 			local displayPivot = BarbellObservation.GetInstancePivot(oldDisplay)
 				or BarbellObservation.GetInstancePivot(displayHolder)
 
+			local nextDisplay = source:Clone()
+			nextDisplay.Name = DISPLAY_MODEL_NAME
+			nextDisplay.Parent = displayHolder
+			cloneDisplayChildren(oldDisplay, nextDisplay)
+
 			if oldDisplay then
 				oldDisplay:Destroy()
 			end
 
-			local nextDisplay = source:Clone()
-			nextDisplay.Name = DISPLAY_MODEL_NAME
-			nextDisplay.Parent = displayHolder
 			prepareDisplayModel(nextDisplay)
 			pivotInstanceTo(nextDisplay, displayPivot)
+			renderDisplayBillboard(nextDisplay, barbellId)
+			configurePrompt(displayHolder, barbellId)
+		elseif displayHolder then
+			renderDisplayBillboard(displayHolder:FindFirstChild(DISPLAY_MODEL_NAME), barbellId)
+			configurePrompt(displayHolder, barbellId)
 		end
 	end
 
