@@ -1,0 +1,13 @@
+{
+  "files.associations": {
+    "*.lua": "luau",
+    "*.server.lua": "luau",
+    "*.client.lua": "luau"
+  },
+  "luau-lsp.platform.type": "roblox",
+  "luau-lsp.fflags.sync": false,
+  "luau-lsp.sourcemap.enabled": true,
+  "luau-lsp.sourcemap.autogenerate": true,
+  "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
+  "luau-lsp.sourcemap.sourcemapFile": "sourcemap.json"
+}
