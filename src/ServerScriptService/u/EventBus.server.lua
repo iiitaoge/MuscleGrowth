@@ -3,9 +3,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("RemoteTheta"))
 
+local BarbellTransition = require(script.Parent.Parent.T.BarbellTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.PlayerLifecycleTransition)
 local RebirthTransition = require(script.Parent.Parent.T.RebirthTransition)
 local SnapshotTransition = require(script.Parent.Parent.T.SnapshotTransition)
+local TrophyTransition = require(script.Parent.Parent.T.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.TrainingTransition)
 
 local function getOrCreateRemote(remoteId)
@@ -35,6 +37,10 @@ local leaveAutoArea = getOrCreateRemote("LeaveAutoArea")
 local getData = getOrCreateRemote("GetData")
 local rebirthEvent = getOrCreateRemote("ReBirth")
 local requestRebirth = getOrCreateRemote("RequestRebirth")
+local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
+
+BarbellTransition.InitWorld()
+TrophyTransition.InitWorld()
 
 local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
@@ -72,9 +78,14 @@ requestRebirth.OnServerInvoke = function(player)
 	return result
 end
 
+requestBarbellEquip.OnServerInvoke = function(player, barbellId)
+	return BarbellTransition.RequestEquip(player, barbellId)
+end
+
 Players.PlayerAdded:Connect(initPlayer)
 
 Players.PlayerRemoving:Connect(function(player)
+	TrophyTransition.RemovePlayer(player)
 	PlayerLifecycleTransition.Remove(player)
 end)
 

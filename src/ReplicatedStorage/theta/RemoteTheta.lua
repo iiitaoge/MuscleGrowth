@@ -27,6 +27,10 @@ local RemoteTheta = {
 		Name = "RequestRebirth",
 		ClassName = "RemoteFunction",
 	},
+	RequestBarbellEquip = {
+		Name = "RequestBarbellEquip",
+		ClassName = "RemoteFunction",
+	},
 }
 
 return RemoteTheta

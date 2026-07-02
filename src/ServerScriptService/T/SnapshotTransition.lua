@@ -11,10 +11,14 @@ function SnapshotTransition.GetPlayerSnapshot(player)
 
 	local rebirthCount = progressState.RebirthCount
 	local snapshot = table.clone(progressState)
+	snapshot.Trophies = progressState.Trophies or 0
 	snapshot.Level = ProgressionRules.CalculateLevel(progressState.Exp, rebirthCount)
 	snapshot.MaxLevel = ProgressionRules.GetMaxLevel(rebirthCount)
 	snapshot.MaxExp = ProgressionRules.GetMaxExp(rebirthCount)
 	snapshot.CanRebirth = ProgressionRules.CanRebirth(progressState)
+	snapshot.RebirthMultiplier = ProgressionRules.GetRebirthMultiplier(rebirthCount)
+	snapshot.BarbellMultiplier = ProgressionRules.GetBarbellMultiplier(progressState.CurrentBarbellId)
+	snapshot.BarbellRequiredTrophies = ProgressionRules.GetBarbellRequiredTrophies(progressState.CurrentBarbellId)
 
 	return snapshot
 end

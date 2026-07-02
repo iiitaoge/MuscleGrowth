@@ -1,14 +1,19 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local theta = ReplicatedStorage:WaitForChild("theta")
 
 local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
+local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
 local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
-local DebugStatsRender = require(script.Parent.Parent.T.DebugStatsRender)
+local HUDRender = require(script.Parent.Parent.T.HUDRender)
 
+local BARBELL_EQUIP_DISTANCE = 18
+
+-- 这个函数用于等待并获取指定的远程事件或远程函数
 local function waitForRemote(remoteId)
 	local remoteSpec = RemoteTheta[remoteId]
 	assert(remoteSpec, "Missing remote theta: " .. tostring(remoteId))
@@ -16,18 +21,69 @@ local function waitForRemote(remoteId)
 	return ReplicatedStorage:WaitForChild(remoteSpec.Name)
 end
 
+-- 获取远程事件和远程函数的引用
 local getData = waitForRemote("GetData")
 local moveStart = waitForRemote("MoveStart")
 local moveStop = waitForRemote("MoveStop")
 local onAutoArea = waitForRemote("OnAutoArea")
 local leaveAutoArea = waitForRemote("LeaveAutoArea")
 local requestRebirth = waitForRemote("RequestRebirth")
+local requestBarbellEquip = waitForRemote("RequestBarbellEquip")
 
-local view = DebugStatsRender.Init(player)
+local view = HUDRender.Init(player)
 local latestData = nil
 local isMoving = false
+local isRequestingBarbellEquip = false
 local touchingAreas = {}
 local trainAreas = Workspace:WaitForChild("World1"):WaitForChild("TrainAreas")
+
+local function getInstancePosition(instance)
+	if not instance then
+		return nil
+	end
+
+	if instance:IsA("Model") then
+		return instance:GetPivot().Position
+	end
+
+	if instance:IsA("BasePart") then
+		return instance.Position
+	end
+
+	local firstPart = instance:FindFirstChildWhichIsA("BasePart", true)
+	return firstPart and firstPart.Position or nil
+end
+
+local function getNearestBarbellId()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local gameDumbbell = Workspace:FindFirstChild("GameDumbbell")
+
+	if not root or not gameDumbbell then
+		return nil
+	end
+
+	local nearestBarbellId = nil
+	local nearestDistance = BARBELL_EQUIP_DISTANCE
+
+	for barbellId, barbellConfig in pairs(BarbellTheta) do
+		if type(barbellId) == "string" and type(barbellConfig) == "table" then
+			local barbellNode = gameDumbbell:FindFirstChild(barbellId)
+			local displayNode = barbellNode and (barbellNode:FindFirstChild("DisplayModel") or barbellNode)
+			local displayPosition = getInstancePosition(displayNode)
+
+			if displayPosition then
+				local distance = (root.Position - displayPosition).Magnitude
+				if distance <= nearestDistance then
+					nearestBarbellId = barbellId
+					nearestDistance = distance
+				end
+			end
+		end
+	end
+
+	return nearestBarbellId
+end
 
 local function refreshUi(data)
 	latestData = data
@@ -119,14 +175,47 @@ for areaId, areaConfig in pairs(AutoAreaTheta) do
 	end
 end
 
-view.GetRebirthButton().Activated:Connect(function()
-	if not latestData or not latestData.CanRebirth then
+local rebirthButton = view.GetRebirthButton()
+if rebirthButton then
+	rebirthButton.Activated:Connect(function()
+		if not latestData or not latestData.CanRebirth then
+			return
+		end
+
+		local result = requestRebirth:InvokeServer()
+		if result and result.Data then
+			refreshUi(result.Data)
+		end
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or input.KeyCode ~= Enum.KeyCode.E or isRequestingBarbellEquip then
 		return
 	end
 
-	local result = requestRebirth:InvokeServer()
+	local barbellId = getNearestBarbellId()
+	if not barbellId then
+		return
+	end
+
+	isRequestingBarbellEquip = true
+	local success, result = pcall(function()
+		return requestBarbellEquip:InvokeServer(barbellId)
+	end)
+	isRequestingBarbellEquip = false
+
+	if not success then
+		warn(result)
+		return
+	end
+
 	if result and result.Data then
 		refreshUi(result.Data)
+	end
+
+	if result and result.Success == false and result.Message then
+		warn(result.Message)
 	end
 end)
 

@@ -9,6 +9,7 @@ local ProgressionRules = require(script.Parent.ProgressionRules)
 
 local TrainingTransition = {}
 
+-- 创建初始的训练运行时状态
 local function createInitialRuntimeState()
 	return {
 		IsMoving = false,
@@ -17,6 +18,7 @@ local function createInitialRuntimeState()
 	}
 end
 
+-- 规范化训练运行时状态，确保所有字段都符合预期的类型和范围
 local function normalizeRuntimeState(runtimeState)
 	runtimeState = runtimeState or createInitialRuntimeState()
 	runtimeState.IsMoving = runtimeState.IsMoving == true
@@ -29,6 +31,7 @@ local function normalizeRuntimeState(runtimeState)
 	return runtimeState
 end
 
+-- 获取玩家的训练运行时状态，如果不存在则初始化
 local function getRuntimeOrInit(player)
 	local runtimeState = TrainingRuntimeState.Get(player)
 	if runtimeState then
@@ -39,6 +42,7 @@ local function getRuntimeOrInit(player)
 	return TrainingRuntimeState.Get(player)
 end
 
+-- 检查玩家是否解锁了指定的自动训练区域
 local function isAutoAreaUnlocked(progressState, areaConfig)
 	if not progressState or not areaConfig then
 		return false
