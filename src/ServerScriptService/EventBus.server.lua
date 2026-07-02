@@ -38,10 +38,12 @@ moveStop.OnServerEvent:Connect(function(player)
 end)
 
 onAutoArea.OnServerEvent:Connect(function(player, areaId)
+	print("onAutoArea.OnServerEvent", player, areaId)
 	GameManager.enterAutoArea(player, areaId)
 end)
 
 leaveAutoArea.OnServerEvent:Connect(function(player, areaId)
+	print("leaveAutoArea.OnServerEvent", player, areaId)
 	GameManager.leaveAutoArea(player, areaId)
 end)
 
