@@ -81,6 +81,7 @@ function LevelRules.CanRebirth(progressState)
 		return false
 	end
 
+	-- 计算当前等级，并与最大等级进行比较，如果当前等级大于等于最大等级，则代表到上限了，判断是否可以重生
 	return LevelRules.CalculateLevel(progressState.Exp, progressState.RebirthCount)
 		>= LevelRules.GetMaxLevel(progressState.RebirthCount)
 end

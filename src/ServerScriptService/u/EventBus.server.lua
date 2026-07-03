@@ -68,15 +68,13 @@ leaveAutoArea.OnServerEvent:Connect(function(player, areaId)
 	TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 end)
 
-rebirthEvent.OnServerEvent:Connect(function(player)
-	RebirthTransition.TryApply(player)
-	TrainingTransition.RefreshGrowth(player)
-end)
 
+-- 处理获取玩家数据请求，返回当前玩家数据快照
 getData.OnServerInvoke = function(player)
 	return PlayerSnapshotBuilder.GetPlayerSnapshot(player)
 end
 
+-- 处理重生请求
 requestRebirth.OnServerInvoke = function(player)
 	local result = RebirthTransition.Request(player)
 	TrainingTransition.RefreshGrowth(player)
