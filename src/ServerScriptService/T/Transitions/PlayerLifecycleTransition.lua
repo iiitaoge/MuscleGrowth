@@ -80,7 +80,6 @@ local function createInitialProgressState()
 		Exp = nonNegativeNumber(PlayerProgressInitialTheta.Exp, 0),
 		RebirthCount = nonNegativeNumber(PlayerProgressInitialTheta.RebirthCount, 0),
 		CurrentBarbellId = stringOrFallback(PlayerProgressInitialTheta.CurrentBarbellId, "T1"),
-		BodyQuality = stringOrFallback(PlayerProgressInitialTheta.BodyQuality, "Normal"),
 		OwnedPets = cloneValue(PlayerProgressInitialTheta.OwnedPets) or {},
 		EquippedPetInstanceIds = normalizePetSlots(PlayerProgressInitialTheta.EquippedPetInstanceIds),
 		NextPetInstanceId = positiveInteger(PlayerProgressInitialTheta.NextPetInstanceId, 1),

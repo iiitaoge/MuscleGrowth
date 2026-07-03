@@ -1,15 +1,10 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local BodyQualityTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BodyQualityTheta"))
-
 local BarbellRules = require(script.Parent.BarbellRules)
 local PetMultiplierRules = require(script.Parent.Pet.PetMultiplierRules)
 local RebirthRules = require(script.Parent.RebirthRules)
 
 local TrainingGainRules = {}
 
-local BASE_STRENGTH_GAIN = 1
-local BASE_EXP_GAIN = 50
+local BASE_TRAINING_GAIN = 1
 
 local function normalizeMultiplier(multiplier)
 	multiplier = tonumber(multiplier) or 1
@@ -25,65 +20,36 @@ local function normalizeBaseGain(value, fallback)
 	return math.max(numberValue, 0)
 end
 
-local function resolveBarbellMultipliers(progressState)
-	return BarbellRules.GetBarbellMultiplier(progressState and progressState.CurrentBarbellId), 1
+local function applyTrainingMultiplier(totalMultiplier, sourceMultiplier)
+	return totalMultiplier * normalizeMultiplier(sourceMultiplier)
 end
 
-local function resolveBodyQualityMultipliers(progressState)
-	local bodyQuality = progressState and BodyQualityTheta[progressState.BodyQuality]
-	return 1, bodyQuality and bodyQuality.ExpMultiplier or 1
+local function resolveTrainingMultiplier(progressState, activityMultiplier)
+	local multiplier = 1
+
+	multiplier = applyTrainingMultiplier(
+		multiplier,
+		BarbellRules.GetBarbellMultiplier(progressState and progressState.CurrentBarbellId)
+	)
+	multiplier = applyTrainingMultiplier(
+		multiplier,
+		RebirthRules.GetRebirthMultiplier(progressState and progressState.RebirthCount or 0)
+	)
+	multiplier = applyTrainingMultiplier(
+		multiplier,
+		PetMultiplierRules.GetEquippedPetMultiplier(progressState)
+	)
+	multiplier = applyTrainingMultiplier(multiplier, activityMultiplier)
+
+	return multiplier
 end
 
-local function resolvePetMultipliers(progressState)
-	local multiplier = PetMultiplierRules.GetEquippedPetMultiplier(progressState)
-	return multiplier, multiplier
-end
+-- 计算收益：力量和经验使用同一个训练值，经验上限在写回进度时处理。
+function TrainingGainRules.CalculateTrainingGainValues(progressState, activityMultiplier)
+	local baseTrainingGain = normalizeBaseGain(BASE_TRAINING_GAIN, 1)
+	local trainingGain = baseTrainingGain * resolveTrainingMultiplier(progressState, activityMultiplier)
 
-local function resolveRebirthMultipliers(progressState)
-	local multiplier = RebirthRules.GetRebirthMultiplier(progressState and progressState.RebirthCount or 0)
-	return multiplier, multiplier
-end
-
-local function resolveAutoAreaMultipliers(autoAreaMultiplier)
-	local multiplier = normalizeMultiplier(autoAreaMultiplier)
-	return multiplier, multiplier
-end
-
-local function applyTrainingMultiplier(totalStrengthMultiplier, totalExpMultiplier, strengthMultiplier, expMultiplier)
-	return totalStrengthMultiplier * normalizeMultiplier(strengthMultiplier),
-		totalExpMultiplier * normalizeMultiplier(expMultiplier)
-end
-
-local function resolveTrainingMultipliers(progressState, autoAreaMultiplier)
-	local strengthMultiplier = 1
-	local expMultiplier = 1
-
-	local function apply(strengthSourceMultiplier, expSourceMultiplier)
-		strengthMultiplier, expMultiplier = applyTrainingMultiplier(
-			strengthMultiplier,
-			expMultiplier,
-			strengthSourceMultiplier,
-			expSourceMultiplier
-		)
-	end
-
-	apply(resolveBarbellMultipliers(progressState))
-	apply(resolveBodyQualityMultipliers(progressState))
-	apply(resolvePetMultipliers(progressState))
-	apply(resolveRebirthMultipliers(progressState))
-	apply(resolveAutoAreaMultipliers(autoAreaMultiplier))
-
-	return strengthMultiplier, expMultiplier
-end
-
--- 计算收益，（未来经验和力量统一数值和倍率）。
-function TrainingGainRules.CalculateTrainingGainValues(progressState, autoAreaMultiplier)
-	local baseStrengthGain = normalizeBaseGain(BASE_STRENGTH_GAIN, 1)
-	local baseExpGain = normalizeBaseGain(BASE_EXP_GAIN, 50)
-	local strengthMultiplier, expMultiplier = resolveTrainingMultipliers(progressState, autoAreaMultiplier)
-
-	return baseStrengthGain * strengthMultiplier,
-		baseExpGain * expMultiplier
+	return trainingGain, trainingGain
 end
 
 return TrainingGainRules

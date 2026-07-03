@@ -5,7 +5,6 @@ local PlayerProgressInitialTheta = {
 	Exp = 0,
 	RebirthCount = 0,
 	CurrentBarbellId = "T1",
-	BodyQuality = "Normal",
 	OwnedPets = {
 		["1"] = {
 			InstanceId = "1",

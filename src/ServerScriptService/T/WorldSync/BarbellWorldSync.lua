@@ -110,7 +110,7 @@ local function renderDisplayBillboard(displayNode, barbellId)
 	local trophiesText = findTextLabel(displayNode, "num")
 
 	if powerText then
-		powerText.Text = formatMultiplier(barbellConfig.StrengthMultiplier) .. " Power"
+		powerText.Text = formatMultiplier(barbellConfig.Multiplier) .. " Gain"
 	end
 
 	if trophiesText then

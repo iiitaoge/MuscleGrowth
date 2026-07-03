@@ -39,7 +39,7 @@ local petInventoryView = PetInventoryRender.Init(player)
 local latestData = nil
 local isMoving = false
 local isRequestingBarbellEquip = false
-local touchingAreas = {}
+local currentAutoAreaId = nil
 local trainAreas = Workspace:WaitForChild("World1"):WaitForChild("TrainAreas")
 
 local function getWorldChild(childName)
@@ -144,7 +144,7 @@ local function refreshBarbellDisplays(data)
 			local isEquipped = currentBarbellId == barbellId
 			local isUnlocked = trophies >= requiredTrophies
 
-			setDisplayText(displayNode, "power", formatMultiplier(barbellConfig.StrengthMultiplier) .. " Power")
+			setDisplayText(displayNode, "power", formatMultiplier(barbellConfig.Multiplier) .. " Gain")
 			setDisplayText(displayNode, "num", formatNumber(requiredTrophies))
 			setDisplayVisible(displayNode, "Locked", not isUnlocked)
 			setDisplayVisible(displayNode, "Equip", isUnlocked and not isEquipped)
@@ -187,8 +187,9 @@ local function setMoving(nextIsMoving)
 end
 
 local function resetAutoAreas()
-	for areaId in pairs(touchingAreas) do
-		touchingAreas[areaId] = nil
+	if currentAutoAreaId ~= nil then
+		local areaId = currentAutoAreaId
+		currentAutoAreaId = nil
 		leaveAutoArea:FireServer(areaId)
 	end
 end
@@ -228,20 +229,20 @@ local function bindAutoArea(areaId)
 	end
 
 	touch.Touched:Connect(function(hit)
-		if not isLocalRootPart(hit) or touchingAreas[areaId] then
+		if not isLocalRootPart(hit) or currentAutoAreaId == areaId then
 			return
 		end
 
-		touchingAreas[areaId] = true
+		currentAutoAreaId = areaId
 		onAutoArea:FireServer(areaId)
 	end)
 
 	touch.TouchEnded:Connect(function(hit)
-		if not isLocalRootPart(hit) or not touchingAreas[areaId] then
+		if not isLocalRootPart(hit) or currentAutoAreaId ~= areaId then
 			return
 		end
 
-		touchingAreas[areaId] = nil
+		currentAutoAreaId = nil
 		leaveAutoArea:FireServer(areaId)
 	end)
 end

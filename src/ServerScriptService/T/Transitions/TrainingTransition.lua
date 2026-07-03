@@ -10,13 +10,20 @@ local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
 
 local TrainingTransition = {}
 
+local MOVE_ACTIVITY_MULTIPLIER = 1
+
+local function normalizeMultiplier(multiplier)
+	multiplier = tonumber(multiplier) or 1
+	return math.max(multiplier, 0)
+end
+
 -- 创建运行时数据
 local function createInitialRuntimeState()
 	return {
 		IsMoving = false,	-- 玩家是否正在移动
-		AutoAreaContacts = {},	-- 玩家当前接触的自动区域（未来不会有重叠，可以变成一个自动区ID）
+		CurrentAutoAreaId = nil,	-- 玩家当前服务端确认的单个自动区
 		GrowthLoopActive = false,	-- 玩家是否处于增长循环中
-		LastPetRollTime = 0,	-- 玩家上次滚动宠物的时间戳（这个功能是干啥的？是防止玩家一直购买宠物吗？）
+		LastPetRollTime = 0,	-- 玩家上次抽宠的时间戳，用于服务端冷却
 	}
 end
 
@@ -24,10 +31,11 @@ local function normalizeRuntimeState(runtimeState)
 	runtimeState = runtimeState or createInitialRuntimeState()
 	runtimeState.IsMoving = runtimeState.IsMoving == true
 
-	if type(runtimeState.AutoAreaContacts) ~= "table" then
-		runtimeState.AutoAreaContacts = {}
+	if not TrainingAreaObservation.IsValidAreaId(runtimeState.CurrentAutoAreaId) then
+		runtimeState.CurrentAutoAreaId = nil
 	end
 
+	runtimeState.AutoAreaContacts = nil
 	runtimeState.GrowthLoopActive = runtimeState.GrowthLoopActive == true
 	runtimeState.LastPetRollTime = math.max(0, tonumber(runtimeState.LastPetRollTime) or 0)
 	return runtimeState
@@ -49,44 +57,38 @@ local function isAutoAreaUnlocked(progressState, areaConfig)
 		return false
 	end
 
-	local requiredRebirth = areaConfig.RequiredRebirth or 0
-	return progressState.RebirthCount >= requiredRebirth
+	local rebirthCount = tonumber(progressState.RebirthCount) or 0
+	local requiredRebirth = tonumber(areaConfig.RequiredRebirth) or 0
+	return rebirthCount >= requiredRebirth
 end
 
--- 清理无效的自动区域接触（未来会被淘汰：从地图上确保不会重叠）
-local function pruneInvalidAutoAreaContacts(player, runtimeState)
-	local changed = false
-
-	for areaId in pairs(runtimeState.AutoAreaContacts) do
-		if not TrainingAreaObservation.IsPlayerInArea(player, areaId) then
-			runtimeState.AutoAreaContacts[areaId] = nil
-			changed = true
-		end
+local function clearCurrentAutoArea(player, runtimeState)
+	if runtimeState.CurrentAutoAreaId == nil then
+		return runtimeState
 	end
 
-	if changed then
-		TrainingRuntimeState.Set(player, runtimeState)
-	end
-
+	runtimeState.CurrentAutoAreaId = nil
+	TrainingRuntimeState.Set(player, runtimeState)
 	return runtimeState
 end
 
-local function getBestAutoArea(progressState, runtimeState)
-	local bestAreaId = nil
-	local bestMultiplier = 1
-
-	for areaId in pairs(runtimeState.AutoAreaContacts) do
-		local areaConfig = AutoAreaTheta[areaId]
-		if isAutoAreaUnlocked(progressState, areaConfig) then
-			local multiplier = tonumber(areaConfig.Multiplier) or 1
-			if not bestAreaId or multiplier > bestMultiplier then
-				bestAreaId = areaId
-				bestMultiplier = multiplier
-			end
-		end
+local function resolveCurrentAutoArea(player, progressState, runtimeState)
+	local areaId = runtimeState.CurrentAutoAreaId
+	if areaId == nil then
+		return nil, nil
 	end
 
-	return bestAreaId, bestMultiplier
+	local areaConfig = AutoAreaTheta[areaId]
+	if not areaConfig or not TrainingAreaObservation.IsPlayerInArea(player, areaId) then
+		clearCurrentAutoArea(player, runtimeState)
+		return nil, nil
+	end
+
+	if not isAutoAreaUnlocked(progressState, areaConfig) then
+		return nil, nil
+	end
+
+	return areaId, normalizeMultiplier(areaConfig.Multiplier)
 end
 
 -- 检测是否需要增长
@@ -97,12 +99,19 @@ local function getGrowthDecision(player)
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
-	pruneInvalidAutoAreaContacts(player, runtimeState)	--清理无效自动区（未来会退役）
+	local autoAreaId, autoAreaMultiplier = resolveCurrentAutoArea(player, progressState, runtimeState)
 
-	local bestAreaId, bestMultiplier = getBestAutoArea(progressState, runtimeState)	--获取最佳自动区，未来会退役
-	local shouldGrow = runtimeState.IsMoving or bestAreaId ~= nil	--检测是否正在移动-是否处于自动区
+	local shouldGrow = runtimeState.IsMoving or autoAreaId ~= nil
+	local activityMultiplier = runtimeState.IsMoving and MOVE_ACTIVITY_MULTIPLIER or 1
+	if autoAreaId ~= nil then
+		if runtimeState.IsMoving then
+			activityMultiplier = math.max(activityMultiplier, autoAreaMultiplier)
+		else
+			activityMultiplier = autoAreaMultiplier
+		end
+	end
 
-	return shouldGrow, bestMultiplier
+	return shouldGrow, activityMultiplier
 end
 
 -- 设置增长状态（激活，停止）
@@ -161,7 +170,7 @@ local function startGrowthLoop(player)
 				break
 			end
 
-			local shouldGrow, autoAreaMultiplier = getGrowthDecision(player)
+			local shouldGrow, activityMultiplier = getGrowthDecision(player)
 			if not shouldGrow then
 				TrainingTransition.StopGrowth(player)
 				break
@@ -175,7 +184,7 @@ local function startGrowthLoop(player)
 
 			local strengthGain, expGain = TrainingGainRules.CalculateTrainingGainValues(
 				progressState,
-				autoAreaMultiplier
+				activityMultiplier
 			)
 			applyTrainingGains(player, progressState, strengthGain, expGain)
 		end
@@ -201,7 +210,7 @@ function TrainingTransition.EnterAutoAreaClaim(player, areaId)
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
-	runtimeState.AutoAreaContacts[areaId] = true
+	runtimeState.CurrentAutoAreaId = areaId
 	TrainingRuntimeState.Set(player, runtimeState)
 	TrainingTransition.RefreshGrowth(player)
 
@@ -215,8 +224,10 @@ function TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
-	runtimeState.AutoAreaContacts[areaId] = nil
-	TrainingRuntimeState.Set(player, runtimeState)
+	if runtimeState.CurrentAutoAreaId == areaId then
+		runtimeState.CurrentAutoAreaId = nil
+		TrainingRuntimeState.Set(player, runtimeState)
+	end
 	TrainingTransition.RefreshGrowth(player)
 
 	return true

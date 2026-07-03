@@ -10,9 +10,9 @@
 
 ## 映射关系
 
-- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`BodyQuality`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
-- `S_r` 服务端运行时状态：`IsMoving`、`AutoAreaContacts`、`GrowthLoopActive`、`LastPetRollTime`。
-- `theta` 规则参数：自动区、杠铃、宠物、宠物蛋、宠物系统、身体素质、重生、等级经验、初始状态、Remote 协议。
+- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
+- `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`LastPetRollTime`。
+- `theta` 规则参数：自动区、杠铃、宠物、宠物蛋、宠物系统、重生、等级经验、初始状态、Remote 协议。
 - `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求。
 - `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证、宠物蛋交互距离验证。
 - `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、宠物抽奖、宠物装备、奖杯奖励、快照生成、UI 渲染。
@@ -45,13 +45,16 @@
 - `MaxLevel`
 - `MaxExp`
 - `CanRebirth`
-- `AutoAreaMultiplier` 从服务端确认的区域接触、自动区配置和 `RebirthCount` 推导。
+- `ActivityMultiplier` 从移动状态、服务端确认的当前自动区、自动区配置和 `RebirthCount` 推导。
 - `BarbellMultiplier`
 - `BarbellRequiredTrophies`
 - `PetMultiplier`
 
 这些计算都在 `T` 内部完成。`FormulaService`、`LevelService` 不再作为独立架构类别存在。
 训练收益和增长决策使用直接返回值传递，不再创建 `growthContext`、`gains` 这类隐形数据模型。
+每次训练只计算一个通用 `trainingGain`，同值写入 `Strength` 和 `Exp`；`Exp` 写回时会被 `MaxExp(RebirthCount)` 裁剪。
+当前倍率链为 `BarbellMultiplier * RebirthMultiplier * PetMultiplier * ActivityMultiplier`。
+`ActivityMultiplier` 在移动时至少为 `1`；如果当前自动区有效且已解锁，则与移动倍率取较高值。
 
 ## 宠物抽奖合同
 
@@ -76,7 +79,7 @@
 - `Exp >= 0`
 - `Exp <= MaxExp(RebirthCount)`
 - `RebirthCount >= 0`
-- `AutoAreaContacts` 只能包含 `theta.AutoAreaTheta` 里存在的区域 id。
+- `CurrentAutoAreaId` 只能是 `nil` 或 `theta.AutoAreaTheta` 里存在的区域 id。
 - 客户端 Remote 只能触发状态转移，不能直接写 `S_p` 或 `S_r`。
-- 自动区倍率必须来自服务端验证过、且玩家已解锁的区域接触。
-- 同时接触多个自动区时，只取已解锁区域里的最高倍率。
+- 自动区倍率必须来自服务端验证过、且玩家已解锁的当前区域。
+- 如果多个自动区声明先后到达，最后一个服务端验证成功的区域成为 `CurrentAutoAreaId`。
