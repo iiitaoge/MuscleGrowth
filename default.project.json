@@ -3,14 +3,32 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "$path": "src/ReplicatedStorage"
+      "theta": {
+        "$path": "src/ReplicatedStorage/theta"
+      }
     },
     "ServerScriptService": {
-      "$path": "src/ServerScriptService"
+      "S": {
+        "$path": "src/ServerScriptService/S"
+      },
+      "T": {
+        "$path": "src/ServerScriptService/T"
+      },
+      "u": {
+        "$path": "src/ServerScriptService/u"
+      },
+      "y": {
+        "$path": "src/ServerScriptService/y"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "$path": "src/StarterPlayer/StarterPlayerScripts"
+        "T": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts/T"
+        },
+        "u": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts/u"
+        }
       }
     }
   }

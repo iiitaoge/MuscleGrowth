@@ -4,6 +4,7 @@ local AutoAreaTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChi
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingRuntimeState = require(script.Parent.Parent.Parent.S.TrainingRuntimeState)
+local MovementObservation = require(script.Parent.Parent.Parent.y.MovementObservation)
 local TrainingAreaObservation = require(script.Parent.Parent.Parent.y.TrainingAreaObservation)
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
 local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
@@ -11,6 +12,7 @@ local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
 local TrainingTransition = {}
 
 local MOVE_ACTIVITY_MULTIPLIER = 1
+local MAX_UNCONFIRMED_MOVE_CHECKS = 3
 
 local function normalizeMultiplier(multiplier)
 	multiplier = tonumber(multiplier) or 1
@@ -20,7 +22,11 @@ end
 -- 创建运行时数据
 local function createInitialRuntimeState()
 	return {
-		IsMoving = false,	-- 玩家是否正在移动
+		MoveRequested = false,	-- 客户端是否请求开始移动训练检测
+		IsMoving = false,	-- 服务端确认玩家是否正在移动
+		LastMovementPosition = nil,
+		LastMovementObservedAt = 0,
+		UnconfirmedMoveChecks = 0,
 		CurrentAutoAreaId = nil,	-- 玩家当前服务端确认的单个自动区
 		GrowthLoopActive = false,	-- 玩家是否处于增长循环中
 		LastPetRollTime = 0,	-- 玩家上次抽宠的时间戳，用于服务端冷却
@@ -29,7 +35,13 @@ end
 
 local function normalizeRuntimeState(runtimeState)
 	runtimeState = runtimeState or createInitialRuntimeState()
+	runtimeState.MoveRequested = runtimeState.MoveRequested == true
 	runtimeState.IsMoving = runtimeState.IsMoving == true
+	if typeof(runtimeState.LastMovementPosition) ~= "Vector3" then
+		runtimeState.LastMovementPosition = nil
+	end
+	runtimeState.LastMovementObservedAt = math.max(0, tonumber(runtimeState.LastMovementObservedAt) or 0)
+	runtimeState.UnconfirmedMoveChecks = math.max(0, math.floor(tonumber(runtimeState.UnconfirmedMoveChecks) or 0))
 
 	if not TrainingAreaObservation.IsValidAreaId(runtimeState.CurrentAutoAreaId) then
 		runtimeState.CurrentAutoAreaId = nil
@@ -91,27 +103,53 @@ local function resolveCurrentAutoArea(player, progressState, runtimeState)
 	return areaId, normalizeMultiplier(areaConfig.Multiplier)
 end
 
+local function observeRequestedMovement(player, runtimeState, autoAreaId)
+	if runtimeState.MoveRequested then
+		local isMoving
+		isMoving, runtimeState = MovementObservation.Observe(player, runtimeState)
+
+		if not isMoving
+			and autoAreaId == nil
+			and runtimeState.UnconfirmedMoveChecks >= MAX_UNCONFIRMED_MOVE_CHECKS
+		then
+			runtimeState.MoveRequested = false
+			runtimeState.IsMoving = false
+			MovementObservation.Reset(runtimeState)
+		end
+
+		return isMoving, runtimeState
+	end
+
+	runtimeState.IsMoving = false
+	MovementObservation.Reset(runtimeState)
+	return false, runtimeState
+end
+
 -- 检测是否需要增长
 local function getGrowthDecision(player)
 	local progressState = PlayerProgressState.Get(player)
 	if not progressState then
-		return false, 1
+		return false, 1, false
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
 	local autoAreaId, autoAreaMultiplier = resolveCurrentAutoArea(player, progressState, runtimeState)
+	local isMoving
+	isMoving, runtimeState = observeRequestedMovement(player, runtimeState, autoAreaId)
+	TrainingRuntimeState.Set(player, runtimeState)
 
-	local shouldGrow = runtimeState.IsMoving or autoAreaId ~= nil
-	local activityMultiplier = runtimeState.IsMoving and MOVE_ACTIVITY_MULTIPLIER or 1
+	local shouldGrow = isMoving or autoAreaId ~= nil
+	local shouldKeepLoopActive = runtimeState.MoveRequested or autoAreaId ~= nil
+	local activityMultiplier = isMoving and MOVE_ACTIVITY_MULTIPLIER or 1
 	if autoAreaId ~= nil then
-		if runtimeState.IsMoving then
+		if isMoving then
 			activityMultiplier = math.max(activityMultiplier, autoAreaMultiplier)
 		else
 			activityMultiplier = autoAreaMultiplier
 		end
 	end
 
-	return shouldGrow, activityMultiplier
+	return shouldGrow, activityMultiplier, shouldKeepLoopActive
 end
 
 -- 设置增长状态（激活，停止）
@@ -165,28 +203,33 @@ local function startGrowthLoop(player)
 		while true do
 			task.wait(1)
 
+			-- 玩家可能不符合增长循环了（停止移动 不在自动区）
 			local currentRuntimeState = TrainingRuntimeState.Get(player)
 			if not currentRuntimeState or not currentRuntimeState.GrowthLoopActive then
 				break
 			end
-
-			local shouldGrow, activityMultiplier = getGrowthDecision(player)
-			if not shouldGrow then
+			
+			-- 玩家需要被停止增长，更改增长状态为停止
+			local shouldGrow, activityMultiplier, shouldKeepLoopActive = getGrowthDecision(player)
+			if not shouldKeepLoopActive then
 				TrainingTransition.StopGrowth(player)
 				break
 			end
 
-			local progressState = PlayerProgressState.Get(player)
-			if not progressState then
-				TrainingTransition.StopGrowth(player)
-				break
-			end
+			if shouldGrow then
+				--玩家可能在增长循环中直接退出游戏
+				local progressState = PlayerProgressState.Get(player)
+				if not progressState then
+					TrainingTransition.StopGrowth(player)
+					break
+				end
 
-			local strengthGain, expGain = TrainingGainRules.CalculateTrainingGainValues(
-				progressState,
-				activityMultiplier
-			)
-			applyTrainingGains(player, progressState, strengthGain, expGain)
+				local strengthGain, expGain = TrainingGainRules.CalculateTrainingGainValues(
+					progressState,
+					activityMultiplier
+				)
+				applyTrainingGains(player, progressState, strengthGain, expGain)
+			end
 		end
 	end)
 end
@@ -194,9 +237,21 @@ end
 -- 判断是否正在移动
 function TrainingTransition.SetMoving(player, isMoving)
 	local runtimeState = getRuntimeOrInit(player)
-	runtimeState.IsMoving = isMoving == true
+	local moveRequested = isMoving == true
+	if runtimeState.MoveRequested == moveRequested then
+		return true
+	end
+
+	runtimeState.MoveRequested = moveRequested
+	if not moveRequested then
+		runtimeState.IsMoving = false
+		MovementObservation.Reset(runtimeState)
+	end
+
 	TrainingRuntimeState.Set(player, runtimeState)
 	TrainingTransition.RefreshGrowth(player)
+
+	return true
 end
 
 -- 进入自动区域
@@ -235,8 +290,8 @@ end
 
 -- 更新增长状态
 function TrainingTransition.RefreshGrowth(player)
-	local shouldGrow = getGrowthDecision(player)
-	if shouldGrow then
+	local _, _, shouldKeepLoopActive = getGrowthDecision(player)
+	if shouldKeepLoopActive then
 		startGrowthLoop(player)
 	else
 		TrainingTransition.StopGrowth(player)

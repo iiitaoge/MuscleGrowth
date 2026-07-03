@@ -73,6 +73,7 @@ local function normalizePetSlots(value)
 	return normalizedSlots
 end
 
+-- 扩展性很强，配置可以加，可以改，我只需要改这个函数即可正确初始化，粘合层
 local function createInitialProgressState()
 	return {
 		Strength = nonNegativeNumber(PlayerProgressInitialTheta.Strength, 0),
