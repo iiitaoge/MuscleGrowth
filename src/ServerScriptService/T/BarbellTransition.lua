@@ -13,9 +13,9 @@ local EQUIPPED_MODEL_NAME = "EquippedBarbell"
 local PROMPT_BOUND_ATTRIBUTE = "MuscleGrowthBarbellPromptBound"
 
 local function getEquipHand(character)
-	return character:FindFirstChild("RightHand")
-		or character:FindFirstChild("Right Arm")
-		or character:FindFirstChild("HumanoidRootPart")
+	return character:WaitForChild("RightHand")
+		or character:WaitForChild("Right Arm")
+		or character:WaitForChild("HumanoidRootPart")
 end
 
 local function pivotInstanceTo(instance, targetCFrame)
@@ -73,7 +73,7 @@ local function formatMultiplier(value)
 end
 
 local function findTextLabel(root, labelName)
-	local label = root and root:FindFirstChild(labelName, true)
+	local label = root and root:WaitForChild(labelName, true)
 	if label and label:IsA("TextLabel") then
 		return label
 	end
@@ -121,7 +121,7 @@ local function renderDisplayBillboard(displayNode, barbellId)
 end
 
 local function configurePrompt(displayHolder, barbellId)
-	local prompt = displayHolder and displayHolder:FindFirstChildWhichIsA("ProximityPrompt", true)
+	local prompt = displayHolder and displayHolder:WaitForChildWhichIsA("ProximityPrompt", true)
 	if not prompt then
 		return
 	end
@@ -154,7 +154,7 @@ local function prepareEquippedModel(instance)
 end
 
 local function clearEquippedModel(character)
-	local existingModel = character:FindFirstChild(EQUIPPED_MODEL_NAME)
+	local existingModel = character:WaitForChild(EQUIPPED_MODEL_NAME)
 	if existingModel then
 		existingModel:Destroy()
 	end
@@ -220,7 +220,7 @@ function BarbellTransition.RefreshDisplays()
 	for barbellId in pairs(BarbellTheta) do
 		local source = BarbellObservation.GetTrainSource(barbellId)
 		local displayHolder = BarbellObservation.GetDisplayHolder(barbellId)
-		local oldDisplay = displayHolder and displayHolder:FindFirstChild(DISPLAY_MODEL_NAME)
+		local oldDisplay = displayHolder and displayHolder:WaitForChild(DISPLAY_MODEL_NAME)
 
 		if source and displayHolder then
 			local displayPivot = BarbellObservation.GetInstancePivot(oldDisplay)
@@ -240,7 +240,7 @@ function BarbellTransition.RefreshDisplays()
 			renderDisplayBillboard(nextDisplay, barbellId)
 			configurePrompt(displayHolder, barbellId)
 		elseif displayHolder then
-			renderDisplayBillboard(displayHolder:FindFirstChild(DISPLAY_MODEL_NAME), barbellId)
+			renderDisplayBillboard(displayHolder:WaitForChild(DISPLAY_MODEL_NAME), barbellId)
 			configurePrompt(displayHolder, barbellId)
 		end
 	end

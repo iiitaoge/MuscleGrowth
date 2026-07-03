@@ -15,7 +15,7 @@ local function getCharacterRoot(player)
 		return nil
 	end
 
-	local root = character:FindFirstChild("HumanoidRootPart")
+	local root = character:WaitForChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		return root
 	end
@@ -24,10 +24,10 @@ local function getCharacterRoot(player)
 end
 
 local function getAutoAreaTouchPart(areaId)
-	local world = Workspace:FindFirstChild("World1")
-	local trainAreas = world and world:FindFirstChild("TrainAreas")
-	local area = trainAreas and trainAreas:FindFirstChild(areaId)
-	local touch = area and area:FindFirstChild("Touch")
+	local world = Workspace:WaitForChild("World1")
+	local trainAreas = world and world:WaitForChild("TrainAreas")
+	local area = trainAreas and trainAreas:WaitForChild(areaId)
+	local touch = area and area:WaitForChild("Touch")
 
 	if touch and touch:IsA("BasePart") then
 		return touch

@@ -11,6 +11,7 @@ local SnapshotTransition = require(script.Parent.Parent.T.SnapshotTransition)
 local TrophyTransition = require(script.Parent.Parent.T.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.TrainingTransition)
 
+-- 模版绑定
 local function getOrCreateRemote(remoteId)
 	local remoteSpec = RemoteTheta[remoteId]
 	assert(remoteSpec, "Missing remote theta: " .. tostring(remoteId))
@@ -31,6 +32,7 @@ local function getOrCreateRemote(remoteId)
 	return remote
 end
 
+-- 绑定事件
 local moveStart = getOrCreateRemote("MoveStart")
 local moveStop = getOrCreateRemote("MoveStop")
 local onAutoArea = getOrCreateRemote("OnAutoArea")
@@ -40,6 +42,8 @@ local rebirthEvent = getOrCreateRemote("ReBirth")
 local requestRebirth = getOrCreateRemote("RequestRebirth")
 local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
 local requestPetEquip = getOrCreateRemote("RequestPetEquip")
+local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
+local requestPetRoll = getOrCreateRemote("RequestPetRoll")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -84,8 +88,16 @@ requestBarbellEquip.OnServerInvoke = function(player, barbellId)
 	return BarbellTransition.RequestEquip(player, barbellId)
 end
 
-requestPetEquip.OnServerInvoke = function(player, petId)
-	return PetTransition.RequestEquip(player, petId)
+requestPetEquip.OnServerInvoke = function(player, petInstanceId, slotIndex)
+	return PetTransition.RequestEquip(player, petInstanceId, slotIndex)
+end
+
+requestPetUnequip.OnServerInvoke = function(player, slotIndex)
+	return PetTransition.RequestUnequip(player, slotIndex)
+end
+
+requestPetRoll.OnServerInvoke = function(player, eggId)
+	return PetTransition.RequestRoll(player, eggId)
 end
 
 Players.PlayerAdded:Connect(initPlayer)

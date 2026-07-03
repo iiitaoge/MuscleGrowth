@@ -15,6 +15,7 @@ local function createInitialRuntimeState()
 		IsMoving = false,
 		AutoAreaContacts = {},
 		GrowthLoopActive = false,
+		LastPetRollTime = 0,
 	}
 end
 
@@ -28,6 +29,7 @@ local function normalizeRuntimeState(runtimeState)
 	end
 
 	runtimeState.GrowthLoopActive = runtimeState.GrowthLoopActive == true
+	runtimeState.LastPetRollTime = math.max(0, tonumber(runtimeState.LastPetRollTime) or 0)
 	return runtimeState
 end
 

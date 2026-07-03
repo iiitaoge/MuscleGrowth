@@ -20,14 +20,14 @@ local isWorldBound = false
 local isWorldBindingStarted = false
 
 local function getWorldRoot()
-	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
+	return Workspace:WaitForChild(WORLD_ROOT_NAME) or Workspace
 end
 
 local function findDescendantByName(root, childName, timeoutSeconds)
 	local endTime = os.clock() + timeoutSeconds
 
 	repeat
-		local found = root:FindFirstChild(childName, true)
+		local found = root:WaitForChild(childName, true)
 		if found then
 			return found
 		end
@@ -50,7 +50,7 @@ local function getTouchParts(root)
 		return touchParts
 	end
 
-	local mainPart = root:FindFirstChild("Main", true)
+	local mainPart = root:WaitForChild("Main", true)
 	if mainPart and mainPart:IsA("BasePart") then
 		table.insert(touchParts, mainPart)
 	end
@@ -68,7 +68,7 @@ local function getPlayerFromHit(hit)
 	local current = hit
 
 	while current and current ~= Workspace do
-		if current:IsA("Model") and current:FindFirstChildWhichIsA("Humanoid") then
+		if current:IsA("Model") and current:WaitForChildWhichIsA("Humanoid") then
 			return Players:GetPlayerFromCharacter(current)
 		end
 
@@ -80,11 +80,11 @@ end
 
 local function getCharacterRoot(player)
 	local character = player.Character
-	return character and character:FindFirstChild("HumanoidRootPart")
+	return character and character:WaitForChild("HumanoidRootPart")
 end
 
 local function findSpawnPart()
-	local namedSpawn = Workspace:FindFirstChild("SpawnLocation", true)
+	local namedSpawn = Workspace:WaitForChild("SpawnLocation", true)
 	if namedSpawn and namedSpawn:IsA("BasePart") then
 		return namedSpawn
 	end
@@ -95,7 +95,7 @@ local function findSpawnPart()
 		end
 	end
 
-	local fallbackSpawn = Workspace:FindFirstChild("Spawn", true)
+	local fallbackSpawn = Workspace:WaitForChild("Spawn", true)
 	if fallbackSpawn and fallbackSpawn:IsA("BasePart") then
 		return fallbackSpawn
 	end
@@ -158,7 +158,7 @@ function TrophyTransition.InitWorld()
 	task.spawn(function()
 		local trophy = findDescendantByName(getWorldRoot(), TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
 			or findDescendantByName(Workspace, TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
-		local freeReturn = trophy and trophy:FindFirstChild(FREE_RETURN_PART_NAME, true)
+		local freeReturn = trophy and trophy:WaitForChild(FREE_RETURN_PART_NAME, true)
 		local touchParts = getTouchParts(freeReturn)
 
 		if #touchParts == 0 then

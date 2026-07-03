@@ -10,13 +10,13 @@
 
 ## 映射关系
 
-- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`CurrentPetId`、`BodyQuality`。
-- `S_r` 服务端运行时状态：`IsMoving`、`AutoAreaContacts`、`GrowthLoopActive`。
-- `theta` 规则参数：自动区、杠铃、宠物、身体素质、重生、等级经验、初始状态、Remote 协议。
-- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物切换请求。
-- `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证。
-- `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、宠物切换、奖杯奖励、快照生成、UI 渲染。
-- `O` 输出数据：玩家数据快照、重生响应、杠铃切换响应、宠物切换响应、客户端 UI 实例和文本状态。
+- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`BodyQuality`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
+- `S_r` 服务端运行时状态：`IsMoving`、`AutoAreaContacts`、`GrowthLoopActive`、`LastPetRollTime`。
+- `theta` 规则参数：自动区、杠铃、宠物、宠物蛋、宠物系统、身体素质、重生、等级经验、初始状态、Remote 协议。
+- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求。
+- `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证、宠物蛋交互距离验证。
+- `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、宠物抽奖、宠物装备、奖杯奖励、快照生成、UI 渲染。
+- `O` 输出数据：玩家数据快照、重生响应、杠铃切换响应、宠物抽奖响应、宠物装备响应、客户端 UI 实例和文本状态。
 
 ## 所有权
 
@@ -41,10 +41,25 @@
 - `BarbellMultiplier`
 - `BarbellRequiredTrophies`
 - `PetMultiplier`
-- `PetRequiredTrophies`
 
 这些计算都在 `T` 内部完成。`FormulaService`、`LevelService` 不再作为独立架构类别存在。
 训练收益和增长决策使用直接返回值传递，不再创建 `growthContext`、`gains` 这类隐形数据模型。
+
+## 宠物抽奖合同
+
+- 宠物蛋是抽宠入口，不是宠物本身。
+- 客户端可以本地检测碰到宠物蛋、按下 `E`、渲染抽奖 UI；这些只属于交互体验，不是可信事实。
+- 客户端发起抽奖时只能提交 `eggId`，不能提交抽中宠物、倍率、稀有度或消耗数量。
+- 服务端在购买瞬间通过 `y` 重新验证 `eggId` 和玩家与宠物蛋的距离。
+- 抽奖随机性只在服务端 `T` 内发生，奖池和概率只来自 `theta`。
+- `S_p.OwnedPets` 是玩家拥有宠物实例的唯一真相，使用字符串实例 id 作为字典 key。
+- 宠物实例 id 在单个玩家内部递增生成，`NextPetInstanceId` 保存下一个可用编号。
+- 每个宠物实例当前只保存 `InstanceId` 和 `PetTypeId`；名字、稀有度、倍率从 `theta.PetTheta` 推导。
+- `S_p.EquippedPetInstanceIds` 是固定三个槽位，空槽使用 `0`。
+- 同种宠物可以重复拥有和重复装备，但同一个宠物实例不能同时占用多个槽位。
+- 抽到宠物后只进入背包，不自动装备。
+- 宠物倍率按装备槽中的不同宠物实例倍率相加；没有装备宠物时宠物倍率为 `1`。
+- 全部宠物蛋共享抽奖冷却，运行时冷却事实保存在 `S_r.LastPetRollTime`。
 
 ## 不变量
 

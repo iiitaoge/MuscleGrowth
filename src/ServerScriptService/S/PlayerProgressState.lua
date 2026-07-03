@@ -1,12 +1,25 @@
 local PlayerProgressState = {}
 local states = {}
 
+local function cloneValue(value)
+	if type(value) ~= "table" then
+		return value
+	end
+
+	local copy = {}
+	for key, childValue in pairs(value) do
+		copy[cloneValue(key)] = cloneValue(childValue)
+	end
+
+	return copy
+end
+
 local function cloneState(state)
 	if type(state) ~= "table" then
 		return nil
 	end
 
-	return table.clone(state)
+	return cloneValue(state)
 end
 
 -- 初始化玩家进度状态

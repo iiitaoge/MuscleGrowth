@@ -19,8 +19,9 @@ function SnapshotTransition.GetPlayerSnapshot(player)
 	snapshot.RebirthMultiplier = ProgressionRules.GetRebirthMultiplier(rebirthCount)
 	snapshot.BarbellMultiplier = ProgressionRules.GetBarbellMultiplier(progressState.CurrentBarbellId)
 	snapshot.BarbellRequiredTrophies = ProgressionRules.GetBarbellRequiredTrophies(progressState.CurrentBarbellId)
-	snapshot.PetMultiplier = ProgressionRules.GetPetMultiplier(progressState.CurrentPetId)
-	snapshot.PetRequiredTrophies = ProgressionRules.GetPetRequiredTrophies(progressState.CurrentPetId)
+	snapshot.PetMultiplier = ProgressionRules.GetEquippedPetMultiplier(progressState)
+	snapshot.OwnedPetSnapshots = ProgressionRules.GetOwnedPetSnapshots(progressState)
+	snapshot.EquippedPetSnapshots = ProgressionRules.GetEquippedPetSnapshots(progressState)
 
 	return snapshot
 end

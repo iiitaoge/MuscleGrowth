@@ -5,8 +5,10 @@ local PlayerProgressInitialTheta = {
 	Exp = 0,
 	RebirthCount = 0,
 	CurrentBarbellId = "T1",
-	CurrentPetId = "P1",
 	BodyQuality = "Normal",
+	OwnedPets = {},
+	EquippedPetInstanceIds = { 0, 0, 0 },
+	NextPetInstanceId = 1,
 }
 
 return PlayerProgressInitialTheta

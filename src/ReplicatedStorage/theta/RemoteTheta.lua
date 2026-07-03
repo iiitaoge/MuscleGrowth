@@ -35,6 +35,14 @@ local RemoteTheta = {
 		Name = "RequestPetEquip",
 		ClassName = "RemoteFunction",
 	},
+	RequestPetUnequip = {
+		Name = "RequestPetUnequip",
+		ClassName = "RemoteFunction",
+	},
+	RequestPetRoll = {
+		Name = "RequestPetRoll",
+		ClassName = "RemoteFunction",
+	},
 }
 
 return RemoteTheta

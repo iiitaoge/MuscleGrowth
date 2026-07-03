@@ -5,6 +5,7 @@ local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
 local BodyQualityTheta = require(theta:WaitForChild("BodyQualityTheta"))
 local LevelTheta = require(theta:WaitForChild("LevelTheta"))
 local PetTheta = require(theta:WaitForChild("PetTheta"))
+local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
 local RebirthTheta = require(theta:WaitForChild("RebirthTheta"))
 
 local ProgressionRules = {}	--创建模块表。后面所有对外函数都会挂到这个表上。
@@ -112,17 +113,135 @@ function ProgressionRules.GetBarbellRequiredTrophies(currentBarbellId)
 end
 
 -- 获取当前宠物通用训练倍率。当前设计为同时影响力量和经验。
-function ProgressionRules.GetPetMultiplier(currentPetId)
-	local pet = PetTheta[currentPetId]
+function ProgressionRules.GetPetTypeMultiplier(petTypeId)
+	local pet = PetTheta[petTypeId]
 
 	return normalizeMultiplier(pet and pet.Multiplier or 1)
 end
 
--- 获取当前宠物的奖杯需求，用于快照和服务端切换校验。
-function ProgressionRules.GetPetRequiredTrophies(currentPetId)
-	local pet = PetTheta[currentPetId]
+local function getMaxEquippedPets()
+	return math.max(0, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 0))
+end
 
-	return math.max(0, tonumber(pet and pet.RequiredTrophies) or 0)
+local function getEmptyPetSlot()
+	return PetSystemTheta.EmptyPetSlot == nil and 0 or PetSystemTheta.EmptyPetSlot
+end
+
+local function isEmptyPetSlot(value)
+	local emptySlot = getEmptyPetSlot()
+	return value == nil or value == emptySlot or tostring(value) == tostring(emptySlot)
+end
+
+local function getPetInstance(progressState, petInstanceId)
+	if not progressState or type(progressState.OwnedPets) ~= "table" then
+		return nil
+	end
+
+	return progressState.OwnedPets[tostring(petInstanceId)]
+end
+
+function ProgressionRules.GetPetTypeSnapshot(petTypeId)
+	local petConfig = PetTheta[petTypeId]
+	if type(petConfig) ~= "table" then
+		return nil
+	end
+
+	return {
+		PetTypeId = petTypeId,
+		DisplayName = petConfig.DisplayName or petTypeId,
+		Rarity = petConfig.Rarity or "Common",
+		Multiplier = normalizeMultiplier(petConfig.Multiplier),
+		RollWeight = math.max(0, tonumber(petConfig.RollWeight) or 0),
+	}
+end
+
+function ProgressionRules.GetOwnedPetSnapshots(progressState)
+	local ownedPetSnapshots = {}
+	local ownedPets = progressState and progressState.OwnedPets
+	if type(ownedPets) ~= "table" then
+		return ownedPetSnapshots
+	end
+
+	for instanceId, petInstance in pairs(ownedPets) do
+		if type(petInstance) == "table" and type(petInstance.PetTypeId) == "string" then
+			local petSnapshot = ProgressionRules.GetPetTypeSnapshot(petInstance.PetTypeId)
+			if petSnapshot then
+				petSnapshot.InstanceId = tostring(petInstance.InstanceId or instanceId)
+				table.insert(ownedPetSnapshots, petSnapshot)
+			end
+		end
+	end
+
+	table.sort(ownedPetSnapshots, function(left, right)
+		return (tonumber(left.InstanceId) or math.huge) < (tonumber(right.InstanceId) or math.huge)
+	end)
+
+	return ownedPetSnapshots
+end
+
+function ProgressionRules.GetEquippedPetSnapshots(progressState)
+	local equippedPetSnapshots = {}
+	local equippedSlots = progressState and progressState.EquippedPetInstanceIds
+	local emptySlot = getEmptyPetSlot()
+	local seenInstanceIds = {}
+
+	for slotIndex = 1, getMaxEquippedPets() do
+		local petInstanceId = type(equippedSlots) == "table" and equippedSlots[slotIndex] or emptySlot
+		local petSnapshot = {
+			SlotIndex = slotIndex,
+			InstanceId = emptySlot,
+		}
+
+		if not isEmptyPetSlot(petInstanceId) then
+			local normalizedInstanceId = tostring(petInstanceId)
+			local petInstance = getPetInstance(progressState, normalizedInstanceId)
+			local typeSnapshot = petInstance
+				and not seenInstanceIds[normalizedInstanceId]
+				and ProgressionRules.GetPetTypeSnapshot(petInstance.PetTypeId)
+
+			if typeSnapshot then
+				seenInstanceIds[normalizedInstanceId] = true
+				typeSnapshot.SlotIndex = slotIndex
+				typeSnapshot.InstanceId = normalizedInstanceId
+				petSnapshot = typeSnapshot
+			end
+		end
+
+		table.insert(equippedPetSnapshots, petSnapshot)
+	end
+
+	return equippedPetSnapshots
+end
+
+function ProgressionRules.GetEquippedPetMultiplier(progressState)
+	local equippedSlots = progressState and progressState.EquippedPetInstanceIds
+	if type(equippedSlots) ~= "table" then
+		return 1
+	end
+
+	local seenInstanceIds = {}
+	local totalMultiplier = 0
+
+	for slotIndex = 1, getMaxEquippedPets() do
+		local petInstanceId = equippedSlots[slotIndex]
+		if not isEmptyPetSlot(petInstanceId) then
+			local normalizedInstanceId = tostring(petInstanceId)
+			local petInstance = getPetInstance(progressState, normalizedInstanceId)
+			if petInstance and not seenInstanceIds[normalizedInstanceId] then
+				local petConfig = PetTheta[petInstance.PetTypeId]
+				if petConfig then
+					totalMultiplier += normalizeMultiplier(petConfig.Multiplier)
+					seenInstanceIds[normalizedInstanceId] = true
+				end
+			end
+		end
+	end
+
+	if totalMultiplier <= 0 then
+		return 1
+	end
+
+	return totalMultiplier
 end
 
 -- 获取升级所需的经验值
@@ -206,7 +325,7 @@ end
 
 -- 宠物使用同一个通用倍率，同时影响力量和经验。
 local function resolvePetMultipliers(progressState)
-	local multiplier = ProgressionRules.GetPetMultiplier(progressState and progressState.CurrentPetId)
+	local multiplier = ProgressionRules.GetEquippedPetMultiplier(progressState)
 
 	return multiplier, multiplier
 end

@@ -68,7 +68,7 @@ local json = HttpService:JSONEncode({
 	scripts = records,
 })
 
-local existing = ServerStorage:FindFirstChild("__RojoExportJson")
+local existing = ServerStorage:WaitForChild("__RojoExportJson")
 if existing then
 	existing:Destroy()
 end

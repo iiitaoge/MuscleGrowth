@@ -23,7 +23,7 @@ local function guardHud(hud)
 end
 
 local playerGui = player:WaitForChild("PlayerGui")
-local hud = playerGui:FindFirstChild("HUD") or playerGui:WaitForChild("HUD", HUD_WAIT_SECONDS)
+local hud = playerGui:WaitForChild("HUD") or playerGui:WaitForChild("HUD", HUD_WAIT_SECONDS)
 
 if hud then
 	guardHud(hud)
