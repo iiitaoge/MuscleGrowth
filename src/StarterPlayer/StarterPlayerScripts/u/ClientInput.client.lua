@@ -10,6 +10,7 @@ local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
 local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
 local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
 local HUDRender = require(script.Parent.Parent.T.HUDRender)
+local PetInventoryRender = require(script.Parent.Parent.T.PetInventoryRender)
 
 local BARBELL_EQUIP_DISTANCE = 18
 local WORLD_ROOT_NAME = "World1"
@@ -34,6 +35,7 @@ local requestBarbellEquip = waitForRemote("RequestBarbellEquip")
 
 
 local view = HUDRender.Init(player)
+local petInventoryView = PetInventoryRender.Init(player)
 local latestData = nil
 local isMoving = false
 local isRequestingBarbellEquip = false
@@ -41,11 +43,11 @@ local touchingAreas = {}
 local trainAreas = Workspace:WaitForChild("World1"):WaitForChild("TrainAreas")
 
 local function getWorldChild(childName)
-	local worldRoot = Workspace:WaitForChild(WORLD_ROOT_NAME)
+	local worldRoot = Workspace:FindFirstChild(WORLD_ROOT_NAME)
 
-	return (worldRoot and worldRoot:WaitForChild(childName))
-		or Workspace:WaitForChild(childName)
-		or Workspace:WaitForChild(childName, true)
+	return (worldRoot and worldRoot:FindFirstChild(childName))
+		or Workspace:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName, true)
 end
 
 local function getInstancePosition(instance)
@@ -61,13 +63,13 @@ local function getInstancePosition(instance)
 		return instance.Position
 	end
 
-	local firstPart = instance:WaitForChildWhichIsA("BasePart", true)
+	local firstPart = instance:FindFirstChildWhichIsA("BasePart", true)
 	return firstPart and firstPart.Position or nil
 end
 
 local function getNearestBarbellId()
 	local character = player.Character
-	local root = character and character:WaitForChild("HumanoidRootPart")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local gameDumbbell = getWorldChild("GameDumbbell")
 
 	if not root or not gameDumbbell then
@@ -79,9 +81,9 @@ local function getNearestBarbellId()
 
 	for barbellId, barbellConfig in pairs(BarbellTheta) do
 		if type(barbellId) == "string" and type(barbellConfig) == "table" then
-			local barbellNode = gameDumbbell:WaitForChild(barbellId)
+			local barbellNode = gameDumbbell:FindFirstChild(barbellId)
 			local displayNode = barbellNode
-				and (barbellNode:WaitForChild("PromptPart") or barbellNode:WaitForChild("DisplayModel") or barbellNode)
+				and (barbellNode:FindFirstChild("PromptPart") or barbellNode:FindFirstChild("DisplayModel") or barbellNode)
 			local displayPosition = getInstancePosition(displayNode)
 
 			if displayPosition then
@@ -112,14 +114,14 @@ local function formatMultiplier(value)
 end
 
 local function setDisplayText(root, labelName, value)
-	local label = root and root:WaitForChild(labelName, true)
+	local label = root and root:FindFirstChild(labelName, true)
 	if label and label:IsA("TextLabel") then
 		label.Text = value
 	end
 end
 
 local function setDisplayVisible(root, labelName, isVisible)
-	local label = root and root:WaitForChild(labelName, true)
+	local label = root and root:FindFirstChild(labelName, true)
 	if label and label:IsA("GuiObject") then
 		label.Visible = isVisible == true
 	end
@@ -136,8 +138,8 @@ local function refreshBarbellDisplays(data)
 
 	for barbellId, barbellConfig in pairs(BarbellTheta) do
 		if type(barbellId) == "string" and type(barbellConfig) == "table" then
-			local barbellNode = gameDumbbell:WaitForChild(barbellId)
-			local displayNode = barbellNode and (barbellNode:WaitForChild("DisplayModel") or barbellNode)
+			local barbellNode = gameDumbbell:FindFirstChild(barbellId)
+			local displayNode = barbellNode and (barbellNode:FindFirstChild("DisplayModel") or barbellNode)
 			local requiredTrophies = tonumber(barbellConfig.RequiredTrophies) or 0
 			local isEquipped = currentBarbellId == barbellId
 			local isUnlocked = trophies >= requiredTrophies
@@ -154,7 +156,21 @@ end
 local function refreshUi(data)
 	latestData = data
 	view.Refresh(data)
+	petInventoryView.Refresh(data)
 	refreshBarbellDisplays(data)
+end
+
+local function refreshUiFromServer()
+	local success, data = pcall(function()
+		return getData:InvokeServer()
+	end)
+
+	if not success then
+		warn(data)
+		return
+	end
+
+	refreshUi(data)
 end
 
 local function setMoving(nextIsMoving)
@@ -195,7 +211,7 @@ end
 
 local function isLocalRootPart(hit)
 	local character = player.Character
-	return character ~= nil and hit == character:WaitForChild("HumanoidRootPart")
+	return character ~= nil and hit == character:FindFirstChild("HumanoidRootPart")
 end
 
 local function bindAutoArea(areaId)
@@ -256,6 +272,14 @@ if rebirthButton then
 	end)
 end
 
+local petButton = petInventoryView.GetPetButton()
+if petButton then
+	petButton.Activated:Connect(function()
+		petInventoryView.SetOpen(true)
+		refreshUiFromServer()
+	end)
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or input.KeyCode ~= Enum.KeyCode.E or isRequestingBarbellEquip then
 		return
@@ -287,5 +311,5 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 while task.wait(1) do
-	refreshUi(getData:InvokeServer())
+	refreshUiFromServer()
 end

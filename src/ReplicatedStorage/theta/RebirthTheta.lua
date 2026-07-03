@@ -5,7 +5,7 @@ local RebirthTheta = { -- 重生规则参数：训练通用倍率、等级上限
 		MaxLevel = 5,
 	},
 	[1] = {
-		Multiplier = 2,
+		Multiplier = 1,
 		MaxLevel = 10,
 	},
 	[2] = {

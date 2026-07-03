@@ -20,15 +20,15 @@ local function getCharacterRoot(player)
 end
 
 local function getWorldRoot()
-	return Workspace:WaitForChild(WORLD_ROOT_NAME) or Workspace
+	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
 end
 
 local function findWorldChild(childName)
 	local worldRoot = getWorldRoot()
 
-	return worldRoot:WaitForChild(childName)
-		or Workspace:WaitForChild(childName)
-		or Workspace:WaitForChild(childName, true)
+	return worldRoot:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName)
+		or Workspace:FindFirstChild(childName, true)
 end
 
 local function waitForWorldChild(childName)
@@ -71,7 +71,7 @@ function BarbellObservation.GetFirstBasePart(instance)
 		return instance
 	end
 
-	return instance:WaitForChildWhichIsA("BasePart", true)
+	return instance:FindFirstChildWhichIsA("BasePart", true)
 end
 
 function BarbellObservation.GetInstancePivot(instance)
@@ -104,15 +104,15 @@ end
 
 function BarbellObservation.GetTrainSource(barbellId)
 	local dumbbellRoot = findWorldChild(TRAIN_ROOT_NAME)
-	local barbellNode = dumbbellRoot and dumbbellRoot:WaitForChild(barbellId)
+	local barbellNode = dumbbellRoot and dumbbellRoot:FindFirstChild(barbellId)
 
-	return barbellNode and barbellNode:WaitForChild(TRAIN_MODEL_NAME)
+	return barbellNode and barbellNode:FindFirstChild(TRAIN_MODEL_NAME)
 end
 
 function BarbellObservation.GetDisplayHolder(barbellId)
 	local displayRoot = findWorldChild(DISPLAY_ROOT_NAME)
 
-	return displayRoot and displayRoot:WaitForChild(barbellId)
+	return displayRoot and displayRoot:FindFirstChild(barbellId)
 end
 
 function BarbellObservation.GetDisplayNode(barbellId)
@@ -121,7 +121,7 @@ function BarbellObservation.GetDisplayNode(barbellId)
 		return nil
 	end
 
-	return barbellNode:WaitForChild(DISPLAY_MODEL_NAME) or barbellNode
+	return barbellNode:FindFirstChild(DISPLAY_MODEL_NAME) or barbellNode
 end
 
 function BarbellObservation.GetInteractionNode(barbellId)
@@ -130,7 +130,7 @@ function BarbellObservation.GetInteractionNode(barbellId)
 		return nil
 	end
 
-	return barbellNode:WaitForChild(PROMPT_PART_NAME)
+	return barbellNode:FindFirstChild(PROMPT_PART_NAME)
 		or BarbellObservation.GetDisplayNode(barbellId)
 		or barbellNode
 end

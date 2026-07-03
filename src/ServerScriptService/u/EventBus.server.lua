@@ -3,13 +3,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("RemoteTheta"))
 
-local BarbellTransition = require(script.Parent.Parent.T.BarbellTransition)
-local PlayerLifecycleTransition = require(script.Parent.Parent.T.PlayerLifecycleTransition)
-local PetTransition = require(script.Parent.Parent.T.PetTransition)
-local RebirthTransition = require(script.Parent.Parent.T.RebirthTransition)
-local SnapshotTransition = require(script.Parent.Parent.T.SnapshotTransition)
-local TrophyTransition = require(script.Parent.Parent.T.TrophyTransition)
-local TrainingTransition = require(script.Parent.Parent.T.TrainingTransition)
+local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
+local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
+local PetTransition = require(script.Parent.Parent.T.Transitions.Pet.PetTransition)
+local RebirthTransition = require(script.Parent.Parent.T.Transitions.RebirthTransition)
+local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
+local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
+local TrainingTransition = require(script.Parent.Parent.T.Transitions.TrainingTransition)
 
 -- 模版绑定
 local function getOrCreateRemote(remoteId)
@@ -74,7 +74,7 @@ rebirthEvent.OnServerEvent:Connect(function(player)
 end)
 
 getData.OnServerInvoke = function(player)
-	return SnapshotTransition.GetPlayerSnapshot(player)
+	return PlayerSnapshotBuilder.GetPlayerSnapshot(player)
 end
 
 requestRebirth.OnServerInvoke = function(player)

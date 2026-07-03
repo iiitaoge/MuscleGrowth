@@ -2,8 +2,12 @@ local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-local HUD_WAIT_SECONDS = 10
+local GUI_WAIT_SECONDS = 10
 local DISABLED_ATTRIBUTE = "MuscleGrowthDisabledLegacyScript"
+local LEGACY_SCREEN_NAMES = {
+	"HUD",
+	"Main",
+}
 
 local function disableLegacyScript(instance)
 	if not instance:IsA("LocalScript") then
@@ -14,17 +18,19 @@ local function disableLegacyScript(instance)
 	instance.Disabled = true
 end
 
-local function guardHud(hud)
-	for _, descendant in ipairs(hud:GetDescendants()) do
+local function guardLegacyGui(screenGui)
+	for _, descendant in ipairs(screenGui:GetDescendants()) do
 		disableLegacyScript(descendant)
 	end
 
-	hud.DescendantAdded:Connect(disableLegacyScript)
+	screenGui.DescendantAdded:Connect(disableLegacyScript)
 end
 
 local playerGui = player:WaitForChild("PlayerGui")
-local hud = playerGui:WaitForChild("HUD") or playerGui:WaitForChild("HUD", HUD_WAIT_SECONDS)
 
-if hud then
-	guardHud(hud)
+for _, screenName in ipairs(LEGACY_SCREEN_NAMES) do
+	local screenGui = playerGui:WaitForChild(screenName, GUI_WAIT_SECONDS)
+	if screenGui then
+		guardLegacyGui(screenGui)
+	end
 end
