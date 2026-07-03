@@ -10,12 +10,13 @@ local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
 
 local TrainingTransition = {}
 
+-- 创建运行时数据
 local function createInitialRuntimeState()
 	return {
-		IsMoving = false,
-		AutoAreaContacts = {},
-		GrowthLoopActive = false,
-		LastPetRollTime = 0,
+		IsMoving = false,	-- 玩家是否正在移动
+		AutoAreaContacts = {},	-- 玩家当前接触的自动区域（未来不会有重叠，可以变成一个自动区ID）
+		GrowthLoopActive = false,	-- 玩家是否处于增长循环中
+		LastPetRollTime = 0,	-- 玩家上次滚动宠物的时间戳（这个功能是干啥的？是防止玩家一直购买宠物吗？）
 	}
 end
 
@@ -32,6 +33,7 @@ local function normalizeRuntimeState(runtimeState)
 	return runtimeState
 end
 
+-- 获取玩家的运行时数据，如果没有则初始化
 local function getRuntimeOrInit(player)
 	local runtimeState = TrainingRuntimeState.Get(player)
 	if runtimeState then
@@ -51,6 +53,7 @@ local function isAutoAreaUnlocked(progressState, areaConfig)
 	return progressState.RebirthCount >= requiredRebirth
 end
 
+-- 清理无效的自动区域接触（未来会被淘汰：从地图上确保不会重叠）
 local function pruneInvalidAutoAreaContacts(player, runtimeState)
 	local changed = false
 
@@ -86,6 +89,7 @@ local function getBestAutoArea(progressState, runtimeState)
 	return bestAreaId, bestMultiplier
 end
 
+-- 检测是否需要增长
 local function getGrowthDecision(player)
 	local progressState = PlayerProgressState.Get(player)
 	if not progressState then
@@ -93,14 +97,15 @@ local function getGrowthDecision(player)
 	end
 
 	local runtimeState = getRuntimeOrInit(player)
-	pruneInvalidAutoAreaContacts(player, runtimeState)
+	pruneInvalidAutoAreaContacts(player, runtimeState)	--清理无效自动区（未来会退役）
 
-	local bestAreaId, bestMultiplier = getBestAutoArea(progressState, runtimeState)
-	local shouldGrow = runtimeState.IsMoving or bestAreaId ~= nil
+	local bestAreaId, bestMultiplier = getBestAutoArea(progressState, runtimeState)	--获取最佳自动区，未来会退役
+	local shouldGrow = runtimeState.IsMoving or bestAreaId ~= nil	--检测是否正在移动-是否处于自动区
 
 	return shouldGrow, bestMultiplier
 end
 
+-- 设置增长状态（激活，停止）
 local function setGrowthLoopActive(player, isActive)
 	local runtimeState = TrainingRuntimeState.Get(player)
 	if not runtimeState then
@@ -123,6 +128,7 @@ local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	PlayerProgressState.Set(player, nextProgressState)
 end
 
+-- 设置增长状态为false
 function TrainingTransition.StopGrowth(player)
 	setGrowthLoopActive(player, false)
 end
@@ -136,6 +142,7 @@ function TrainingTransition.RemoveRuntime(player)
 	TrainingRuntimeState.Remove(player)
 end
 
+-- 如果增长状态被激活，则开始执行增长循环
 local function startGrowthLoop(player)
 	local runtimeState = getRuntimeOrInit(player)
 	if runtimeState.GrowthLoopActive then
@@ -175,6 +182,7 @@ local function startGrowthLoop(player)
 	end)
 end
 
+-- 判断是否正在移动
 function TrainingTransition.SetMoving(player, isMoving)
 	local runtimeState = getRuntimeOrInit(player)
 	runtimeState.IsMoving = isMoving == true
@@ -182,6 +190,7 @@ function TrainingTransition.SetMoving(player, isMoving)
 	TrainingTransition.RefreshGrowth(player)
 end
 
+-- 进入自动区域
 function TrainingTransition.EnterAutoAreaClaim(player, areaId)
 	if not TrainingAreaObservation.IsValidAreaId(areaId) then
 		return false
@@ -199,6 +208,7 @@ function TrainingTransition.EnterAutoAreaClaim(player, areaId)
 	return true
 end
 
+-- 离开自动区域
 function TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 	if type(areaId) ~= "string" then
 		return false
@@ -212,6 +222,7 @@ function TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 	return true
 end
 
+-- 更新增长状态
 function TrainingTransition.RefreshGrowth(player)
 	local shouldGrow = getGrowthDecision(player)
 	if shouldGrow then

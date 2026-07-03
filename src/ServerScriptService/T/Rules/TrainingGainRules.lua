@@ -76,6 +76,7 @@ local function resolveTrainingMultipliers(progressState, autoAreaMultiplier)
 	return strengthMultiplier, expMultiplier
 end
 
+-- 计算收益，（未来经验和力量统一数值和倍率）。
 function TrainingGainRules.CalculateTrainingGainValues(progressState, autoAreaMultiplier)
 	local baseStrengthGain = normalizeBaseGain(BASE_STRENGTH_GAIN, 1)
 	local baseExpGain = normalizeBaseGain(BASE_EXP_GAIN, 50)

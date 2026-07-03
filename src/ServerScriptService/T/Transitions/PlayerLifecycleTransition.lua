@@ -87,9 +87,10 @@ local function createInitialProgressState()
 	}
 end
 
+-- 初始化进度数据和训练运行时数据，进度数据被createInitialProgressState决定
 function PlayerLifecycleTransition.Init(player)
 	PlayerProgressState.Init(player, createInitialProgressState())
-	TrainingTransition.InitRuntime(player)
+	TrainingTransition.InitRuntime(player)	--运行时的初始化
 end
 
 function PlayerLifecycleTransition.Remove(player)
