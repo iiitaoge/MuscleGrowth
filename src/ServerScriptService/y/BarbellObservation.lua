@@ -1,18 +1,19 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
 local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BarbellTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
 
 local BarbellObservation = {}
 
-local DISPLAY_ROOT_NAME = "GameDumbbell"
-local TRAIN_ROOT_NAME = "Dumbbell"
-local DISPLAY_MODEL_NAME = "DisplayModel"
-local PROMPT_PART_NAME = "PromptPart"
-local TRAIN_MODEL_NAME = "Train"
-local WORLD_ROOT_NAME = "World1"
+local DISPLAY_ROOT_NAME = SceneTheta.SceneEquipmentRootName
+local TRAIN_ROOT_NAME = SceneTheta.TrainEquipmentSourceFolderName
+local DISPLAY_MODEL_NAME = SceneTheta.BarbellDisplayModelName
+local PROMPT_PART_NAME = SceneTheta.BarbellPromptPartName
+local TRAIN_MODEL_NAME = SceneTheta.BarbellTrainModelName
 local WORLD_WAIT_SECONDS = 10
-local MAX_EQUIP_DISTANCE = 18
+local MAX_EQUIP_DISTANCE = SceneTheta.BarbellMaxEquipDistance
 
 -- 获取玩家的 HumanoidRootPart，用于计算玩家与杠铃的距离
 local function getCharacterRoot(player)
@@ -21,10 +22,14 @@ local function getCharacterRoot(player)
 end
 
 local function getWorldRoot()
-	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
+	return Workspace:FindFirstChild(SceneTheta.WorkspaceRootName) or Workspace
 end
 
-local function findWorldChild(childName)
+local function getServerToUseSceneRoot()
+	return ServerStorage:FindFirstChild(SceneTheta.ServerToUseSceneRootName)
+end
+
+local function findSceneChild(childName)
 	local worldRoot = getWorldRoot()
 
 	return worldRoot:FindFirstChild(childName)
@@ -32,8 +37,8 @@ local function findWorldChild(childName)
 		or Workspace:FindFirstChild(childName, true)
 end
 
-local function waitForWorldChild(childName)
-	local worldRoot = Workspace:WaitForChild(WORLD_ROOT_NAME, WORLD_WAIT_SECONDS) or Workspace
+local function waitForSceneChild(childName)
+	local worldRoot = Workspace:WaitForChild(SceneTheta.WorkspaceRootName, WORLD_WAIT_SECONDS) or Workspace
 	local child = worldRoot:WaitForChild(childName, WORLD_WAIT_SECONDS)
 
 	if child then
@@ -41,6 +46,16 @@ local function waitForWorldChild(childName)
 	end
 
 	return Workspace:WaitForChild(childName, WORLD_WAIT_SECONDS)
+end
+
+local function findServerSourceChild(childName)
+	local sourceRoot = getServerToUseSceneRoot()
+	return sourceRoot and sourceRoot:FindFirstChild(childName)
+end
+
+local function waitForServerSourceChild(childName)
+	local sourceRoot = ServerStorage:WaitForChild(SceneTheta.ServerToUseSceneRootName, WORLD_WAIT_SECONDS)
+	return sourceRoot and sourceRoot:WaitForChild(childName, WORLD_WAIT_SECONDS)
 end
 
 function BarbellObservation.GetBaseParts(instance)
@@ -98,22 +113,22 @@ function BarbellObservation.IsValidBarbellId(barbellId)
 end
 
 function BarbellObservation.WaitForWorldRoots()
-	local dumbbellRoot = waitForWorldChild(TRAIN_ROOT_NAME)
-	local displayRoot = waitForWorldChild(DISPLAY_ROOT_NAME)
+	local dumbbellRoot = waitForServerSourceChild(TRAIN_ROOT_NAME)
+	local displayRoot = waitForSceneChild(DISPLAY_ROOT_NAME)
 
 	return dumbbellRoot, displayRoot
 end
 
 -- 这个函数有点奇怪，不是很理解
 function BarbellObservation.GetTrainSource(barbellId)
-	local dumbbellRoot = findWorldChild(TRAIN_ROOT_NAME)
+	local dumbbellRoot = findServerSourceChild(TRAIN_ROOT_NAME)
 	local barbellNode = dumbbellRoot and dumbbellRoot:FindFirstChild(barbellId)
 
 	return barbellNode and barbellNode:FindFirstChild(TRAIN_MODEL_NAME)
 end
 
 function BarbellObservation.GetDisplayHolder(barbellId)
-	local displayRoot = findWorldChild(DISPLAY_ROOT_NAME)
+	local displayRoot = findSceneChild(DISPLAY_ROOT_NAME)
 
 	return displayRoot and displayRoot:FindFirstChild(barbellId)
 end

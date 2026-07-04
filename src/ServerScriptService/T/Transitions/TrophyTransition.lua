@@ -1,9 +1,11 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrophyWorldSync = require(script.Parent.Parent.WorldSync.TrophyWorldSync)
+local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("TrophyTheta"))
 
 local TrophyTransition = {}
 
-local FREE_RETURN_REWARD = 130
 local TOUCH_COOLDOWN_SECONDS = 1
 
 local touchDebounceByPlayer = setmetatable({}, {
@@ -36,18 +38,37 @@ local function canTouchNow(player)
 	return true
 end
 
-local function onFreeReturnTouched(player)
+local function getFreeReturnConfig(trophyId, fallbackConfig)
+	if type(fallbackConfig) == "table" then
+		return fallbackConfig
+	end
+
+	local freeReturnConfigs = TrophyTheta.FreeReturns
+	return type(freeReturnConfigs) == "table" and freeReturnConfigs[trophyId] or nil
+end
+
+local function getRewardTrophies(trophyId, fallbackConfig)
+	local freeReturnConfig = getFreeReturnConfig(trophyId, fallbackConfig)
+	return math.max(0, tonumber(freeReturnConfig and freeReturnConfig.RewardTrophies) or 0)
+end
+
+local function onFreeReturnTouched(player, trophyId, freeReturnConfig)
 	if not player or not canTouchNow(player) then
 		return
 	end
 
-	if TrophyTransition.AddTrophies(player, FREE_RETURN_REWARD) then
+	local rewardTrophies = getRewardTrophies(trophyId, freeReturnConfig)
+	if rewardTrophies <= 0 then
+		return
+	end
+
+	if TrophyTransition.AddTrophies(player, rewardTrophies) then
 		TrophyWorldSync.TeleportToSpawn(player)
 	end
 end
 
 function TrophyTransition.InitWorld()
-	TrophyWorldSync.BindFreeReturn(onFreeReturnTouched)
+	TrophyWorldSync.BindFreeReturns(onFreeReturnTouched)
 end
 
 function TrophyTransition.RemovePlayer(player)

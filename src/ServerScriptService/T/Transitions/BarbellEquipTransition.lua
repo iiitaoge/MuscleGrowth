@@ -6,6 +6,7 @@ local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgress
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
 local BarbellWorldSync = require(script.Parent.Parent.WorldSync.BarbellWorldSync)
+local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local BarbellEquipTransition = {}
 
@@ -36,14 +37,14 @@ function BarbellEquipTransition.TryEquip(player, barbellId)
 		return false, "Not enough trophies"
 	end
 
-	local visualEquipped, visualMessage = BarbellWorldSync.EquipVisual(player, barbellId)
-	if not visualEquipped then
-		return false, visualMessage
+	if not BarbellObservation.GetTrainSource(barbellId) then
+		return false, "Barbell model does not exist"
 	end
 
 	local nextProgressState = table.clone(progressState)
 	nextProgressState.CurrentBarbellId = barbellId
 	PlayerProgressState.Set(player, nextProgressState)
+	PlayerVisualStateSync.Refresh(player)
 
 	return true, "Barbell equipped"
 end

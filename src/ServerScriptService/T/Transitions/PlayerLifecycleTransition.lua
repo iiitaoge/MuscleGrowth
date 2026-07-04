@@ -6,6 +6,7 @@ local PlayerProgressInitialTheta = require(theta:WaitForChild("PlayerProgressIni
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingTransition = require(script.Parent.TrainingTransition)
+local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local PlayerLifecycleTransition = {}
 
@@ -91,11 +92,14 @@ end
 function PlayerLifecycleTransition.Init(player)
 	PlayerProgressState.Init(player, createInitialProgressState())
 	TrainingTransition.InitRuntime(player)	--运行时的初始化
+	PlayerVisualStateSync.Refresh(player)
+	PlayerVisualStateSync.SetTrainingActive(player, false)
 end
 
 function PlayerLifecycleTransition.Remove(player)
 	TrainingTransition.RemoveRuntime(player)
 	PlayerProgressState.Remove(player)
+	PlayerVisualStateSync.Clear(player)
 end
 
 return PlayerLifecycleTransition

@@ -1,25 +1,27 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("TrophyTheta"))
 
 local TrophyWorldSync = {}
 
-local TROPHY_MODEL_NAME = "trophy1"
-local FREE_RETURN_PART_NAME = "FreeReturn"
-local WORLD_ROOT_NAME = "World1"
+local DEFAULT_SCENE_ROOT_NAME = "UseScene"
+local DEFAULT_FREE_RETURN_PART_NAME = "FreeReturn"
 local WORLD_WAIT_SECONDS = 10
 
-local isWorldBound = false
-local isWorldBindingStarted = false
+local boundFreeReturnIds = {}
+local bindingStarted = false
 
-local function getWorldRoot()
-	return Workspace:WaitForChild(WORLD_ROOT_NAME) or Workspace
-end
+local function waitForDirectChild(root, childName, timeoutSeconds)
+	if not root or type(childName) ~= "string" then
+		return nil
+	end
 
-local function findDescendantByName(root, childName, timeoutSeconds)
 	local endTime = os.clock() + timeoutSeconds
 
 	repeat
-		local found = root:FindFirstChild(childName, true)
+		local found = root:FindFirstChild(childName)
 		if found then
 			return found
 		end
@@ -28,6 +30,27 @@ local function findDescendantByName(root, childName, timeoutSeconds)
 	until os.clock() >= endTime
 
 	return nil
+end
+
+local function getSceneRoot(freeReturnConfig)
+	local sceneRootName = freeReturnConfig.SceneRootName or DEFAULT_SCENE_ROOT_NAME
+	return waitForDirectChild(Workspace, sceneRootName, WORLD_WAIT_SECONDS)
+end
+
+local function getFreeReturnNode(trophyId, freeReturnConfig)
+	local sceneRoot = getSceneRoot(freeReturnConfig)
+	if not sceneRoot then
+		return nil
+	end
+
+	local nodeName = freeReturnConfig.NodeName or trophyId
+	local node = waitForDirectChild(sceneRoot, nodeName, WORLD_WAIT_SECONDS)
+	if not node then
+		return nil
+	end
+
+	local freeReturnName = freeReturnConfig.FreeReturnName or DEFAULT_FREE_RETURN_PART_NAME
+	return node:FindFirstChild(freeReturnName, true)
 end
 
 local function getTouchParts(root)
@@ -48,7 +71,7 @@ local function getTouchParts(root)
 	end
 
 	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant:IsA("BasePart") and descendant ~= mainPart and descendant.CanTouch then
+		if descendant:IsA("BasePart") and descendant ~= mainPart then
 			table.insert(touchParts, descendant)
 		end
 	end
@@ -95,6 +118,32 @@ local function findSpawnPart()
 	return nil
 end
 
+local function bindFreeReturn(trophyId, freeReturnConfig, onPlayerTouched)
+	if boundFreeReturnIds[trophyId] then
+		return
+	end
+
+	local freeReturn = getFreeReturnNode(trophyId, freeReturnConfig)
+	local touchParts = getTouchParts(freeReturn)
+
+	if #touchParts == 0 then
+		warn(("Trophy free return %s was not found. Trophy reward touch is disabled."):format(tostring(trophyId)))
+		return
+	end
+
+	boundFreeReturnIds[trophyId] = true
+
+	for _, touchPart in ipairs(touchParts) do
+		touchPart.CanTouch = true
+		touchPart.Touched:Connect(function(hit)
+			local player = getPlayerFromHit(hit)
+			if player and onPlayerTouched then
+				onPlayerTouched(player, trophyId, freeReturnConfig)
+			end
+		end)
+	end
+end
+
 function TrophyWorldSync.TeleportToSpawn(player)
 	local root = getCharacterRoot(player)
 	local spawnPart = findSpawnPart()
@@ -104,35 +153,30 @@ function TrophyWorldSync.TeleportToSpawn(player)
 	end
 end
 
-function TrophyWorldSync.BindFreeReturn(onPlayerTouched)
-	if isWorldBound or isWorldBindingStarted then
+function TrophyWorldSync.BindFreeReturns(onPlayerTouched)
+	if bindingStarted then
 		return
 	end
 
-	isWorldBindingStarted = true
+	bindingStarted = true
 
 	task.spawn(function()
-		local trophy = findDescendantByName(getWorldRoot(), TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
-			or findDescendantByName(Workspace, TROPHY_MODEL_NAME, WORLD_WAIT_SECONDS)
-		local freeReturn = trophy and trophy:FindFirstChild(FREE_RETURN_PART_NAME, true)
-		local touchParts = getTouchParts(freeReturn)
-
-		if #touchParts == 0 then
-			warn("trophy1.FreeReturn was not found. Trophy reward touch is disabled.")
+		local freeReturnConfigs = TrophyTheta.FreeReturns
+		if type(freeReturnConfigs) ~= "table" then
+			warn("TrophyTheta.FreeReturns is missing. Trophy reward touch is disabled.")
 			return
 		end
 
-		isWorldBound = true
-		for _, touchPart in ipairs(touchParts) do
-			touchPart.CanTouch = true
-			touchPart.Touched:Connect(function(hit)
-				local player = getPlayerFromHit(hit)
-				if player and onPlayerTouched then
-					onPlayerTouched(player)
-				end
-			end)
+		for trophyId, freeReturnConfig in pairs(freeReturnConfigs) do
+			if type(trophyId) == "string" and type(freeReturnConfig) == "table" then
+				bindFreeReturn(trophyId, freeReturnConfig, onPlayerTouched)
+			end
 		end
 	end)
+end
+
+function TrophyWorldSync.BindFreeReturn(onPlayerTouched)
+	TrophyWorldSync.BindFreeReturns(onPlayerTouched)
 end
 
 return TrophyWorldSync

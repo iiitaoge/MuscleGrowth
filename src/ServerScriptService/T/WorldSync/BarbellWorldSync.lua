@@ -214,7 +214,7 @@ function BarbellWorldSync.RefreshDisplays(onPromptTriggered)
 	local dumbbellRoot, displayRoot = BarbellObservation.WaitForWorldRoots()
 
 	if not dumbbellRoot or not displayRoot then
-		warn("Dumbbell or GameDumbbell was not found. Display replacement skipped.")
+		warn("ToUseScene.TrainEquipment or UseScene.SceneEquipment was not found. Display replacement skipped.")
 		return false
 	end
 

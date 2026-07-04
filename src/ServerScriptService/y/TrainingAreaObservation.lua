@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local AutoAreaTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("AutoAreaTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
 
 local TrainingAreaObservation = {}
 
@@ -24,8 +25,8 @@ local function getCharacterRoot(player)
 end
 
 local function getAutoAreaTouchPart(areaId)
-	local world = Workspace:WaitForChild("World1")
-	local trainAreas = world and world:WaitForChild("TrainAreas")
+	local world = Workspace:WaitForChild(SceneTheta.WorkspaceRootName)
+	local trainAreas = world and world:WaitForChild(SceneTheta.SceneTrainAreaRootName)
 	local area = trainAreas and trainAreas:WaitForChild(areaId)
 	local touch = area and area:WaitForChild("Touch")
 

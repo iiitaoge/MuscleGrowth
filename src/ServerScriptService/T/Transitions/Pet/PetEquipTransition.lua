@@ -3,6 +3,7 @@ local PlayerProgressState = require(script.Parent.Parent.Parent.Parent.S.PlayerP
 local PetStateNormalizer = require(script.Parent.Parent.Parent.Rules.Pet.PetStateNormalizer)
 local PetSystemRules = require(script.Parent.Parent.Parent.Rules.Pet.PetSystemRules)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local PlayerVisualStateSync = require(script.Parent.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local PetEquipTransition = {}
 
@@ -104,6 +105,7 @@ function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 	--设置克隆数据状态，然后写回真正的数据
 	nextprogressState.EquippedPetInstanceIds[normalizedSlotIndex] = normalizedInstanceId
 	PlayerProgressState.Set(player, nextprogressState)
+	PlayerVisualStateSync.Refresh(player)
 
 	return success("Pet equipped", player, {
 		PetInstanceId = normalizedInstanceId,
@@ -124,6 +126,7 @@ function PetEquipTransition.RequestUnequip(player, slotIndex)
 
 	progressState.EquippedPetInstanceIds[normalizedSlotIndex] = PetSystemRules.GetEmptyPetSlot()
 	PlayerProgressState.Set(player, progressState)
+	PlayerVisualStateSync.Refresh(player)
 
 	return success("Pet unequipped", player, {
 		SlotIndex = normalizedSlotIndex,

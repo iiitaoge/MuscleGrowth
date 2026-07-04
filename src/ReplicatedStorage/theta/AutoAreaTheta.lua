@@ -27,18 +27,18 @@ local AutoAreaTheta = {
 		Multiplier = 3,
 		RequiredRebirth = 4,
 	},
-	SR1 = {
-		Name = "SR1",
+	R6 = {
+		Name = "R6",
 		Multiplier = 4,
 		RequiredRebirth = 5,
 	},
-	SR2 = {
-		Name = "SR2",
+	R7 = {
+		Name = "R7",
 		Multiplier = 6,
 		RequiredRebirth = 6,
 	},
-	SR3 = {
-		Name = "SR3",
+	R8 = {
+		Name = "R8",
 		Multiplier = 8,
 		RequiredRebirth = 7,
 	},

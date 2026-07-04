@@ -11,6 +11,7 @@ local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
 local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.Transitions.TrainingTransition)
+local EggWorldSync = require(script.Parent.Parent.T.WorldSync.EggWorldSync)
 
 local REMOTE_EVENT_MIN_INTERVALS = {
 	MoveStart = 0.05,
@@ -60,6 +61,7 @@ local requestPetRoll = getOrCreateRemote("RequestPetRoll")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
+EggWorldSync.InitWorld()
 
 local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
@@ -126,8 +128,8 @@ requestPetUnequip.OnServerInvoke = function(player, slotIndex)
 	return PetTransition.RequestUnequip(player, slotIndex)
 end
 
-requestPetRoll.OnServerInvoke = function(player, eggId)
-	return PetTransition.RequestRoll(player, eggId)
+requestPetRoll.OnServerInvoke = function(player, eggId, rollCount)
+	return PetTransition.RequestRoll(player, eggId, rollCount)
 end
 
 Players.PlayerAdded:Connect(initPlayer)

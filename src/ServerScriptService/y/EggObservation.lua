@@ -2,13 +2,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local EggTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
 
 local EggObservation = {}
 
-local DEFAULT_SCENE_ROOT_NAME = "SceneEgg"
-local DEFAULT_INTERACTION_DISTANCE = 12
-local PROMPT_PART_NAME = "PromptPart"
-local WORLD_ROOT_NAME = "World1"
+local DEFAULT_SCENE_ROOT_NAME = SceneTheta.SceneEggRootName
+local DEFAULT_INTERACTION_DISTANCE = SceneTheta.EggInteractionDistance
+local PROMPT_PART_NAME = SceneTheta.EggPromptPartName
 
 local function getCharacterRoot(player)
 	local character = player.Character
@@ -25,7 +25,7 @@ local function getCharacterRoot(player)
 end
 
 local function getWorldRoot()
-	return Workspace:FindFirstChild(WORLD_ROOT_NAME) or Workspace
+	return Workspace:FindFirstChild(SceneTheta.WorkspaceRootName) or Workspace
 end
 
 local function getSceneRoot(eggConfig)

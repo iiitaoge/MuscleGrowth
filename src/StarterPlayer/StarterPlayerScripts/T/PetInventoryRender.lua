@@ -93,6 +93,22 @@ local function setPetCard(card, petSnapshot)
 	setVisibleByName(card, "num", false)
 end
 
+local function connectActivated(root, callback)
+	if not root or not callback then
+		return
+	end
+
+	if root:IsA("GuiButton") then
+		root.Activated:Connect(callback)
+		return
+	end
+
+	local button = root:FindFirstChildWhichIsA("GuiButton", true)
+	if button then
+		button.Activated:Connect(callback)
+	end
+end
+
 local function cloneTemplate(template, parent, name, layoutOrder)
 	if not template then
 		return nil
@@ -107,7 +123,7 @@ local function cloneTemplate(template, parent, name, layoutOrder)
 	return clone
 end
 
-local function renderOwnedPets(container, template, petSnapshots)
+local function renderOwnedPets(container, template, petSnapshots, onPetActivated)
 	clearGeneratedChildren(container)
 
 	if template then
@@ -123,6 +139,9 @@ local function renderOwnedPets(container, template, petSnapshots)
 		local card = cloneTemplate(template, container, "Pet_" .. instanceId, index)
 		if card then
 			setPetCard(card, petSnapshot)
+			connectActivated(card, function()
+				onPetActivated(petSnapshot)
+			end)
 		end
 	end
 end
@@ -143,7 +162,7 @@ local function getEquippedSnapshotBySlot(equippedSnapshots)
 	return snapshotBySlot
 end
 
-local function renderEquippedPets(container, template, equippedSnapshots)
+local function renderEquippedPets(container, template, equippedSnapshots, onSlotActivated)
 	clearGeneratedChildren(container)
 
 	if template then
@@ -155,6 +174,9 @@ local function renderEquippedPets(container, template, equippedSnapshots)
 		local card = cloneTemplate(template, container, "Equipped_" .. tostring(slotIndex), slotIndex)
 		if card then
 			setPetCard(card, snapshotBySlot[slotIndex])
+			connectActivated(card, function()
+				onSlotActivated(slotIndex, snapshotBySlot[slotIndex])
+			end)
 		end
 	end
 end
@@ -163,6 +185,7 @@ local function createNoopView()
 	return {
 		Refresh = function() end,
 		SetOpen = function() end,
+		SetActionHandlers = function() end,
 		GetPetButton = function()
 			return nil
 		end,
@@ -181,7 +204,7 @@ function PetInventoryRender.Init(player)
 
 	local petButton = waitForPath(hud, { "LeftButtons", "Button", "Pet" })
 	local petScreen = waitForPath(mainGui, { "NewPet" })
-	local closeButton = petScreen and waitForPath(petScreen, { "Title", "Close" })
+	local closeButton = petScreen and waitForPath(petScreen, { "BackPack", "Title", "Close" })
 	local ownedContainer = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "ScrollingFrame" })
 	local equippedContainer = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "PetEquipList", "Pet" })
 	local noPet = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "NoPet" })
@@ -201,7 +224,50 @@ function PetInventoryRender.Init(player)
 	end
 
 	local latestData = nil
+	local actionHandlers = {}
 	local view = {}
+
+	local function findFirstEmptySlot()
+		local equippedSnapshots = latestData and latestData.EquippedPetSnapshots
+		if type(equippedSnapshots) ~= "table" then
+			return 1
+		end
+
+		for slotIndex = 1, 3 do
+			local petSnapshot = equippedSnapshots[slotIndex]
+			if type(petSnapshot) ~= "table" or type(petSnapshot.PetTypeId) ~= "string" then
+				return slotIndex
+			end
+		end
+
+		return nil
+	end
+
+	local function handleOwnedPetActivated(petSnapshot)
+		if type(petSnapshot) ~= "table" or type(petSnapshot.InstanceId) ~= "string" then
+			return
+		end
+
+		local slotIndex = findFirstEmptySlot()
+		if not slotIndex then
+			warn("No empty pet slot")
+			return
+		end
+
+		if actionHandlers.Equip then
+			actionHandlers.Equip(petSnapshot.InstanceId, slotIndex)
+		end
+	end
+
+	local function handleEquippedSlotActivated(slotIndex, petSnapshot)
+		if type(petSnapshot) ~= "table" or type(petSnapshot.PetTypeId) ~= "string" then
+			return
+		end
+
+		if actionHandlers.Unequip then
+			actionHandlers.Unequip(slotIndex)
+		end
+	end
 
 	function view.Refresh(data)
 		latestData = data
@@ -211,8 +277,8 @@ function PetInventoryRender.Init(player)
 		end
 
 		local ownedSnapshots = data and data.OwnedPetSnapshots
-		renderOwnedPets(ownedContainer, ownedTemplate, ownedSnapshots)
-		renderEquippedPets(equippedContainer, equippedTemplate, data and data.EquippedPetSnapshots)
+		renderOwnedPets(ownedContainer, ownedTemplate, ownedSnapshots, handleOwnedPetActivated)
+		renderEquippedPets(equippedContainer, equippedTemplate, data and data.EquippedPetSnapshots, handleEquippedSlotActivated)
 
 		if noPet and noPet:IsA("GuiObject") then
 			noPet.Visible = getSnapshotCount(ownedSnapshots) == 0
@@ -228,6 +294,10 @@ function PetInventoryRender.Init(player)
 		if petScreen.Visible then
 			view.Refresh(latestData)
 		end
+	end
+
+	function view.SetActionHandlers(nextActionHandlers)
+		actionHandlers = type(nextActionHandlers) == "table" and nextActionHandlers or {}
 	end
 
 	function view.GetPetButton()

@@ -15,6 +15,10 @@ local PetRollTransition = {}
 local INVALID_REQUEST_MESSAGE = "Invalid request"
 local TOO_FREQUENT_MESSAGE = "Too frequent"
 local NOT_ENOUGH_TROPHIES_MESSAGE = "Not enough trophies"
+local VALID_ROLL_COUNTS = {
+	[1] = true,
+	[3] = true,
+}
 
 local function failure(message, player)
 	return {
@@ -69,8 +73,33 @@ local function getTrophies(progressState)
 	return math.max(0, tonumber(progressState and progressState.Trophies) or 0)
 end
 
-function PetRollTransition.RequestRoll(player, eggId)
+local function normalizeRollCount(rollCount)
+	local normalizedRollCount = math.floor(tonumber(rollCount) or 1)
+	if not VALID_ROLL_COUNTS[normalizedRollCount] then
+		return nil
+	end
+
+	return normalizedRollCount
+end
+
+local function createPetInstance(progressState, petTypeId)
+	local petInstanceId = tostring(progressState.NextPetInstanceId)
+	progressState.NextPetInstanceId += 1
+	progressState.OwnedPets[petInstanceId] = {
+		InstanceId = petInstanceId,
+		PetTypeId = petTypeId,
+	}
+
+	return petInstanceId
+end
+
+function PetRollTransition.RequestRoll(player, eggId, rollCount)
 	if not EggObservation.IsValidEggId(eggId) then
+		return failure(INVALID_REQUEST_MESSAGE, player)
+	end
+
+	local normalizedRollCount = normalizeRollCount(rollCount)
+	if not normalizedRollCount then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
@@ -96,29 +125,37 @@ function PetRollTransition.RequestRoll(player, eggId)
 	end
 
 	local costAmount = getCostAmount(eggConfig)
-	if getTrophies(progressState) < costAmount then
+	local totalCostAmount = costAmount * normalizedRollCount
+	if getTrophies(progressState) < totalCostAmount then
 		return failure(NOT_ENOUGH_TROPHIES_MESSAGE, player)
 	end
 
-	local petTypeId = PetRollSelector.ChoosePetTypeId(eggConfig)
-	if not petTypeId then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+	local rollResults = {}
+	for _ = 1, normalizedRollCount do
+		local petTypeId = PetRollSelector.ChoosePetTypeId(eggConfig)
+		if not petTypeId then
+			return failure(INVALID_REQUEST_MESSAGE, player)
+		end
+
+		local petInstanceId = createPetInstance(progressState, petTypeId)
+		table.insert(rollResults, {
+			EggId = eggId,
+			PetInstanceId = petInstanceId,
+			PetTypeId = petTypeId,
+		})
 	end
 
-	local petInstanceId = tostring(progressState.NextPetInstanceId)
-	progressState.NextPetInstanceId += 1
-	progressState.Trophies = getTrophies(progressState) - costAmount
-	progressState.OwnedPets[petInstanceId] = {
-		InstanceId = petInstanceId,
-		PetTypeId = petTypeId,
-	}
+	progressState.Trophies = getTrophies(progressState) - totalCostAmount
 
 	PlayerProgressState.Set(player, progressState)
 
+	local firstResult = rollResults[1] or {}
 	return success("Pet rolled", player, {
 		EggId = eggId,
-		PetInstanceId = petInstanceId,
-		PetTypeId = petTypeId,
+		RollCount = normalizedRollCount,
+		RollResults = rollResults,
+		PetInstanceId = firstResult.PetInstanceId,
+		PetTypeId = firstResult.PetTypeId,
 	})
 end
 

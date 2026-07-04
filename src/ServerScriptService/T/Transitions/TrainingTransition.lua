@@ -8,6 +8,7 @@ local MovementObservation = require(script.Parent.Parent.Parent.y.MovementObserv
 local TrainingAreaObservation = require(script.Parent.Parent.Parent.y.TrainingAreaObservation)
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
 local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
+local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local TrainingTransition = {}
 
@@ -178,6 +179,7 @@ end
 -- 设置增长状态为false
 function TrainingTransition.StopGrowth(player)
 	setGrowthLoopActive(player, false)
+	PlayerVisualStateSync.SetTrainingActive(player, false)
 end
 
 function TrainingTransition.InitRuntime(player)
@@ -211,6 +213,7 @@ local function startGrowthLoop(player)
 			
 			-- 玩家需要被停止增长，更改增长状态为停止
 			local shouldGrow, activityMultiplier, shouldKeepLoopActive = getGrowthDecision(player)
+			PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)
 			if not shouldKeepLoopActive then
 				TrainingTransition.StopGrowth(player)
 				break
@@ -290,7 +293,8 @@ end
 
 -- 更新增长状态
 function TrainingTransition.RefreshGrowth(player)
-	local _, _, shouldKeepLoopActive = getGrowthDecision(player)
+	local shouldGrow, _, shouldKeepLoopActive = getGrowthDecision(player)
+	PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)
 	if shouldKeepLoopActive then
 		startGrowthLoop(player)
 	else
