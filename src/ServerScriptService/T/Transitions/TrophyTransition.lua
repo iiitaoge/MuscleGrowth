@@ -10,7 +10,7 @@ local touchDebounceByPlayer = setmetatable({}, {
 	__mode = "k",
 })
 
--- 给玩家增加指定数量的奖杯
+-- 给玩家增加指定数量的奖杯（以后这个函数只能作为一些拥有完整验证机制函数的内部函数，比如充值，地图奖励）
 function TrophyTransition.AddTrophies(player, amount)
 	local progressState = PlayerProgressState.Get(player)
 	if not progressState then

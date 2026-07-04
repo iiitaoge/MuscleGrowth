@@ -51,7 +51,9 @@ local onAutoArea = getOrCreateRemote("OnAutoArea")
 local leaveAutoArea = getOrCreateRemote("LeaveAutoArea")
 local getData = getOrCreateRemote("GetData")
 local requestRebirth = getOrCreateRemote("RequestRebirth")
+-- 请求装备杠铃
 local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
+
 local requestPetEquip = getOrCreateRemote("RequestPetEquip")
 local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
 local requestPetRoll = getOrCreateRemote("RequestPetRoll")
@@ -96,6 +98,7 @@ leaveAutoArea.OnServerEvent:Connect(function(player, areaId)
 end)
 
 
+-- Invoke 是客户端等待返回值的东西
 -- 处理获取玩家数据请求，返回当前玩家数据快照
 getData.OnServerInvoke = function(player)
 	return PlayerSnapshotBuilder.GetPlayerSnapshot(player)
@@ -109,6 +112,7 @@ requestRebirth.OnServerInvoke = function(player)
 	return result
 end
 
+-- 处理装备杠铃请求
 requestBarbellEquip.OnServerInvoke = function(player, barbellId)
 	return BarbellTransition.RequestEquip(player, barbellId)
 end

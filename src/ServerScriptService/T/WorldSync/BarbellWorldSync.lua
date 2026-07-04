@@ -176,6 +176,7 @@ local function weldToHand(instance, hand)
 	return true
 end
 
+-- 复杂函数，难以理解
 function BarbellWorldSync.EquipVisual(player, barbellId)
 	local character = player.Character
 	if not character then

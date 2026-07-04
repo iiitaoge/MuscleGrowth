@@ -14,6 +14,7 @@ local WORLD_ROOT_NAME = "World1"
 local WORLD_WAIT_SECONDS = 10
 local MAX_EQUIP_DISTANCE = 18
 
+-- 获取玩家的 HumanoidRootPart，用于计算玩家与杠铃的距离
 local function getCharacterRoot(player)
 	local character = player.Character
 	return character and character:WaitForChild("HumanoidRootPart")
@@ -91,6 +92,7 @@ function BarbellObservation.GetInstancePivot(instance)
 	return firstPart and firstPart.CFrame or nil
 end
 
+-- 类型检查：判断杠铃ID是否是有效的字符串，并且在 BarbellTheta 中存在对应的配置
 function BarbellObservation.IsValidBarbellId(barbellId)
 	return type(barbellId) == "string" and BarbellTheta[barbellId] ~= nil
 end
@@ -102,6 +104,7 @@ function BarbellObservation.WaitForWorldRoots()
 	return dumbbellRoot, displayRoot
 end
 
+-- 这个函数有点奇怪，不是很理解
 function BarbellObservation.GetTrainSource(barbellId)
 	local dumbbellRoot = findWorldChild(TRAIN_ROOT_NAME)
 	local barbellNode = dumbbellRoot and dumbbellRoot:FindFirstChild(barbellId)
@@ -135,6 +138,7 @@ function BarbellObservation.GetInteractionNode(barbellId)
 		or barbellNode
 end
 
+-- 检查玩家是否处于杠铃的显示位置附近，允许玩家与杠铃进行交互
 function BarbellObservation.IsPlayerNearDisplay(player, barbellId)
 	if not BarbellObservation.IsValidBarbellId(barbellId) then
 		return false
