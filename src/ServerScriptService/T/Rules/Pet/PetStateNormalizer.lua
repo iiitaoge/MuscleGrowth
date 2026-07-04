@@ -71,6 +71,7 @@ function PetStateNormalizer.GetNextPetInstanceId(ownedPets, nextPetInstanceId)
 	return nextInstanceNumber
 end
 
+-- 规格化玩家进度中的宠物数据
 function PetStateNormalizer.NormalizeProgressState(progressState)
 	if type(progressState) ~= "table" then
 		return nil

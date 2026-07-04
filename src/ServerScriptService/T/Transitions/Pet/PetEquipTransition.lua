@@ -48,6 +48,7 @@ local function isPetInstanceEquipped(progressState, petInstanceId)
 	return false
 end
 
+--
 local function isPetInstanceEquippedOutsideSlot(progressState, petInstanceId, slotIndex)
 	local equippedSlots = progressState and progressState.EquippedPetInstanceIds
 	if type(equippedSlots) ~= "table" then
@@ -66,26 +67,36 @@ local function isPetInstanceEquippedOutsideSlot(progressState, petInstanceId, sl
 	return false
 end
 
+-- 处理宠物装备请求 slotIndex是装备槽的意思
+-- 拒绝也返回snapshot的价值在于真实数据可以帮助客户端刷新UI等
 function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
+	-- 意思是把客户端传来的槽位转成整数。比如 "2" 会变成 2，2.8 会变成 2，乱传字符串会变成 0。
 	local normalizedSlotIndex = math.floor(tonumber(slotIndex) or 0)
+	-- 判断槽位是否合法
 	if normalizedSlotIndex < 1 or normalizedSlotIndex > PetSystemRules.GetMaxEquippedPets() then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+	-- 检查宠物实例ID是否为空槽标记
 	if PetSystemRules.IsEmptyPetSlot(petInstanceId) then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+	-- 获取规格化宠物实例
 	local normalizedInstanceId = tostring(petInstanceId)
+	-- 获规格化宠物数据之后的玩家数据
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+
+	-- 检测玩家是否拥有宠物实例
 	if not progressState.OwnedPets[normalizedInstanceId] then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+	-- 检测同一只宠物是否装在别的槽位
 	if isPetInstanceEquippedOutsideSlot(progressState, normalizedInstanceId, normalizedSlotIndex) then
 		return failure("Pet already equipped", player)
 	end

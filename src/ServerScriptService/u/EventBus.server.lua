@@ -117,6 +117,7 @@ requestBarbellEquip.OnServerInvoke = function(player, barbellId)
 	return BarbellTransition.RequestEquip(player, barbellId)
 end
 
+-- 处理玩家装备宠物的请求
 requestPetEquip.OnServerInvoke = function(player, petInstanceId, slotIndex)
 	return PetTransition.RequestEquip(player, petInstanceId, slotIndex)
 end
