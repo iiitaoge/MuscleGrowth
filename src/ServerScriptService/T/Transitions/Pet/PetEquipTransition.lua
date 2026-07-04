@@ -85,24 +85,25 @@ function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 	-- 获取规格化宠物实例
 	local normalizedInstanceId = tostring(petInstanceId)
 	-- 获规格化宠物数据之后的玩家数据
-	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
-	if not progressState then
+	local nextprogressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
+	if not nextprogressState then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
 
 	-- 检测玩家是否拥有宠物实例
-	if not progressState.OwnedPets[normalizedInstanceId] then
+	if not nextprogressState.OwnedPets[normalizedInstanceId] then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
 	-- 检测同一只宠物是否装在别的槽位
-	if isPetInstanceEquippedOutsideSlot(progressState, normalizedInstanceId, normalizedSlotIndex) then
+	if isPetInstanceEquippedOutsideSlot(nextprogressState, normalizedInstanceId, normalizedSlotIndex) then
 		return failure("Pet already equipped", player)
 	end
 
-	progressState.EquippedPetInstanceIds[normalizedSlotIndex] = normalizedInstanceId
-	PlayerProgressState.Set(player, progressState)
+	--设置克隆数据状态，然后写回真正的数据
+	nextprogressState.EquippedPetInstanceIds[normalizedSlotIndex] = normalizedInstanceId
+	PlayerProgressState.Set(player, nextprogressState)
 
 	return success("Pet equipped", player, {
 		PetInstanceId = normalizedInstanceId,
