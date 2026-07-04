@@ -66,6 +66,24 @@ local function pivotInstanceTo(instance, targetCFrame)
 	return false
 end
 
+local function alignInstanceAnchorTo(instance, targetCFrame)
+	if not instance or not targetCFrame then
+		return false
+	end
+
+	local sourceAnchor = BarbellObservation.GetFirstBasePart(instance)
+	if not sourceAnchor then
+		return pivotInstanceTo(instance, targetCFrame)
+	end
+
+	local delta = targetCFrame * sourceAnchor.CFrame:Inverse()
+	for _, part in ipairs(BarbellObservation.GetBaseParts(instance)) do
+		part.CFrame = delta * part.CFrame
+	end
+
+	return true
+end
+
 local function getExistingVisual(holder)
 	local namedVisual = holder and holder:FindFirstChild(SceneTheta.EggDisplayModelName)
 	if namedVisual then
@@ -109,7 +127,8 @@ function EggWorldSync.RefreshDisplays()
 		local existingVisual = getExistingVisual(holder)
 
 		if source and holder then
-			local targetPivot = BarbellObservation.GetInstancePivot(existingVisual)
+			local targetAnchor = BarbellObservation.GetFirstBasePart(existingVisual)
+			local targetCFrame = targetAnchor and targetAnchor.CFrame
 				or BarbellObservation.GetInstancePivot(holder)
 			local nextVisual = source:Clone()
 			nextVisual.Name = SceneTheta.EggDisplayModelName
@@ -120,7 +139,7 @@ function EggWorldSync.RefreshDisplays()
 			end
 
 			prepareDisplayModel(nextVisual)
-			pivotInstanceTo(nextVisual, targetPivot)
+			alignInstanceAnchorTo(nextVisual, targetCFrame)
 		end
 
 		if holder then

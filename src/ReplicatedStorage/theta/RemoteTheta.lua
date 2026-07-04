@@ -43,6 +43,10 @@ local RemoteTheta = {
 		Name = "RequestPetRoll",
 		ClassName = "RemoteFunction",
 	},
+	RequestPetDelete = {
+		Name = "RequestPetDelete",
+		ClassName = "RemoteFunction",
+	},
 }
 
 return RemoteTheta

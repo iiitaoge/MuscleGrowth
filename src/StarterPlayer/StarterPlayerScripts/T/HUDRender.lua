@@ -109,6 +109,7 @@ end
 local function createNoopView()
 	return {
 		Refresh = function() end,
+		PlayStrengthGain = function() end,
 		GetRebirthButton = function()
 			return nil
 		end,
@@ -162,15 +163,11 @@ function HUDRender.Init(player)
 			return
 		end
 
-		local strength = tonumber(data.Strength) or 0
 		local trophies = tonumber(data.Trophies) or 0
-		if lastStrength ~= nil and strength > lastStrength then
-			playGainAnimation(strengthGainTemplate, strength - lastStrength)
-		end
 		if lastTrophies ~= nil and trophies > lastTrophies then
 			playGainAnimation(trophyGainTemplate, trophies - lastTrophies)
 		end
-		lastStrength = strength
+		lastStrength = tonumber(data.Strength) or 0
 		lastTrophies = trophies
 
 		setText(strengthText, formatNumber(data.Strength))
@@ -189,6 +186,10 @@ function HUDRender.Init(player)
 		end
 
 		return nil
+	end
+
+	function view.PlayStrengthGain(amount)
+		playGainAnimation(strengthGainTemplate, tonumber(amount) or 0)
 	end
 
 	return view

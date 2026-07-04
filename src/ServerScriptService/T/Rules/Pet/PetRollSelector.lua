@@ -7,8 +7,9 @@ local PetTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("P
 local PetRollSelector = {}
 
 local random = Random.new()
+local REWARD_ROLL_WEIGHT_DENOMINATOR = 10000
 
-local function chooseFromWeightedPetTypes(weightedPetTypeIds)
+local function chooseFromWeightedPetTypes(weightedPetTypeIds, rollWeightDenominator)
 	local totalWeight = 0
 	local validWeightedPetTypeIds = {}
 
@@ -29,16 +30,17 @@ local function chooseFromWeightedPetTypes(weightedPetTypeIds)
 		return nil
 	end
 
-	local roll = random:NextNumber(0, totalWeight)
+	local rollMax = math.max(tonumber(rollWeightDenominator) or totalWeight, totalWeight)
+	local roll = random:NextNumber(0, rollMax)
 	local cursor = 0
 	for _, weightedPetType in ipairs(validWeightedPetTypeIds) do
 		cursor += weightedPetType.RollWeight
-		if roll <= cursor then
+		if roll < cursor then
 			return weightedPetType.PetTypeId
 		end
 	end
 
-	return validWeightedPetTypeIds[#validWeightedPetTypeIds].PetTypeId
+	return nil
 end
 
 local function getWeightedPetTypesFromRewards(eggConfig)
@@ -83,10 +85,7 @@ end
 function PetRollSelector.ChoosePetTypeId(eggConfig)
 	local weightedPetTypeIds = getWeightedPetTypesFromRewards(eggConfig)
 	if weightedPetTypeIds then
-		local petTypeId = chooseFromWeightedPetTypes(weightedPetTypeIds)
-		if petTypeId then
-			return petTypeId
-		end
+		return chooseFromWeightedPetTypes(weightedPetTypeIds, REWARD_ROLL_WEIGHT_DENOMINATOR)
 	end
 
 	return chooseFromWeightedPetTypes(getWeightedPetTypesFromPetConfig(eggConfig) or {})

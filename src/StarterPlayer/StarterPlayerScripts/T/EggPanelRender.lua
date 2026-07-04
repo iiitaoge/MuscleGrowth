@@ -10,6 +10,7 @@ local EggPanelRender = {}
 local GUI_WAIT_SECONDS = 10
 local NODE_WAIT_SECONDS = 5
 local GENERATED_ATTRIBUTE = "MuscleGrowthGeneratedEggResult"
+local GENERATED_REWARD_ATTRIBUTE = "MuscleGrowthGeneratedEggReward"
 
 local function waitForPath(root, path)
 	local current = root
@@ -34,6 +35,16 @@ local function formatNumber(value)
 	return string.format("%.2f", numberValue)
 end
 
+local function formatChance(reward)
+	local rollWeight = math.max(0, tonumber(reward and reward.RollWeight) or 0)
+	local chance = rollWeight / 100
+	if chance == math.floor(chance) then
+		return string.format("%.0f%%", chance)
+	end
+
+	return string.format("%.1f%%", chance)
+end
+
 local function setFirstText(root, value)
 	if not root then
 		return
@@ -51,31 +62,145 @@ local function setFirstText(root, value)
 	end
 end
 
-local function setImage(root, image)
-	local icon = root and root:FindFirstChild("Icon", true)
-	if icon and (icon:IsA("ImageLabel") or icon:IsA("ImageButton")) then
-		icon.Image = image or ""
-		icon.Visible = type(image) == "string" and image ~= ""
+local function setImageObject(imageObject, image)
+	if imageObject and (imageObject:IsA("ImageLabel") or imageObject:IsA("ImageButton")) then
+		imageObject.Image = image or ""
+		imageObject.Visible = type(image) == "string" and image ~= ""
 	end
 end
 
-local function getRewardRows(container)
-	local rows = {}
+local function hideExistingRewardRows(container)
 	if not container then
-		return rows
+		return
 	end
 
 	for _, child in ipairs(container:GetChildren()) do
-		if child:IsA("GuiObject") and child:FindFirstChild("Icon", true) then
-			table.insert(rows, child)
+		if child:IsA("GuiObject") and not child:GetAttribute(GENERATED_REWARD_ATTRIBUTE) then
+			child.Visible = false
 		end
 	end
+end
 
-	table.sort(rows, function(left, right)
-		return left.LayoutOrder < right.LayoutOrder
-	end)
+local function clearGeneratedRewardRows(container)
+	if not container then
+		return
+	end
 
-	return rows
+	for _, child in ipairs(container:GetChildren()) do
+		if child:GetAttribute(GENERATED_REWARD_ATTRIBUTE) then
+			child:Destroy()
+		end
+	end
+end
+
+local function createRewardCard(parent, index, totalCount)
+	local card = Instance.new("Frame")
+	card.Name = "Reward_" .. tostring(index)
+	card:SetAttribute(GENERATED_REWARD_ATTRIBUTE, true)
+	card.AnchorPoint = Vector2.new(0.5, 0.5)
+	card.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	card.BorderColor3 = Color3.fromRGB(25, 25, 25)
+	card.BorderSizePixel = 2
+	card.Size = UDim2.new(0, 88, 0, 88)
+	card.ZIndex = 20
+	card.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = card
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 245)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 210, 210)),
+	})
+	gradient.Rotation = 90
+	gradient.Parent = card
+
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "Icon"
+	icon.BackgroundTransparency = 1
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.new(0.5, 0, 0.52, 0)
+	icon.Size = UDim2.new(0.62, 0, 0.62, 0)
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.ZIndex = 22
+	icon.Parent = card
+
+	local chanceText = Instance.new("TextLabel")
+	chanceText.Name = "Chance"
+	chanceText.BackgroundTransparency = 1
+	chanceText.AnchorPoint = Vector2.new(0.5, 0)
+	chanceText.Position = UDim2.new(0.5, 0, 0.02, 0)
+	chanceText.Size = UDim2.new(0.92, 0, 0.24, 0)
+	chanceText.Font = Enum.Font.FredokaOne
+	chanceText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	chanceText.TextScaled = true
+	chanceText.TextStrokeTransparency = 0
+	chanceText.ZIndex = 23
+	chanceText.Parent = card
+
+	local multiplierText = Instance.new("TextLabel")
+	multiplierText.Name = "Multiplier"
+	multiplierText.BackgroundTransparency = 1
+	multiplierText.AnchorPoint = Vector2.new(0.5, 1)
+	multiplierText.Position = UDim2.new(0.5, 0, 0.98, 0)
+	multiplierText.Size = UDim2.new(0.92, 0, 0.24, 0)
+	multiplierText.Font = Enum.Font.FredokaOne
+	multiplierText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	multiplierText.TextScaled = true
+	multiplierText.TextStrokeTransparency = 0
+	multiplierText.ZIndex = 23
+	multiplierText.Parent = card
+
+	local columns = math.min(totalCount, 5)
+	local columnIndex = index
+	local rowIndex = 1
+	if totalCount > 3 then
+		columns = 3
+		rowIndex = index <= 3 and 1 or 2
+		columnIndex = index <= 3 and index or index - 3
+	elseif totalCount == 4 then
+		columns = 2
+		rowIndex = index <= 2 and 1 or 2
+		columnIndex = index <= 2 and index or index - 2
+	end
+
+	local xSpacing = 0.22
+	local y = rowIndex == 1 and 0.28 or 0.62
+	local xStart = 0.5 - ((columns - 1) * xSpacing / 2)
+	if rowIndex == 2 and totalCount == 5 then
+		xStart = 0.5 - (xSpacing / 2)
+	end
+
+	card.Position = UDim2.new(xStart + (columnIndex - 1) * xSpacing, 0, y, 0)
+
+	return card
+end
+
+local function renderGeneratedRewards(container, rewards)
+	hideExistingRewardRows(container)
+	clearGeneratedRewardRows(container)
+
+	if type(rewards) ~= "table" then
+		return
+	end
+
+	for index, reward in ipairs(rewards) do
+		local petConfig = reward and PetTheta[reward.PetTypeId]
+		local card = createRewardCard(container, index, #rewards)
+		local icon = card:FindFirstChild("Icon")
+		local chanceText = card:FindFirstChild("Chance")
+		local multiplierText = card:FindFirstChild("Multiplier")
+
+		setImageObject(icon, petConfig and petConfig.Image)
+		if chanceText and chanceText:IsA("TextLabel") then
+			chanceText.Text = formatChance(reward)
+		end
+		if multiplierText and multiplierText:IsA("TextLabel") then
+			multiplierText.Text = petConfig and ("x" .. formatNumber(petConfig.Multiplier)) or ""
+		end
+	end
 end
 
 local function setButton(button, keyText, costText)
@@ -178,23 +303,12 @@ function EggPanelRender.Init(player)
 		end
 
 		setFirstText(titleRoot, eggConfig.DisplayName or currentEggId)
-		setImage(eggScreen, eggConfig.ModelIcon)
 
 		local costAmount = tonumber(eggConfig.CostAmount) or 0
 		setButton(singleButton, "E", formatNumber(costAmount))
 		setButton(tripleButton, "H", formatNumber(costAmount * 3))
 		setButton(autoButton, isAutoRolling and "STOP" or "A", formatNumber(costAmount))
-
-		local rows = getRewardRows(rewardsContainer)
-		for index, row in ipairs(rows) do
-			local reward = type(eggConfig.Rewards) == "table" and eggConfig.Rewards[index] or nil
-			local petConfig = reward and PetTheta[reward.PetTypeId]
-			row.Visible = reward ~= nil
-			if reward and petConfig then
-				setImage(row, petConfig.Image)
-				setFirstText(row:FindFirstChild("Title", true) or row, tostring(reward.Chance or 0) .. "%")
-			end
-		end
+		renderGeneratedRewards(rewardsContainer, eggConfig.Rewards)
 	end
 
 	local function requestRoll(rollCount, isAuto)
@@ -278,8 +392,12 @@ function EggPanelRender.Init(player)
 		local names = {}
 		if type(rollResults) == "table" then
 			for _, rollResult in ipairs(rollResults) do
-				local petConfig = rollResult and PetTheta[rollResult.PetTypeId]
-				table.insert(names, petConfig and petConfig.DisplayName or tostring(rollResult and rollResult.PetTypeId or "?"))
+				if rollResult and rollResult.IsMiss then
+					table.insert(names, "No pet")
+				else
+					local petConfig = rollResult and PetTheta[rollResult.PetTypeId]
+					table.insert(names, petConfig and petConfig.DisplayName or tostring(rollResult and rollResult.PetTypeId or "?"))
+				end
 			end
 		end
 

@@ -52,6 +52,18 @@ local function clearGeneratedChildren(container)
 	end
 end
 
+local function hideTemplateChildren(container)
+	if not container then
+		return
+	end
+
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("GuiObject") and not child:GetAttribute(GENERATED_ATTRIBUTE) then
+			child.Visible = false
+		end
+	end
+end
+
 local function setTextByName(root, childName, value)
 	if not root then
 		return
@@ -93,6 +105,19 @@ local function setPetCard(card, petSnapshot)
 	setVisibleByName(card, "num", false)
 end
 
+local function setCardSelected(card, isSelected)
+	local stroke = card:FindFirstChild("SelectedStroke")
+	if not stroke then
+		stroke = Instance.new("UIStroke")
+		stroke.Name = "SelectedStroke"
+		stroke.Thickness = 3
+		stroke.Parent = card
+	end
+
+	stroke.Color = Color3.fromRGB(255, 230, 70)
+	stroke.Enabled = isSelected == true
+end
+
 local function connectActivated(root, callback)
 	if not root or not callback then
 		return
@@ -118,13 +143,15 @@ local function cloneTemplate(template, parent, name, layoutOrder)
 	clone.Name = name
 	clone.LayoutOrder = layoutOrder
 	clone:SetAttribute(GENERATED_ATTRIBUTE, true)
+	clone.Visible = true
 	clone.Parent = parent
 
 	return clone
 end
 
-local function renderOwnedPets(container, template, petSnapshots, onPetActivated)
+local function renderOwnedPets(container, template, petSnapshots, selectedPetInstanceIds, onPetActivated)
 	clearGeneratedChildren(container)
+	hideTemplateChildren(container)
 
 	if template then
 		template.Visible = false
@@ -139,6 +166,7 @@ local function renderOwnedPets(container, template, petSnapshots, onPetActivated
 		local card = cloneTemplate(template, container, "Pet_" .. instanceId, index)
 		if card then
 			setPetCard(card, petSnapshot)
+			setCardSelected(card, selectedPetInstanceIds[instanceId] == true)
 			connectActivated(card, function()
 				onPetActivated(petSnapshot)
 			end)
@@ -164,6 +192,7 @@ end
 
 local function renderEquippedPets(container, template, equippedSnapshots, onSlotActivated)
 	clearGeneratedChildren(container)
+	hideTemplateChildren(container)
 
 	if template then
 		template.Visible = false
@@ -189,6 +218,9 @@ local function createNoopView()
 		GetPetButton = function()
 			return nil
 		end,
+		GetSelectedPetInstanceIds = function()
+			return {}
+		end,
 	}
 end
 
@@ -210,6 +242,10 @@ function PetInventoryRender.Init(player)
 	local noPet = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "NoPet" })
 	local ownedTemplate = ownedContainer and ownedContainer:FindFirstChild("1")
 	local equippedTemplate = equippedContainer and equippedContainer:FindFirstChild("1")
+	local equipBestButton = petScreen and petScreen:FindFirstChild("EquipBest", true)
+	local unequipAllButton = petScreen
+		and (petScreen:FindFirstChild("UnEquipAll", true) or petScreen:FindFirstChild("UnequipAll", true))
+	local deleteButton = petScreen and petScreen:FindFirstChild("Delete", true)
 
 	if petScreen then
 		petScreen.Visible = false
@@ -225,37 +261,33 @@ function PetInventoryRender.Init(player)
 
 	local latestData = nil
 	local actionHandlers = {}
+	local selectedPetInstanceIds = {}
 	local view = {}
-
-	local function findFirstEmptySlot()
-		local equippedSnapshots = latestData and latestData.EquippedPetSnapshots
-		if type(equippedSnapshots) ~= "table" then
-			return 1
-		end
-
-		for slotIndex = 1, 3 do
-			local petSnapshot = equippedSnapshots[slotIndex]
-			if type(petSnapshot) ~= "table" or type(petSnapshot.PetTypeId) ~= "string" then
-				return slotIndex
-			end
-		end
-
-		return nil
-	end
 
 	local function handleOwnedPetActivated(petSnapshot)
 		if type(petSnapshot) ~= "table" or type(petSnapshot.InstanceId) ~= "string" then
 			return
 		end
 
-		local slotIndex = findFirstEmptySlot()
-		if not slotIndex then
-			warn("No empty pet slot")
-			return
+		local instanceId = tostring(petSnapshot.InstanceId)
+		selectedPetInstanceIds[instanceId] = selectedPetInstanceIds[instanceId] ~= true
+		view.Refresh(latestData)
+	end
+
+	local function clearMissingSelections(ownedSnapshots)
+		local ownedInstanceIds = {}
+		if type(ownedSnapshots) == "table" then
+			for _, petSnapshot in ipairs(ownedSnapshots) do
+				if type(petSnapshot) == "table" and petSnapshot.InstanceId ~= nil then
+					ownedInstanceIds[tostring(petSnapshot.InstanceId)] = true
+				end
+			end
 		end
 
-		if actionHandlers.Equip then
-			actionHandlers.Equip(petSnapshot.InstanceId, slotIndex)
+		for instanceId in pairs(selectedPetInstanceIds) do
+			if not ownedInstanceIds[instanceId] then
+				selectedPetInstanceIds[instanceId] = nil
+			end
 		end
 	end
 
@@ -269,6 +301,24 @@ function PetInventoryRender.Init(player)
 		end
 	end
 
+	connectActivated(equipBestButton, function()
+		if actionHandlers.EquipBest then
+			actionHandlers.EquipBest()
+		end
+	end)
+
+	connectActivated(unequipAllButton, function()
+		if actionHandlers.UnequipAll then
+			actionHandlers.UnequipAll()
+		end
+	end)
+
+	connectActivated(deleteButton, function()
+		if actionHandlers.DeleteSelected then
+			actionHandlers.DeleteSelected(view.GetSelectedPetInstanceIds())
+		end
+	end)
+
 	function view.Refresh(data)
 		latestData = data
 
@@ -277,7 +327,8 @@ function PetInventoryRender.Init(player)
 		end
 
 		local ownedSnapshots = data and data.OwnedPetSnapshots
-		renderOwnedPets(ownedContainer, ownedTemplate, ownedSnapshots, handleOwnedPetActivated)
+		clearMissingSelections(ownedSnapshots)
+		renderOwnedPets(ownedContainer, ownedTemplate, ownedSnapshots, selectedPetInstanceIds, handleOwnedPetActivated)
 		renderEquippedPets(equippedContainer, equippedTemplate, data and data.EquippedPetSnapshots, handleEquippedSlotActivated)
 
 		if noPet and noPet:IsA("GuiObject") then
@@ -306,6 +357,19 @@ function PetInventoryRender.Init(player)
 		end
 
 		return nil
+	end
+
+	function view.GetSelectedPetInstanceIds()
+		local instanceIds = {}
+		for instanceId in pairs(selectedPetInstanceIds) do
+			table.insert(instanceIds, instanceId)
+		end
+
+		table.sort(instanceIds, function(left, right)
+			return (tonumber(left) or math.huge) < (tonumber(right) or math.huge)
+		end)
+
+		return instanceIds
 	end
 
 	return view

@@ -58,6 +58,7 @@ local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
 local requestPetEquip = getOrCreateRemote("RequestPetEquip")
 local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
 local requestPetRoll = getOrCreateRemote("RequestPetRoll")
+local requestPetDelete = getOrCreateRemote("RequestPetDelete")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -130,6 +131,10 @@ end
 
 requestPetRoll.OnServerInvoke = function(player, eggId, rollCount)
 	return PetTransition.RequestRoll(player, eggId, rollCount)
+end
+
+requestPetDelete.OnServerInvoke = function(player, petInstanceIds)
+	return PetTransition.RequestDelete(player, petInstanceIds)
 end
 
 Players.PlayerAdded:Connect(initPlayer)

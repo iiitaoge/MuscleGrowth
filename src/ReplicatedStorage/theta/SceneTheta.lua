@@ -16,6 +16,11 @@ local SceneTheta = {
 	BarbellPromptPartName = "PromptPart",
 	BarbellTrainModelName = "Train",
 	BarbellMaxEquipDistance = 18,
+	BarbellDisplayRotationOffsetDegrees = {
+		X = 0,
+		Y = 90,
+		Z = 0,
+	},
 
 	EggDisplayModelName = "EggModel",
 	EggPromptPartName = "PromptPart",
@@ -25,6 +30,8 @@ local SceneTheta = {
 		CurrentBarbellId = "MG_CurrentBarbellId",
 		IsTraining = "MG_IsTraining",
 		EquippedPetsJson = "MG_EquippedPetsJson",
+		LastTrainingGainSerial = "MG_LastTrainingGainSerial",
+		LastTrainingStrengthGain = "MG_LastTrainingStrengthGain",
 	},
 }
 

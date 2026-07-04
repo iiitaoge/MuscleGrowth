@@ -131,13 +131,19 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 	end
 
 	local rollResults = {}
+	local hasRolledPet = false
 	for _ = 1, normalizedRollCount do
 		local petTypeId = PetRollSelector.ChoosePetTypeId(eggConfig)
 		if not petTypeId then
-			return failure(INVALID_REQUEST_MESSAGE, player)
+			table.insert(rollResults, {
+				EggId = eggId,
+				IsMiss = true,
+			})
+			continue
 		end
 
 		local petInstanceId = createPetInstance(progressState, petTypeId)
+		hasRolledPet = true
 		table.insert(rollResults, {
 			EggId = eggId,
 			PetInstanceId = petInstanceId,
@@ -150,7 +156,8 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 	PlayerProgressState.Set(player, progressState)
 
 	local firstResult = rollResults[1] or {}
-	return success("Pet rolled", player, {
+	local resultMessage = hasRolledPet and "Pet rolled" or "No pet rolled"
+	return success(resultMessage, player, {
 		EggId = eggId,
 		RollCount = normalizedRollCount,
 		RollResults = rollResults,

@@ -15,13 +15,18 @@ function PlayerSnapshotBuilder.GetPlayerSnapshot(player)
 	end
 
 	local rebirthCount = progressState.RebirthCount
+	local nextRebirthCount = (tonumber(rebirthCount) or 0) + 1
 	local snapshot = table.clone(progressState)
 	snapshot.Trophies = progressState.Trophies or 0
 	snapshot.Level = LevelRules.CalculateLevel(progressState.Exp, rebirthCount)
 	snapshot.MaxLevel = LevelRules.GetMaxLevel(rebirthCount)
 	snapshot.MaxExp = LevelRules.GetMaxExp(rebirthCount)
+	snapshot.NextRebirthCount = nextRebirthCount
+	snapshot.NextMaxLevel = LevelRules.GetMaxLevel(nextRebirthCount)
+	snapshot.NextMaxExp = LevelRules.GetMaxExp(nextRebirthCount)
 	snapshot.CanRebirth = LevelRules.CanRebirth(progressState)
 	snapshot.RebirthMultiplier = RebirthRules.GetRebirthMultiplier(rebirthCount)
+	snapshot.NextRebirthMultiplier = RebirthRules.GetRebirthMultiplier(nextRebirthCount)
 	snapshot.BarbellMultiplier = BarbellRules.GetBarbellMultiplier(progressState.CurrentBarbellId)
 	snapshot.BarbellRequiredTrophies = BarbellRules.GetBarbellRequiredTrophies(progressState.CurrentBarbellId)
 	snapshot.PetMultiplier = PetMultiplierRules.GetEquippedPetMultiplier(progressState)

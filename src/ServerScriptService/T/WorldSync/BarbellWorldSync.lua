@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BarbellTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
 
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)
 
@@ -44,6 +45,24 @@ local function pivotInstanceTo(instance, targetCFrame)
 	return true
 end
 
+local function alignInstanceAnchorTo(instance, targetCFrame)
+	if not instance or not targetCFrame then
+		return false
+	end
+
+	local sourceAnchor = BarbellObservation.GetFirstBasePart(instance)
+	if not sourceAnchor then
+		return pivotInstanceTo(instance, targetCFrame)
+	end
+
+	local delta = targetCFrame * sourceAnchor.CFrame:Inverse()
+	for _, part in ipairs(BarbellObservation.GetBaseParts(instance)) do
+		part.CFrame = delta * part.CFrame
+	end
+
+	return true
+end
+
 local function disableScripts(instance)
 	if instance:IsA("BaseScript") then
 		instance.Disabled = true
@@ -70,6 +89,18 @@ local function formatMultiplier(value)
 	return "x" .. string.format("%.1f", numberValue)
 end
 
+local function getRotationOffsetCFrame(rotationDegrees)
+	if type(rotationDegrees) ~= "table" then
+		return CFrame.new()
+	end
+
+	return CFrame.Angles(
+		math.rad(tonumber(rotationDegrees.X) or 0),
+		math.rad(tonumber(rotationDegrees.Y) or 0),
+		math.rad(tonumber(rotationDegrees.Z) or 0)
+	)
+end
+
 local function findTextLabel(root, labelName)
 	local label = root and root:FindFirstChild(labelName, true)
 	if label and label:IsA("TextLabel") then
@@ -94,9 +125,15 @@ local function cloneDisplayChildren(oldDisplay, nextDisplay)
 		return
 	end
 
-	for _, child in ipairs(oldDisplay:GetChildren()) do
-		local childCopy = child:Clone()
-		childCopy.Parent = nextDisplay
+	local fallbackParent = BarbellObservation.GetFirstBasePart(nextDisplay) or nextDisplay
+	for _, child in ipairs(oldDisplay:GetDescendants()) do
+		if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+			local childCopy = child:Clone()
+			if fallbackParent:IsA("BasePart") then
+				childCopy.Adornee = fallbackParent
+			end
+			childCopy.Parent = fallbackParent
+		end
 	end
 end
 
@@ -224,7 +261,8 @@ function BarbellWorldSync.RefreshDisplays(onPromptTriggered)
 		local oldDisplay = displayHolder and displayHolder:FindFirstChild(DISPLAY_MODEL_NAME)
 
 		if source and displayHolder then
-			local displayPivot = BarbellObservation.GetInstancePivot(oldDisplay)
+			local displayPivot = BarbellObservation.GetFirstBasePart(oldDisplay)
+			local displayCFrame = displayPivot and displayPivot.CFrame
 				or BarbellObservation.GetInstancePivot(displayHolder)
 
 			local nextDisplay = source:Clone()
@@ -237,7 +275,12 @@ function BarbellWorldSync.RefreshDisplays(onPromptTriggered)
 			end
 
 			prepareDisplayModel(nextDisplay)
-			pivotInstanceTo(nextDisplay, displayPivot)
+			if displayCFrame then
+				alignInstanceAnchorTo(
+					nextDisplay,
+					displayCFrame * getRotationOffsetCFrame(SceneTheta.BarbellDisplayRotationOffsetDegrees)
+				)
+			end
 			renderDisplayBillboard(nextDisplay, barbellId)
 			configurePrompt(displayHolder, barbellId, onPromptTriggered)
 		elseif displayHolder then

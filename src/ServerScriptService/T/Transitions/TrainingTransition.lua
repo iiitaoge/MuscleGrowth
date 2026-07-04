@@ -232,6 +232,7 @@ local function startGrowthLoop(player)
 					activityMultiplier
 				)
 				applyTrainingGains(player, progressState, strengthGain, expGain)
+				PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
 			end
 		end
 	end)

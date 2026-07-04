@@ -34,6 +34,7 @@ local requestRebirth = waitForRemote("RequestRebirth")
 local requestPetEquip = waitForRemote("RequestPetEquip")
 local requestPetUnequip = waitForRemote("RequestPetUnequip")
 local requestPetRoll = waitForRemote("RequestPetRoll")
+local requestPetDelete = waitForRemote("RequestPetDelete")
 
 local hudView = HUDRender.Init(player)
 local petInventoryView = PetInventoryRender.Init(player)
@@ -47,6 +48,22 @@ local isMoving = false
 local currentAutoAreaId = nil
 local isRequestingPetRoll = false
 local isAutoRolling = false
+local lastTrainingGainSerial = tonumber(player:GetAttribute(SceneTheta.Attributes.LastTrainingGainSerial)) or 0
+local refreshUiFromServer = nil
+
+player:GetAttributeChangedSignal(SceneTheta.Attributes.LastTrainingGainSerial):Connect(function()
+	local nextSerial = tonumber(player:GetAttribute(SceneTheta.Attributes.LastTrainingGainSerial)) or 0
+	if nextSerial <= lastTrainingGainSerial then
+		lastTrainingGainSerial = nextSerial
+		return
+	end
+
+	lastTrainingGainSerial = nextSerial
+	hudView.PlayStrengthGain(player:GetAttribute(SceneTheta.Attributes.LastTrainingStrengthGain))
+	if refreshUiFromServer then
+		refreshUiFromServer()
+	end
+end)
 
 local function getUseSceneRoot()
 	return Workspace:WaitForChild(SceneTheta.WorkspaceRootName, 10)
@@ -137,7 +154,7 @@ local function refreshUi(data)
 	refreshBarbellDisplays(data)
 end
 
-local function refreshUiFromServer()
+function refreshUiFromServer()
 	local success, data = pcall(function()
 		return getData:InvokeServer()
 	end)
@@ -356,38 +373,92 @@ rebirthPanelView.SetRequestHandler(function()
 	end
 end)
 
+local function handlePetRequestResult(success, result)
+	if not success then
+		warn(result)
+		return nil
+	end
+
+	if result and result.Data then
+		refreshUi(result.Data)
+	end
+
+	if result and result.Success == false and result.Message then
+		warn(result.Message)
+	end
+
+	return result
+end
+
+local function invokePetEquip(petInstanceId, slotIndex)
+	return handlePetRequestResult(pcall(function()
+		return requestPetEquip:InvokeServer(petInstanceId, slotIndex)
+	end))
+end
+
+local function invokePetUnequip(slotIndex)
+	return handlePetRequestResult(pcall(function()
+		return requestPetUnequip:InvokeServer(slotIndex)
+	end))
+end
+
+local function getOwnedPetsByBestMultiplier()
+	local ownedPets = {}
+	if type(latestData and latestData.OwnedPetSnapshots) == "table" then
+		for _, petSnapshot in ipairs(latestData.OwnedPetSnapshots) do
+			if type(petSnapshot) == "table" and type(petSnapshot.InstanceId) == "string" then
+				table.insert(ownedPets, petSnapshot)
+			end
+		end
+	end
+
+	table.sort(ownedPets, function(left, right)
+		local leftMultiplier = tonumber(left.Multiplier) or 0
+		local rightMultiplier = tonumber(right.Multiplier) or 0
+		if leftMultiplier == rightMultiplier then
+			return (tonumber(left.InstanceId) or math.huge) < (tonumber(right.InstanceId) or math.huge)
+		end
+
+		return leftMultiplier > rightMultiplier
+	end)
+
+	return ownedPets
+end
+
 petInventoryView.SetActionHandlers({
 	Equip = function(petInstanceId, slotIndex)
-		local success, result = pcall(function()
-			return requestPetEquip:InvokeServer(petInstanceId, slotIndex)
-		end)
-
-		if not success then
-			warn(result)
-			return
-		end
-
-		if result and result.Data then
-			refreshUi(result.Data)
-		end
-
-		if result and result.Success == false and result.Message then
-			warn(result.Message)
-		end
+		invokePetEquip(petInstanceId, slotIndex)
 	end,
 	Unequip = function(slotIndex)
-		local success, result = pcall(function()
-			return requestPetUnequip:InvokeServer(slotIndex)
-		end)
+		invokePetUnequip(slotIndex)
+	end,
+	EquipBest = function()
+		local maxEquippedPets = math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
+		local ownedPets = getOwnedPetsByBestMultiplier()
 
-		if not success then
-			warn(result)
+		for slotIndex = 1, maxEquippedPets do
+			invokePetUnequip(slotIndex)
+		end
+
+		for slotIndex = 1, math.min(maxEquippedPets, #ownedPets) do
+			invokePetEquip(ownedPets[slotIndex].InstanceId, slotIndex)
+		end
+	end,
+	UnequipAll = function()
+		local maxEquippedPets = math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
+		for slotIndex = 1, maxEquippedPets do
+			invokePetUnequip(slotIndex)
+		end
+	end,
+	DeleteSelected = function(petInstanceIds)
+		if type(petInstanceIds) ~= "table" or #petInstanceIds <= 0 then
+			warn("No pets selected")
 			return
 		end
 
-		if result and result.Data then
-			refreshUi(result.Data)
-		end
+		handlePetRequestResult(pcall(function()
+			return requestPetDelete:InvokeServer(petInstanceIds)
+		end))
 	end,
 })
 
@@ -445,6 +516,6 @@ end
 
 refreshUiFromServer()
 
-while task.wait(1) do
+while task.wait(5) do
 	refreshUiFromServer()
 end
