@@ -104,6 +104,7 @@ local function resolveCurrentAutoArea(player, progressState, runtimeState)
 	return areaId, normalizeMultiplier(areaConfig.Multiplier)
 end
 
+-- 观察玩家真实移动状态
 local function observeRequestedMovement(player, runtimeState, autoAreaId)
 	if runtimeState.MoveRequested then
 		local isMoving
@@ -128,11 +129,13 @@ end
 
 -- 检测是否需要增长
 local function getGrowthDecision(player)
+	-- 读S_r
 	local progressState = PlayerProgressState.Get(player)
 	if not progressState then
 		return false, 1, false
 	end
 
+	-- 读或者写S_r
 	local runtimeState = getRuntimeOrInit(player)
 	local autoAreaId, autoAreaMultiplier = resolveCurrentAutoArea(player, progressState, runtimeState)
 	local isMoving
@@ -193,27 +196,30 @@ end
 
 -- 如果增长状态被激活，则开始执行增长循环
 local function startGrowthLoop(player)
+	-- 读取S_r
 	local runtimeState = getRuntimeOrInit(player)
 	if runtimeState.GrowthLoopActive then
 		return
 	end
 
+	-- 写S_r
 	runtimeState.GrowthLoopActive = true
 	TrainingRuntimeState.Set(player, runtimeState)
 
+	-- 流程控制
 	task.spawn(function()
 		while true do
 			task.wait(1)
 
-			-- 玩家可能不符合增长循环了（停止移动 不在自动区）
+			-- 玩家可能不符合增长循环了（停止移动 不在自动区） 读取S_r 
 			local currentRuntimeState = TrainingRuntimeState.Get(player)
 			if not currentRuntimeState or not currentRuntimeState.GrowthLoopActive then
 				break
 			end
 			
-			-- 玩家需要被停止增长，更改增长状态为停止
+			-- 玩家需要被停止增长，更改增长状态为停止 读取S_r
 			local shouldGrow, activityMultiplier, shouldKeepLoopActive = getGrowthDecision(player)
-			PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)
+			PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)	-- 这里
 			if not shouldKeepLoopActive then
 				TrainingTransition.StopGrowth(player)
 				break
@@ -238,20 +244,25 @@ local function startGrowthLoop(player)
 	end)
 end
 
--- 判断是否正在移动
+-- 判断是否可以移动
 function TrainingTransition.SetMoving(player, isMoving)
-	local runtimeState = getRuntimeOrInit(player)
-	local moveRequested = isMoving == true
+	local runtimeState = getRuntimeOrInit(player) --获取运行时状态
+	local moveRequested = isMoving == true	--获取客户端的移动状态
+
+	--如果客户端事件发送状态和服务端维护的玩家状态一致，无需更改，直接返回
 	if runtimeState.MoveRequested == moveRequested then
 		return true
 	end
 
+	-- 将目前的玩家状态改成事件请求的状态（这里没有防作弊）
 	runtimeState.MoveRequested = moveRequested
+	-- 如果请求停止移动，就停止移动
 	if not moveRequested then
 		runtimeState.IsMoving = false
 		MovementObservation.Reset(runtimeState)
 	end
 
+	-- 设置为开始移动
 	TrainingRuntimeState.Set(player, runtimeState)
 	TrainingTransition.RefreshGrowth(player)
 

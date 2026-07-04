@@ -1,3 +1,5 @@
+-- 杠铃配置文件
+
 local BarbellTheta = {
 	T1 = {
 		DisplayName = "T1",

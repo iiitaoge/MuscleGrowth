@@ -39,6 +39,7 @@ function MovementObservation.Reset(runtimeState)
 	return runtimeState
 end
 
+-- 算法检测玩家是否真实移动
 function MovementObservation.Observe(player, runtimeState)
 	runtimeState = runtimeState or {}
 

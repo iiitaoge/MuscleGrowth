@@ -1,3 +1,5 @@
+-- 动画配置文件
+
 local AnimationTheta = {
 	Training = {
 		AnimationId = "rbxassetid://126114984309475",

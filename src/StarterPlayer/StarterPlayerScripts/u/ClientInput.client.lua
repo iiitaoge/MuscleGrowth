@@ -168,6 +168,7 @@ function refreshUiFromServer()
 	return data
 end
 
+-- 设置是否移动或者停止
 local function setMoving(nextIsMoving)
 	if isMoving == nextIsMoving then
 		return

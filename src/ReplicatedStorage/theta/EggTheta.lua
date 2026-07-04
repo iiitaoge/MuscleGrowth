@@ -1,12 +1,15 @@
+
+-- 蛋配置文件：名字 在目录中的名字（需要解耦） 花费资源的类型：奖杯 花费的数目 
+
 local EggTheta = {
 	Egg1 = {
-		DisplayName = "Egg1",
-		SceneRootName = "SceneEgg",
-		CostResource = "Trophies",
-		CostAmount = 25,
-		InteractionDistance = 12,
-		ModelIcon = "rbxassetid://118155185854767",
-		Rewards = {
+		DisplayName = "Egg1",	--名字
+		SceneRootName = "SceneEgg",		--在目录中的名字
+		CostResource = "Trophies",		-- 花费资源的类型
+		CostAmount = 25,		--花费的数目
+		InteractionDistance = 12,	--互动距离
+		ModelIcon = "rbxassetid://118155185854767",  --贴图
+		Rewards = {									--里面存着的宠物和倍率
 			{ PetTypeId = "Pet1_1", Chance = 40, RollWeight = 4000 },
 			{ PetTypeId = "Pet1_2", Chance = 30, RollWeight = 3000 },
 			{ PetTypeId = "Pet1_3", Chance = 15, RollWeight = 1500 },

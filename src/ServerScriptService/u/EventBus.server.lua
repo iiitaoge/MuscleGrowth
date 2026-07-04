@@ -41,6 +41,7 @@ local function getOrCreateRemote(remoteId)
 	return remote
 end
 
+-- 事件频率限制
 local function isRemoteEventAllowed(player, remoteId)
 	return RemoteRateLimiter.Allow(player, remoteId, REMOTE_EVENT_MIN_INTERVALS[remoteId])
 end
@@ -68,6 +69,7 @@ local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
 end
 
+-- moveStart事件回调函数
 moveStart.OnServerEvent:Connect(function(player)
 	if not isRemoteEventAllowed(player, "MoveStart") then
 		return
