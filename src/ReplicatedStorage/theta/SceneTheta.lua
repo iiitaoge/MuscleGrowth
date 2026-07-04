@@ -17,9 +17,9 @@ local SceneTheta = {
 	BarbellTrainModelName = "Train",
 	BarbellMaxEquipDistance = 18,
 	BarbellDisplayRotationOffsetDegrees = {
-		X = 0,
-		Y = 90,
-		Z = 0,
+		X = 30,
+		Y = 35.264,
+		Z = -35.264,
 	},
 
 	EggDisplayModelName = "EggModel",
