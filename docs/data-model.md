@@ -86,6 +86,7 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 ## 蛋 UI 合同
 
 - `EggPanelTheta` 只描述程序必须认识的语义节点，不记录 `UIStroke`、`UICorner`、`UIListLayout`、颜色层等装饰或布局细节。
+- 蛋面板客户端拆成四层：`EggPanelTheta` 管语义路径合同，`T/EggPanel/DataAdapter` 把蛋配置和抽奖结果转成显示模型，`T/EggPanel/Renderer` 只负责填 UI 节点，`T/EggPanel/Controller` 只负责 open/close、按钮和快捷键事件。
 - 奖池展示使用 Studio 预先摆好的五个固定槽：`RewardSlot1` 到 `RewardSlot5`。布局、大小和两排行为归 Studio；渲染层只填 `Icon`、`ChanceText`、`MultiplierText`。
 - 奖池数量少于五个时，多余槽位隐藏；奖池数量超过五个时应先报错或警告，再改 UI 合同或奖池配置，不能由渲染层偷偷生成第六个槽。
 - 抽奖结果展示当前使用单个 `EggPetElement` 模板，渲染层只填 `Icon`、`NameText`、`RarityText`。三连抽暂时只展示第一个结果，后续三结果展示再扩展新的结果槽合同。
@@ -94,10 +95,18 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 ## 宠物背包 UI 合同
 
 - `PetInventoryPanelTheta` 只描述宠物背包入口、面板根、列表容器、模板、按钮和文本节点，不记录布局、颜色、描边等装饰。
+- 宠物背包客户端拆成四层：`PetInventoryPanelTheta` 管语义路径合同，`T/PetInventory/DataAdapter` 把快照转成宠物卡显示模型，`T/PetInventory/Renderer` 只负责克隆模板和填字段，`T/PetInventory/Controller` 只负责入口、关闭、装备、卸下、删除等事件编排。
 - 背包入口是 `HUD/LeftButtons/Button/Pet`，背包面板事实根是 `Main/NewPet`，背包内容根是 `Main/NewPet/BackPack`。
 - 已拥有宠物列表克隆 `BackPackPet` 模板，已装备宠物列表克隆 `EquippedPet` 模板；两类卡片都只要求 `Icon` 和 `MultiplierText`。
 - 装备宠物不会从背包列表移除；背包宠物点击只切换“选中用于删除”，不会直接装备。
 - `EquippedText` 只显示当前装备数量和上限，例如 `Equipped ( 2/3 Pets)`；`NoPet` 表示背包为空。
+
+## 其他客户端 UI 四层
+
+- `HUDPanelTheta`、`FloatingGainTheta`、`RebirthPanelTheta`、`BarbellDisplayTheta` 分别描述 HUD、飘字、重生面板、杠铃场景展示的语义合同。
+- `T/HUD` 只刷新长期 HUD 数值和经验条；训练力量飘字与奖杯增长飘字由 `T/FloatingGain` 独立处理。
+- `T/RebirthPanel` 只处理重生面板展示和请求按钮，不决定服务端是否允许重生。
+- `T/BarbellDisplay` 只同步场景展示状态，不决定杠铃装备事实。
 
 ## 不变量
 

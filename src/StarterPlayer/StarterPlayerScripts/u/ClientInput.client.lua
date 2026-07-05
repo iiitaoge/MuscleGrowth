@@ -6,17 +6,18 @@ local player = Players.LocalPlayer
 local theta = ReplicatedStorage:WaitForChild("theta")
 
 local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
-local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
 local EggSceneTheta = require(theta:WaitForChild("EggTheta"):WaitForChild("EggSceneTheta"))
 local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
 local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
 local SceneTheta = require(theta:WaitForChild("SceneTheta"))
 
-local EggPanelRender = require(script.Parent.Parent.T.EggPanelRender)
-local HUDRender = require(script.Parent.Parent.T.HUDRender)
-local PetInventoryRender = require(script.Parent.Parent.T.PetInventoryRender)
+local BarbellDisplayController = require(script.Parent.Parent.T.BarbellDisplay.Controller)
+local EggPanelController = require(script.Parent.Parent.T.EggPanel.Controller)
+local FloatingGainController = require(script.Parent.Parent.T.FloatingGain.Controller)
+local HUDController = require(script.Parent.Parent.T.HUD.Controller)
+local PetInventoryController = require(script.Parent.Parent.T.PetInventory.Controller)
 local PlayerVisualSync = require(script.Parent.Parent.T.PlayerVisualSync)
-local RebirthPanelRender = require(script.Parent.Parent.T.RebirthPanelRender)
+local RebirthPanelController = require(script.Parent.Parent.T.RebirthPanel.Controller)
 
 local function waitForRemote(remoteId)
 	local remoteSpec = RemoteTheta[remoteId]
@@ -36,10 +37,12 @@ local requestPetUnequip = waitForRemote("RequestPetUnequip")
 local requestPetRoll = waitForRemote("RequestPetRoll")
 local requestPetDelete = waitForRemote("RequestPetDelete")
 
-local hudView = HUDRender.Init(player)
-local petInventoryView = PetInventoryRender.Init(player)
-local rebirthPanelView = RebirthPanelRender.Init(player)
-local eggPanelView = EggPanelRender.Init(player)
+local hudView = HUDController.Init(player)
+local floatingGainView = FloatingGainController.Init(player)
+local petInventoryView = PetInventoryController.Init(player)
+local rebirthPanelView = RebirthPanelController.Init(player)
+local eggPanelView = EggPanelController.Init(player)
+local barbellDisplayView = BarbellDisplayController.Init()
 
 PlayerVisualSync.Init()
 
@@ -59,7 +62,7 @@ player:GetAttributeChangedSignal(SceneTheta.Attributes.LastTrainingGainSerial):C
 	end
 
 	lastTrainingGainSerial = nextSerial
-	hudView.PlayStrengthGain(player:GetAttribute(SceneTheta.Attributes.LastTrainingStrengthGain))
+	floatingGainView.PlayStrengthGain(player:GetAttribute(SceneTheta.Attributes.LastTrainingStrengthGain))
 	if refreshUiFromServer then
 		refreshUiFromServer()
 	end
@@ -91,67 +94,14 @@ local function getInstancePosition(instance)
 	return firstPart and firstPart.Position or nil
 end
 
-local function formatNumber(value)
-	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
-	end
-
-	return string.format("%.2f", numberValue)
-end
-
-local function formatMultiplier(value)
-	local numberValue = tonumber(value) or 1
-	return "x" .. string.format("%.1f", numberValue)
-end
-
-local function setDisplayText(root, labelName, value)
-	local label = root and root:FindFirstChild(labelName, true)
-	if label and label:IsA("TextLabel") then
-		label.Text = value
-	end
-end
-
-local function setDisplayVisible(root, labelName, isVisible)
-	local label = root and root:FindFirstChild(labelName, true)
-	if label and label:IsA("GuiObject") then
-		label.Visible = isVisible == true
-	end
-end
-
-local function refreshBarbellDisplays(data)
-	local sceneEquipment = getSceneChild(SceneTheta.SceneEquipmentRootName)
-	if not sceneEquipment then
-		return
-	end
-
-	local trophies = data and tonumber(data.Trophies) or 0
-	local currentBarbellId = data and data.CurrentBarbellId
-
-	for barbellId, barbellConfig in pairs(BarbellTheta) do
-		if type(barbellId) == "string" and type(barbellConfig) == "table" then
-			local barbellNode = sceneEquipment:FindFirstChild(barbellId)
-			local displayNode = barbellNode and (barbellNode:FindFirstChild(SceneTheta.BarbellDisplayModelName) or barbellNode)
-			local requiredTrophies = tonumber(barbellConfig.RequiredTrophies) or 0
-			local isEquipped = currentBarbellId == barbellId
-			local isUnlocked = trophies >= requiredTrophies
-
-			setDisplayText(displayNode, "power", formatMultiplier(barbellConfig.Multiplier) .. " Gain")
-			setDisplayText(displayNode, "num", formatNumber(requiredTrophies))
-			setDisplayVisible(displayNode, "Locked", not isUnlocked)
-			setDisplayVisible(displayNode, "Equip", isUnlocked and not isEquipped)
-			setDisplayVisible(displayNode, "Equipped", isEquipped)
-		end
-	end
-end
-
 local function refreshUi(data)
 	latestData = data
 	hudView.Refresh(data)
+	floatingGainView.Refresh(data)
 	petInventoryView.Refresh(data)
 	rebirthPanelView.Refresh(data)
 	eggPanelView.Refresh(data)
-	refreshBarbellDisplays(data)
+	barbellDisplayView.Refresh(data)
 end
 
 function refreshUiFromServer()
