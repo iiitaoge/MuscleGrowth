@@ -108,6 +108,12 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 - `T/RebirthPanel` 只处理重生面板展示和请求按钮，不决定服务端是否允许重生。
 - `T/BarbellDisplay` 只同步场景展示状态，不决定杠铃装备事实。
 
+## 客户端输入拆分
+
+- `u/ClientInput.client.lua` 只负责启动和组装模块，不直接处理移动、自动区、抽蛋、宠物、重生等业务细节。
+- `u/ClientInputModules/RemoteClient` 统一按需查找 Remote；`SnapshotController` 统一刷新服务端快照并分发给所有 UI/视觉控制器。
+- 移动、自动区、蛋 Prompt、抽蛋、宠物动作、重生动作、训练增长飘字监听各自有独立 Controller；排查时先找对应输入链路，再看它调用的 T/UI Controller。
+
 ## 不变量
 
 - `Strength >= 0`
