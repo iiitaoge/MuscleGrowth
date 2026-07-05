@@ -2,8 +2,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
-local EggTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta"))
-local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
+local theta = ReplicatedStorage:WaitForChild("theta")
+local eggTheta = theta:WaitForChild("EggTheta")
+
+local EggDisplayTheta = require(eggTheta:WaitForChild("EggDisplayTheta"))
+local EggSceneTheta = require(eggTheta:WaitForChild("EggSceneTheta"))
+local SceneTheta = require(theta:WaitForChild("SceneTheta"))
 
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)
 
@@ -16,14 +20,14 @@ local function getUseSceneRoot()
 	return Workspace:WaitForChild(SceneTheta.WorkspaceRootName, WORLD_WAIT_SECONDS)
 end
 
-local function getSceneEggRoot()
+local function getSceneRoot(sceneRootName)
 	local useScene = getUseSceneRoot()
-	return useScene and useScene:WaitForChild(SceneTheta.SceneEggRootName, WORLD_WAIT_SECONDS)
+	return useScene and useScene:WaitForChild(sceneRootName or SceneTheta.SceneEggRootName, WORLD_WAIT_SECONDS)
 end
 
-local function getEggSourceRoot()
+local function getEggSourceRoot(sourceRootName)
 	local toUseScene = ServerStorage:WaitForChild(SceneTheta.ServerToUseSceneRootName, WORLD_WAIT_SECONDS)
-	return toUseScene and toUseScene:WaitForChild(SceneTheta.EggSourceFolderName, WORLD_WAIT_SECONDS)
+	return toUseScene and toUseScene:WaitForChild(sourceRootName or SceneTheta.EggSourceFolderName, WORLD_WAIT_SECONDS)
 end
 
 local function disableScripts(instance)
@@ -84,14 +88,14 @@ local function alignInstanceAnchorTo(instance, targetCFrame)
 	return true
 end
 
-local function getExistingVisual(holder)
+local function getExistingVisual(holder, promptPartName)
 	local namedVisual = holder and holder:FindFirstChild(SceneTheta.EggDisplayModelName)
 	if namedVisual then
 		return namedVisual
 	end
 
 	for _, child in ipairs(holder:GetChildren()) do
-		if child:IsA("Model") and child.Name ~= "Base" and child.Name ~= SceneTheta.EggPromptPartName then
+		if child:IsA("Model") and child.Name ~= "Base" and child.Name ~= promptPartName then
 			return child
 		end
 	end
@@ -105,26 +109,31 @@ local function configurePrompt(holder, eggId)
 		return
 	end
 
-	local eggConfig = EggTheta[eggId]
+	local eggDisplayConfig = EggDisplayTheta[eggId]
 	prompt.Enabled = true
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.ActionText = "Open"
-	prompt.ObjectText = eggConfig and eggConfig.DisplayName or eggId
+	prompt.ObjectText = eggDisplayConfig and eggDisplayConfig.DisplayName or eggId
 	prompt:SetAttribute(PROMPT_BOUND_ATTRIBUTE, true)
 end
 
 function EggWorldSync.RefreshDisplays()
-	local sceneEggRoot = getSceneEggRoot()
-	local sourceRoot = getEggSourceRoot()
-	if not sceneEggRoot or not sourceRoot then
-		warn("UseScene.SceneEgg or ToUseScene.Egg was not found. Egg replacement skipped.")
-		return false
-	end
+	local hasMissingRoot = false
 
-	for eggId in pairs(EggTheta) do
-		local source = sourceRoot:FindFirstChild(eggId)
-		local holder = sceneEggRoot:FindFirstChild(eggId)
-		local existingVisual = getExistingVisual(holder)
+	for eggId, eggSceneConfig in pairs(EggSceneTheta) do
+		local sceneRoot = getSceneRoot(eggSceneConfig.SceneRootName)
+		local sourceRoot = getEggSourceRoot(eggSceneConfig.SourceRootName)
+		if not sceneRoot or not sourceRoot then
+			hasMissingRoot = true
+			continue
+		end
+
+		local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
+		local sourceNodeName = eggSceneConfig.SourceNodeName or eggId
+		local promptPartName = eggSceneConfig.PromptPartName or SceneTheta.EggPromptPartName
+		local source = sourceRoot:FindFirstChild(sourceNodeName)
+		local holder = sceneRoot:FindFirstChild(sceneNodeName)
+		local existingVisual = getExistingVisual(holder, promptPartName)
 
 		if source and holder then
 			local targetAnchor = BarbellObservation.GetFirstBasePart(existingVisual)
@@ -147,7 +156,11 @@ function EggWorldSync.RefreshDisplays()
 		end
 	end
 
-	return true
+	if hasMissingRoot then
+		warn("Egg scene root or source root was not found. Some egg visuals were skipped.")
+	end
+
+	return not hasMissingRoot
 end
 
 function EggWorldSync.InitWorld()

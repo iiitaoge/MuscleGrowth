@@ -1,8 +1,19 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local theta = ReplicatedStorage:WaitForChild("theta")
+local PetInventoryPanelTheta = require(theta:WaitForChild("PetInventoryPanelTheta"))
+local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
+
 local PetInventoryRender = {}
 
 local GUI_WAIT_SECONDS = 10
 local NODE_WAIT_SECONDS = 5
 local GENERATED_ATTRIBUTE = "MuscleGrowthGeneratedPetUi"
+
+local DEFAULT_PET_CARD_FIELDS = {
+	Icon = "Icon",
+	MultiplierText = "MultiplierText",
+}
 
 local function waitForPath(root, path)
 	local current = root
@@ -40,6 +51,10 @@ local function getSnapshotCount(snapshots)
 	return count
 end
 
+local function getMaxEquippedPets()
+	return math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
+end
+
 local function clearGeneratedChildren(container)
 	if not container then
 		return
@@ -52,60 +67,52 @@ local function clearGeneratedChildren(container)
 	end
 end
 
-local function hideTemplateChildren(container)
-	if not container then
-		return
-	end
-
-	for _, child in ipairs(container:GetChildren()) do
-		if child:IsA("GuiObject") and not child:GetAttribute(GENERATED_ATTRIBUTE) then
-			child.Visible = false
-		end
+local function setVisible(instance, isVisible)
+	if instance and instance:IsA("GuiObject") then
+		instance.Visible = isVisible == true
 	end
 end
 
-local function setTextByName(root, childName, value)
-	if not root then
-		return
+local function findDescendant(root, childName)
+	if not root or type(childName) ~= "string" or childName == "" then
+		return nil
 	end
 
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant.Name == childName and descendant:IsA("TextLabel") then
-			descendant.Text = value
-		end
+	return root:FindFirstChild(childName, true)
+end
+
+local function setTextObject(textObject, value)
+	if textObject and (textObject:IsA("TextLabel") or textObject:IsA("TextButton")) then
+		textObject.Text = value or ""
 	end
 end
 
-local function setVisibleByName(root, childName, isVisible)
-	if not root then
-		return
-	end
-
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant.Name == childName and descendant:IsA("GuiObject") then
-			descendant.Visible = isVisible
-		end
-	end
-end
-
-local function setPetIcon(root, image)
-	local icon = root and root:FindFirstChild("Icon", true)
+local function setPetIcon(root, fieldName, image)
+	local icon = findDescendant(root, fieldName)
 	if icon and (icon:IsA("ImageLabel") or icon:IsA("ImageButton")) then
 		icon.Image = image or ""
 		icon.Visible = type(image) == "string" and image ~= ""
 	end
 end
 
-local function setPetCard(card, petSnapshot)
-	local hasPet = type(petSnapshot) == "table" and type(petSnapshot.PetTypeId) == "string"
-	card.Visible = true
+local function setPetCard(card, petSnapshot, cardFields)
+	if not card then
+		return
+	end
 
-	setPetIcon(card, hasPet and petSnapshot.Image or nil)
-	setTextByName(card, "Value", hasPet and formatMultiplier(petSnapshot.Multiplier) or "")
-	setVisibleByName(card, "num", false)
+	local fields = cardFields or DEFAULT_PET_CARD_FIELDS
+	local hasPet = type(petSnapshot) == "table" and type(petSnapshot.PetTypeId) == "string"
+	card.Visible = hasPet
+
+	setPetIcon(card, fields.Icon, hasPet and petSnapshot.Image or nil)
+	setTextObject(findDescendant(card, fields.MultiplierText), hasPet and formatMultiplier(petSnapshot.Multiplier) or "")
 end
 
 local function setCardSelected(card, isSelected)
+	if not card then
+		return
+	end
+
 	local stroke = card:FindFirstChild("SelectedStroke")
 	if not stroke then
 		stroke = Instance.new("UIStroke")
@@ -131,6 +138,24 @@ local function connectActivated(root, callback)
 	local button = root:FindFirstChildWhichIsA("GuiButton", true)
 	if button then
 		button.Activated:Connect(callback)
+		return
+	end
+
+	if root:IsA("GuiObject") then
+		local hitButton = root:FindFirstChild("InteractionButton")
+		if not hitButton then
+			hitButton = Instance.new("TextButton")
+			hitButton.Name = "InteractionButton"
+			hitButton.BackgroundTransparency = 1
+			hitButton.BorderSizePixel = 0
+			hitButton.Text = ""
+			hitButton.Size = UDim2.fromScale(1, 1)
+			hitButton.Position = UDim2.fromScale(0, 0)
+			hitButton.ZIndex = root.ZIndex + 100
+			hitButton.Parent = root
+		end
+
+		hitButton.Activated:Connect(callback)
 	end
 end
 
@@ -149,13 +174,9 @@ local function cloneTemplate(template, parent, name, layoutOrder)
 	return clone
 end
 
-local function renderOwnedPets(container, template, petSnapshots, selectedPetInstanceIds, onPetActivated)
+local function renderOwnedPets(container, template, cardFields, petSnapshots, selectedPetInstanceIds, onPetActivated)
 	clearGeneratedChildren(container)
-	hideTemplateChildren(container)
-
-	if template then
-		template.Visible = false
-	end
+	setVisible(template, false)
 
 	if type(petSnapshots) ~= "table" then
 		return
@@ -165,7 +186,7 @@ local function renderOwnedPets(container, template, petSnapshots, selectedPetIns
 		local instanceId = tostring(petSnapshot.InstanceId or index)
 		local card = cloneTemplate(template, container, "Pet_" .. instanceId, index)
 		if card then
-			setPetCard(card, petSnapshot)
+			setPetCard(card, petSnapshot, cardFields)
 			setCardSelected(card, selectedPetInstanceIds[instanceId] == true)
 			connectActivated(card, function()
 				onPetActivated(petSnapshot)
@@ -174,40 +195,35 @@ local function renderOwnedPets(container, template, petSnapshots, selectedPetIns
 	end
 end
 
-local function getEquippedSnapshotBySlot(equippedSnapshots)
-	local snapshotBySlot = {}
+local function renderEquippedPets(container, template, cardFields, equippedSnapshots, onSlotActivated)
+	clearGeneratedChildren(container)
+	setVisible(template, false)
+
 	if type(equippedSnapshots) ~= "table" then
-		return snapshotBySlot
+		return 0
 	end
 
-	for _, petSnapshot in ipairs(equippedSnapshots) do
-		local slotIndex = tonumber(petSnapshot.SlotIndex)
-		if slotIndex then
-			snapshotBySlot[slotIndex] = petSnapshot
+	local equippedCount = 0
+	for index, petSnapshot in ipairs(equippedSnapshots) do
+		if type(petSnapshot) == "table" and type(petSnapshot.PetTypeId) == "string" then
+			equippedCount += 1
+			local slotIndex = tonumber(petSnapshot.SlotIndex) or index
+			local card = cloneTemplate(template, container, "Equipped_" .. tostring(slotIndex), slotIndex)
+			if card then
+				setPetCard(card, petSnapshot, cardFields)
+				connectActivated(card, function()
+					onSlotActivated(slotIndex, petSnapshot)
+				end)
+			end
 		end
 	end
 
-	return snapshotBySlot
+	return equippedCount
 end
 
-local function renderEquippedPets(container, template, equippedSnapshots, onSlotActivated)
-	clearGeneratedChildren(container)
-	hideTemplateChildren(container)
-
-	if template then
-		template.Visible = false
-	end
-
-	local snapshotBySlot = getEquippedSnapshotBySlot(equippedSnapshots)
-	for slotIndex = 1, 3 do
-		local card = cloneTemplate(template, container, "Equipped_" .. tostring(slotIndex), slotIndex)
-		if card then
-			setPetCard(card, snapshotBySlot[slotIndex])
-			connectActivated(card, function()
-				onSlotActivated(slotIndex, snapshotBySlot[slotIndex])
-			end)
-		end
-	end
+local function setEquippedText(equippedText, equippedCount, maxEquippedPets)
+	local format = PetInventoryPanelTheta.EquippedTextFormat or "Equipped ( %d/%d Pets)"
+	setTextObject(equippedText, string.format(format, equippedCount, maxEquippedPets))
 end
 
 local function createNoopView()
@@ -226,38 +242,36 @@ end
 
 function PetInventoryRender.Init(player)
 	local playerGui = player:WaitForChild("PlayerGui")
-	local hud = playerGui:WaitForChild("HUD", GUI_WAIT_SECONDS)
-	local mainGui = playerGui:WaitForChild("Main", GUI_WAIT_SECONDS)
+	local hud = playerGui:WaitForChild(PetInventoryPanelTheta.HudScreenGuiName or "HUD", GUI_WAIT_SECONDS)
+	local mainGui = playerGui:WaitForChild(PetInventoryPanelTheta.ScreenGuiName or "Main", GUI_WAIT_SECONDS)
 
 	if not hud or not mainGui then
 		warn("Pet UI requires HUD and Main ScreenGui.")
 		return createNoopView()
 	end
 
-	local petButton = waitForPath(hud, { "LeftButtons", "Button", "Pet" })
-	local petScreen = waitForPath(mainGui, { "NewPet" })
-	local closeButton = petScreen and waitForPath(petScreen, { "BackPack", "Title", "Close" })
-	local ownedContainer = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "ScrollingFrame" })
-	local equippedContainer = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "PetEquipList", "Pet" })
-	local noPet = petScreen and waitForPath(petScreen, { "BackPack", "Main", "Info", "NoPet" })
-	local ownedTemplate = ownedContainer and ownedContainer:FindFirstChild("1")
-	local equippedTemplate = equippedContainer and equippedContainer:FindFirstChild("1")
-	local equipBestButton = petScreen and petScreen:FindFirstChild("EquipBest", true)
-	local unequipAllButton = petScreen
-		and (petScreen:FindFirstChild("UnEquipAll", true) or petScreen:FindFirstChild("UnequipAll", true))
-	local deleteButton = petScreen and petScreen:FindFirstChild("Delete", true)
+	local paths = PetInventoryPanelTheta.Paths or {}
+	local cardFields = PetInventoryPanelTheta.PetCardFields or DEFAULT_PET_CARD_FIELDS
+	local petButton = waitForPath(hud, paths.PetButton or { "LeftButtons", "Button", "Pet" })
+	local petScreen = waitForPath(mainGui, paths.PanelRoot or { "NewPet" })
+	local closeButton = waitForPath(mainGui, paths.CloseButton or { "NewPet", "BackPack", "Title", "Close" })
+	local ownedContainer = waitForPath(mainGui, paths.OwnedList or { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame" })
+	local ownedTemplate = waitForPath(
+		mainGui,
+		paths.OwnedTemplate or { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet" }
+	)
+	local equippedContainer = waitForPath(mainGui, paths.EquippedList or { "NewPet", "BackPack", "Main", "Info", "PetEquipList" })
+	local equippedTemplate = waitForPath(
+		mainGui,
+		paths.EquippedTemplate or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet" }
+	)
+	local equippedText = waitForPath(mainGui, paths.EquippedText or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedText" })
+	local noPet = waitForPath(mainGui, paths.NoPet or { "NewPet", "BackPack", "Main", "Info", "NoPet" })
+	local equipBestButton = waitForPath(mainGui, paths.EquipBestButton or { "NewPet", "BackPack", "Main", "BottomButton", "EquipBest" })
+	local unequipAllButton = waitForPath(mainGui, paths.UnequipAllButton or { "NewPet", "BackPack", "Main", "BottomButton", "UnEquipAll" })
+	local deleteButton = waitForPath(mainGui, paths.DeleteButton or { "NewPet", "BackPack", "Main", "BottomButton", "Delete" })
 
-	if petScreen then
-		petScreen.Visible = false
-	end
-
-	if closeButton and closeButton:IsA("GuiButton") then
-		closeButton.Activated:Connect(function()
-			if petScreen then
-				petScreen.Visible = false
-			end
-		end)
-	end
+	setVisible(petScreen, false)
 
 	local latestData = nil
 	local actionHandlers = {}
@@ -291,7 +305,7 @@ function PetInventoryRender.Init(player)
 		end
 	end
 
-	local function handleEquippedSlotActivated(slotIndex, petSnapshot)
+	local function handleEquippedPetActivated(slotIndex, petSnapshot)
 		if type(petSnapshot) ~= "table" or type(petSnapshot.PetTypeId) ~= "string" then
 			return
 		end
@@ -300,6 +314,14 @@ function PetInventoryRender.Init(player)
 			actionHandlers.Unequip(slotIndex)
 		end
 	end
+
+	connectActivated(closeButton, function()
+		view.SetOpen(false)
+	end)
+
+	connectActivated(petButton, function()
+		view.SetOpen(true)
+	end)
 
 	connectActivated(equipBestButton, function()
 		if actionHandlers.EquipBest then
@@ -327,13 +349,20 @@ function PetInventoryRender.Init(player)
 		end
 
 		local ownedSnapshots = data and data.OwnedPetSnapshots
+		local equippedSnapshots = data and data.EquippedPetSnapshots
+		local maxEquippedPets = getMaxEquippedPets()
 		clearMissingSelections(ownedSnapshots)
-		renderOwnedPets(ownedContainer, ownedTemplate, ownedSnapshots, selectedPetInstanceIds, handleOwnedPetActivated)
-		renderEquippedPets(equippedContainer, equippedTemplate, data and data.EquippedPetSnapshots, handleEquippedSlotActivated)
+		renderOwnedPets(ownedContainer, ownedTemplate, cardFields, ownedSnapshots, selectedPetInstanceIds, handleOwnedPetActivated)
+		local equippedCount = renderEquippedPets(
+			equippedContainer,
+			equippedTemplate,
+			cardFields,
+			equippedSnapshots,
+			handleEquippedPetActivated
+		)
 
-		if noPet and noPet:IsA("GuiObject") then
-			noPet.Visible = getSnapshotCount(ownedSnapshots) == 0
-		end
+		setEquippedText(equippedText, equippedCount, maxEquippedPets)
+		setVisible(noPet, getSnapshotCount(ownedSnapshots) == 0)
 	end
 
 	function view.SetOpen(isOpen)
@@ -341,7 +370,7 @@ function PetInventoryRender.Init(player)
 			return
 		end
 
-		petScreen.Visible = isOpen == true
+		setVisible(petScreen, isOpen == true)
 		if petScreen.Visible then
 			view.Refresh(latestData)
 		end

@@ -43,8 +43,7 @@ local function chooseFromWeightedPetTypes(weightedPetTypeIds, rollWeightDenomina
 	return nil
 end
 
-local function getWeightedPetTypesFromRewards(eggConfig)
-	local rewards = eggConfig and eggConfig.Rewards
+local function getWeightedPetTypesFromRewards(rewards)
 	if type(rewards) ~= "table" then
 		return nil
 	end
@@ -62,33 +61,11 @@ local function getWeightedPetTypesFromRewards(eggConfig)
 	return weightedPetTypeIds
 end
 
-local function getWeightedPetTypesFromPetConfig(eggConfig)
-	local petTypeIds = eggConfig and eggConfig.PetTypeIds
-	if type(petTypeIds) ~= "table" then
-		return nil
-	end
-
-	local weightedPetTypeIds = {}
-	for _, petTypeId in ipairs(petTypeIds) do
-		local petConfig = type(petTypeId) == "string" and PetTheta[petTypeId] or nil
-		if petConfig then
-			table.insert(weightedPetTypeIds, {
-				PetTypeId = petTypeId,
-				RollWeight = petConfig.RollWeight,
-			})
-		end
-	end
-
-	return weightedPetTypeIds
-end
-
-function PetRollSelector.ChoosePetTypeId(eggConfig)
-	local weightedPetTypeIds = getWeightedPetTypesFromRewards(eggConfig)
-	if weightedPetTypeIds then
-		return chooseFromWeightedPetTypes(weightedPetTypeIds, REWARD_ROLL_WEIGHT_DENOMINATOR)
-	end
-
-	return chooseFromWeightedPetTypes(getWeightedPetTypesFromPetConfig(eggConfig) or {})
+function PetRollSelector.ChoosePetTypeId(rewards)
+	return chooseFromWeightedPetTypes(
+		getWeightedPetTypesFromRewards(rewards) or {},
+		REWARD_ROLL_WEIGHT_DENOMINATOR
+	)
 end
 
 return PetRollSelector

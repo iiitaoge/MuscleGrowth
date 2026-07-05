@@ -1,6 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local EggTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta"))
+local eggTheta = ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta")
+
+local EggCostTheta = require(eggTheta:WaitForChild("EggCostTheta"))
+local EggRewardTheta = require(eggTheta:WaitForChild("EggRewardTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingRuntimeState = require(script.Parent.Parent.Parent.Parent.S.TrainingRuntimeState)
@@ -65,8 +68,26 @@ local function isRollOnCooldown(runtimeState, now)
 	return now - runtimeState.LastPetRollTime < PetSystemRules.GetRollCooldownSeconds()
 end
 
-local function getCostAmount(eggConfig)
-	return math.max(0, tonumber(eggConfig and eggConfig.CostAmount) or 0)
+local function getCostConfig(eggId)
+	local costConfig = EggCostTheta.Costs and EggCostTheta.Costs[eggId]
+	return type(costConfig) == "table" and costConfig or nil
+end
+
+local function getRewardConfig(eggId)
+	local rewardConfig = EggRewardTheta[eggId]
+	return type(rewardConfig) == "table" and rewardConfig or nil
+end
+
+local function isSupportedCostConfig(costConfig)
+	local costResource = costConfig and costConfig.CostResource
+	return type(costResource) == "string"
+		and EggCostTheta.AllowedCostResources
+		and EggCostTheta.AllowedCostResources[costResource] == true
+		and costResource == "Trophies"
+end
+
+local function getCostAmount(costConfig)
+	return math.max(0, tonumber(costConfig and costConfig.CostAmount) or 0)
 end
 
 local function getTrophies(progressState)
@@ -94,7 +115,9 @@ local function createPetInstance(progressState, petTypeId)
 end
 
 function PetRollTransition.RequestRoll(player, eggId, rollCount)
-	if not EggObservation.IsValidEggId(eggId) then
+	local costConfig = getCostConfig(eggId)
+	local rewardConfig = getRewardConfig(eggId)
+	if not costConfig or not rewardConfig or not isSupportedCostConfig(costConfig) then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
@@ -114,17 +137,12 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
-	local eggConfig = EggTheta[eggId]
-	if type(eggConfig) ~= "table" or eggConfig.CostResource ~= "Trophies" then
-		return failure(INVALID_REQUEST_MESSAGE, player)
-	end
-
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
-	local costAmount = getCostAmount(eggConfig)
+	local costAmount = getCostAmount(costConfig)
 	local totalCostAmount = costAmount * normalizedRollCount
 	if getTrophies(progressState) < totalCostAmount then
 		return failure(NOT_ENOUGH_TROPHIES_MESSAGE, player)
@@ -133,7 +151,7 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 	local rollResults = {}
 	local hasRolledPet = false
 	for _ = 1, normalizedRollCount do
-		local petTypeId = PetRollSelector.ChoosePetTypeId(eggConfig)
+		local petTypeId = PetRollSelector.ChoosePetTypeId(rewardConfig.Rewards)
 		if not petTypeId then
 			table.insert(rollResults, {
 				EggId = eggId,

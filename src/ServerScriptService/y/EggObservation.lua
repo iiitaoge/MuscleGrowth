@@ -1,8 +1,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local EggTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta"))
-local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
+local theta = ReplicatedStorage:WaitForChild("theta")
+local eggTheta = theta:WaitForChild("EggTheta")
+
+local EggSceneTheta = require(eggTheta:WaitForChild("EggSceneTheta"))
+local SceneTheta = require(theta:WaitForChild("SceneTheta"))
 
 local EggObservation = {}
 
@@ -28,8 +31,8 @@ local function getWorldRoot()
 	return Workspace:FindFirstChild(SceneTheta.WorkspaceRootName) or Workspace
 end
 
-local function getSceneRoot(eggConfig)
-	local sceneRootName = type(eggConfig) == "table" and eggConfig.SceneRootName or DEFAULT_SCENE_ROOT_NAME
+local function getSceneRoot(eggSceneConfig)
+	local sceneRootName = type(eggSceneConfig) == "table" and eggSceneConfig.SceneRootName or DEFAULT_SCENE_ROOT_NAME
 	local worldRoot = getWorldRoot()
 
 	return worldRoot:FindFirstChild(sceneRootName)
@@ -55,27 +58,29 @@ local function getInstancePosition(instance)
 end
 
 function EggObservation.IsValidEggId(eggId)
-	return type(eggId) == "string" and EggTheta[eggId] ~= nil
+	return type(eggId) == "string" and EggSceneTheta[eggId] ~= nil
 end
 
 function EggObservation.GetEggInteractionNode(eggId)
-	local eggConfig = EggTheta[eggId]
-	if not eggConfig then
+	local eggSceneConfig = EggSceneTheta[eggId]
+	if not eggSceneConfig then
 		return nil
 	end
 
-	local sceneRoot = getSceneRoot(eggConfig)
-	local eggModel = sceneRoot and sceneRoot:FindFirstChild(eggId)
+	local sceneRoot = getSceneRoot(eggSceneConfig)
+	local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
+	local promptPartName = eggSceneConfig.PromptPartName or PROMPT_PART_NAME
+	local eggModel = sceneRoot and sceneRoot:FindFirstChild(sceneNodeName)
 	if not eggModel then
 		return nil
 	end
 
-	return eggModel:FindFirstChild(PROMPT_PART_NAME) or eggModel
+	return eggModel:FindFirstChild(promptPartName) or eggModel
 end
 
 function EggObservation.IsPlayerNearEgg(player, eggId)
-	local eggConfig = EggTheta[eggId]
-	if not eggConfig then
+	local eggSceneConfig = EggSceneTheta[eggId]
+	if not eggSceneConfig then
 		return false
 	end
 
@@ -88,7 +93,7 @@ function EggObservation.IsPlayerNearEgg(player, eggId)
 
 	local interactionDistance = math.max(
 		0,
-		tonumber(eggConfig.InteractionDistance) or DEFAULT_INTERACTION_DISTANCE
+		tonumber(eggSceneConfig.InteractionDistance) or DEFAULT_INTERACTION_DISTANCE
 	)
 
 	return (root.Position - interactionPosition).Magnitude <= interactionDistance

@@ -7,7 +7,7 @@ local theta = ReplicatedStorage:WaitForChild("theta")
 
 local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
 local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
-local EggTheta = require(theta:WaitForChild("EggTheta"))
+local EggSceneTheta = require(theta:WaitForChild("EggTheta"):WaitForChild("EggSceneTheta"))
 local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
 local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
 local SceneTheta = require(theta:WaitForChild("SceneTheta"))
@@ -250,29 +250,43 @@ local function bindAutoArea(areaId)
 end
 
 local function getEggInteractionNode(eggId)
-	local sceneEgg = getSceneChild(SceneTheta.SceneEggRootName)
-	local eggHolder = sceneEgg and sceneEgg:FindFirstChild(eggId)
-	return eggHolder and (eggHolder:FindFirstChild(SceneTheta.EggPromptPartName) or eggHolder)
+	local eggSceneConfig = EggSceneTheta[eggId]
+	if type(eggSceneConfig) ~= "table" then
+		return nil
+	end
+
+	local sceneEgg = getSceneChild(eggSceneConfig.SceneRootName or SceneTheta.SceneEggRootName)
+	local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
+	local promptPartName = eggSceneConfig.PromptPartName or SceneTheta.EggPromptPartName
+	local eggHolder = sceneEgg and sceneEgg:FindFirstChild(sceneNodeName)
+	return eggHolder and (eggHolder:FindFirstChild(promptPartName) or eggHolder)
 end
 
 local function isPlayerNearEgg(eggId)
-	local eggConfig = EggTheta[eggId]
+	local eggSceneConfig = EggSceneTheta[eggId]
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local interactionPosition = getInstancePosition(getEggInteractionNode(eggId))
-	if not eggConfig or not root or not interactionPosition then
+	if not eggSceneConfig or not root or not interactionPosition then
 		return false
 	end
 
-	local interactionDistance = tonumber(eggConfig.InteractionDistance) or SceneTheta.EggInteractionDistance
+	local interactionDistance = tonumber(eggSceneConfig.InteractionDistance) or SceneTheta.EggInteractionDistance
 	return (root.Position - interactionPosition).Magnitude <= interactionDistance + 2
 end
 
 local function bindEggPrompt(eggId)
-	local sceneEgg = getSceneChild(SceneTheta.SceneEggRootName)
-	local eggHolder = sceneEgg and sceneEgg:WaitForChild(eggId, 10)
+	local eggSceneConfig = EggSceneTheta[eggId]
+	if type(eggSceneConfig) ~= "table" then
+		warn("Missing egg scene config: " .. tostring(eggId))
+		return
+	end
+
+	local sceneEgg = getSceneChild(eggSceneConfig.SceneRootName or SceneTheta.SceneEggRootName)
+	local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
+	local eggHolder = sceneEgg and sceneEgg:WaitForChild(sceneNodeName, 10)
 	if not eggHolder then
-		warn("Missing egg holder: " .. eggId)
+		warn("Missing egg holder: " .. tostring(sceneNodeName))
 		return
 	end
 
@@ -509,8 +523,8 @@ for areaId, areaConfig in pairs(AutoAreaTheta) do
 	end
 end
 
-for eggId, eggConfig in pairs(EggTheta) do
-	if type(eggId) == "string" and type(eggConfig) == "table" then
+for eggId, eggSceneConfig in pairs(EggSceneTheta) do
+	if type(eggId) == "string" and type(eggSceneConfig) == "table" then
 		bindEggPrompt(eggId)
 	end
 end

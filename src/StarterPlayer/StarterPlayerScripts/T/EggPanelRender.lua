@@ -2,15 +2,39 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local EggTheta = require(theta:WaitForChild("EggTheta"))
+local eggTheta = theta:WaitForChild("EggTheta")
+local EggCostTheta = require(eggTheta:WaitForChild("EggCostTheta"))
+local EggDisplayTheta = require(eggTheta:WaitForChild("EggDisplayTheta"))
+local EggPanelTheta = require(eggTheta:WaitForChild("EggPanelTheta"))
+local EggRewardTheta = require(eggTheta:WaitForChild("EggRewardTheta"))
 local PetTheta = require(theta:WaitForChild("PetTheta"))
 
 local EggPanelRender = {}
 
 local GUI_WAIT_SECONDS = 10
 local NODE_WAIT_SECONDS = 5
-local GENERATED_ATTRIBUTE = "MuscleGrowthGeneratedEggResult"
-local GENERATED_REWARD_ATTRIBUTE = "MuscleGrowthGeneratedEggReward"
+
+local DEFAULT_REWARD_SLOT_PATHS = {
+	{ "Egg", "Main", "RewardTopRow", "RewardSlot1" },
+	{ "Egg", "Main", "RewardTopRow", "RewardSlot2" },
+	{ "Egg", "Main", "RewardTopRow", "RewardSlot3" },
+	{ "Egg", "Main", "RewardLowRow", "RewardSlot4" },
+	{ "Egg", "Main", "RewardLowRow", "RewardSlot5" },
+}
+
+local DEFAULT_RESULT_TEMPLATE_PATH = { "Egg", "EggPetElement" }
+
+local DEFAULT_REWARD_SLOT_FIELDS = {
+	Icon = "Icon",
+	ChanceText = "ChanceText",
+	MultiplierText = "MultiplierText",
+}
+
+local DEFAULT_RESULT_TEMPLATE_FIELDS = {
+	Icon = "Icon",
+	NameText = "NameText",
+	RarityText = "RarityText",
+}
 
 local function waitForPath(root, path)
 	local current = root
@@ -24,6 +48,14 @@ local function waitForPath(root, path)
 	end
 
 	return current
+end
+
+local function formatPath(path)
+	if type(path) ~= "table" then
+		return tostring(path)
+	end
+
+	return table.concat(path, "/")
 end
 
 local function formatNumber(value)
@@ -62,6 +94,19 @@ local function setFirstText(root, value)
 	end
 end
 
+local function setTextObject(textObject, value)
+	if not textObject then
+		return
+	end
+
+	if textObject:IsA("TextLabel") or textObject:IsA("TextButton") then
+		textObject.Text = value or ""
+		return
+	end
+
+	setFirstText(textObject, value or "")
+end
+
 local function setImageObject(imageObject, image)
 	if imageObject and (imageObject:IsA("ImageLabel") or imageObject:IsA("ImageButton")) then
 		imageObject.Image = image or ""
@@ -69,137 +114,96 @@ local function setImageObject(imageObject, image)
 	end
 end
 
-local function hideExistingRewardRows(container)
-	if not container then
+local function setVisible(instance, isVisible)
+	if not instance then
 		return
 	end
 
-	for _, child in ipairs(container:GetChildren()) do
-		if child:IsA("GuiObject") and not child:GetAttribute(GENERATED_REWARD_ATTRIBUTE) then
-			child.Visible = false
-		end
+	if instance:IsA("GuiObject") then
+		instance.Visible = isVisible == true
+	elseif instance:IsA("ScreenGui") then
+		instance.Enabled = isVisible == true
 	end
 end
 
-local function clearGeneratedRewardRows(container)
-	if not container then
+local function findSlotField(slotRoot, fieldName, slotLabel)
+	if not slotRoot or type(fieldName) ~= "string" or fieldName == "" then
+		return nil
+	end
+
+	local field = slotRoot:FindFirstChild(fieldName, true)
+	if not field then
+		warn("Missing " .. slotLabel .. " field: " .. slotRoot:GetFullName() .. "/" .. fieldName)
+	end
+
+	return field
+end
+
+local function resolveRewardSlots(mainGui, slotPaths, slotFields)
+	local slots = {}
+	local slotCount = 0
+	for index, path in ipairs(slotPaths or {}) do
+		slotCount = index
+		local slotRoot = waitForPath(mainGui, path)
+		if not slotRoot then
+			warn("Missing egg reward slot: " .. formatPath(path))
+		else
+			slots[index] = {
+				Root = slotRoot,
+				Icon = findSlotField(slotRoot, slotFields.Icon, "reward slot"),
+				ChanceText = findSlotField(slotRoot, slotFields.ChanceText, "reward slot"),
+				MultiplierText = findSlotField(slotRoot, slotFields.MultiplierText, "reward slot"),
+			}
+		end
+	end
+
+	return slots, slotCount
+end
+
+local function resolveResultTemplate(mainGui, templatePath, templateFields)
+	local templateRoot = waitForPath(mainGui, templatePath)
+	if not templateRoot then
+		warn("Missing egg result template: " .. formatPath(templatePath))
+		return nil
+	end
+
+	return {
+		Root = templateRoot,
+		Icon = findSlotField(templateRoot, templateFields.Icon, "result template"),
+		NameText = findSlotField(templateRoot, templateFields.NameText, "result template"),
+		RarityText = findSlotField(templateRoot, templateFields.RarityText, "result template"),
+	}
+end
+
+local function renderRewardSlot(slot, reward)
+	if not slot then
 		return
 	end
 
-	for _, child in ipairs(container:GetChildren()) do
-		if child:GetAttribute(GENERATED_REWARD_ATTRIBUTE) then
-			child:Destroy()
-		end
-	end
-end
+	local petConfig = reward and PetTheta[reward.PetTypeId]
+	local hasReward = type(reward) == "table" and petConfig ~= nil
 
-local function createRewardCard(parent, index, totalCount)
-	local card = Instance.new("Frame")
-	card.Name = "Reward_" .. tostring(index)
-	card:SetAttribute(GENERATED_REWARD_ATTRIBUTE, true)
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-	card.BorderColor3 = Color3.fromRGB(25, 25, 25)
-	card.BorderSizePixel = 2
-	card.Size = UDim2.new(0, 88, 0, 88)
-	card.ZIndex = 20
-	card.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = card
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 245)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 210, 210)),
-	})
-	gradient.Rotation = 90
-	gradient.Parent = card
-
-	local icon = Instance.new("ImageLabel")
-	icon.Name = "Icon"
-	icon.BackgroundTransparency = 1
-	icon.AnchorPoint = Vector2.new(0.5, 0.5)
-	icon.Position = UDim2.new(0.5, 0, 0.52, 0)
-	icon.Size = UDim2.new(0.62, 0, 0.62, 0)
-	icon.ScaleType = Enum.ScaleType.Fit
-	icon.ZIndex = 22
-	icon.Parent = card
-
-	local chanceText = Instance.new("TextLabel")
-	chanceText.Name = "Chance"
-	chanceText.BackgroundTransparency = 1
-	chanceText.AnchorPoint = Vector2.new(0.5, 0)
-	chanceText.Position = UDim2.new(0.5, 0, 0.02, 0)
-	chanceText.Size = UDim2.new(0.92, 0, 0.24, 0)
-	chanceText.Font = Enum.Font.FredokaOne
-	chanceText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	chanceText.TextScaled = true
-	chanceText.TextStrokeTransparency = 0
-	chanceText.ZIndex = 23
-	chanceText.Parent = card
-
-	local multiplierText = Instance.new("TextLabel")
-	multiplierText.Name = "Multiplier"
-	multiplierText.BackgroundTransparency = 1
-	multiplierText.AnchorPoint = Vector2.new(0.5, 1)
-	multiplierText.Position = UDim2.new(0.5, 0, 0.98, 0)
-	multiplierText.Size = UDim2.new(0.92, 0, 0.24, 0)
-	multiplierText.Font = Enum.Font.FredokaOne
-	multiplierText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	multiplierText.TextScaled = true
-	multiplierText.TextStrokeTransparency = 0
-	multiplierText.ZIndex = 23
-	multiplierText.Parent = card
-
-	local columns = math.min(totalCount, 5)
-	local columnIndex = index
-	local rowIndex = 1
-	if totalCount > 3 then
-		columns = 3
-		rowIndex = index <= 3 and 1 or 2
-		columnIndex = index <= 3 and index or index - 3
-	elseif totalCount == 4 then
-		columns = 2
-		rowIndex = index <= 2 and 1 or 2
-		columnIndex = index <= 2 and index or index - 2
-	end
-
-	local xSpacing = 0.22
-	local y = rowIndex == 1 and 0.28 or 0.62
-	local xStart = 0.5 - ((columns - 1) * xSpacing / 2)
-	if rowIndex == 2 and totalCount == 5 then
-		xStart = 0.5 - (xSpacing / 2)
-	end
-
-	card.Position = UDim2.new(xStart + (columnIndex - 1) * xSpacing, 0, y, 0)
-
-	return card
-end
-
-local function renderGeneratedRewards(container, rewards)
-	hideExistingRewardRows(container)
-	clearGeneratedRewardRows(container)
-
-	if type(rewards) ~= "table" then
+	setVisible(slot.Root, hasReward)
+	if not hasReward then
+		setImageObject(slot.Icon, "")
+		setTextObject(slot.ChanceText, "")
+		setTextObject(slot.MultiplierText, "")
 		return
 	end
 
-	for index, reward in ipairs(rewards) do
-		local petConfig = reward and PetTheta[reward.PetTypeId]
-		local card = createRewardCard(container, index, #rewards)
-		local icon = card:FindFirstChild("Icon")
-		local chanceText = card:FindFirstChild("Chance")
-		local multiplierText = card:FindFirstChild("Multiplier")
+	setImageObject(slot.Icon, petConfig.Image)
+	setTextObject(slot.ChanceText, formatChance(reward))
+	setTextObject(slot.MultiplierText, "x" .. formatNumber(petConfig.Multiplier))
+end
 
-		setImageObject(icon, petConfig and petConfig.Image)
-		if chanceText and chanceText:IsA("TextLabel") then
-			chanceText.Text = formatChance(reward)
-		end
-		if multiplierText and multiplierText:IsA("TextLabel") then
-			multiplierText.Text = petConfig and ("x" .. formatNumber(petConfig.Multiplier)) or ""
-		end
+local function renderFixedRewards(rewardSlots, rewardSlotCount, rewards)
+	local rewardCount = type(rewards) == "table" and #rewards or 0
+	for index = 1, rewardSlotCount do
+		renderRewardSlot(rewardSlots[index], type(rewards) == "table" and rewards[index] or nil)
+	end
+
+	if rewardCount > rewardSlotCount then
+		warn("Egg reward pool has " .. tostring(rewardCount) .. " rewards but only " .. tostring(rewardSlotCount) .. " UI slots.")
 	end
 end
 
@@ -223,30 +227,61 @@ local function setButton(button, keyText, costText)
 	end
 end
 
-local function clearGeneratedResults(root)
-	for _, child in ipairs(root:GetChildren()) do
-		if child:GetAttribute(GENERATED_ATTRIBUTE) then
-			child:Destroy()
-		end
+local function renderResultTemplate(resultTemplate, result)
+	if not resultTemplate then
+		return
 	end
+
+	local hasResult = type(result) == "table"
+	setVisible(resultTemplate.Root, hasResult)
+	setImageObject(resultTemplate.Icon, hasResult and result.Image or "")
+	setTextObject(resultTemplate.NameText, hasResult and result.Name or "")
+	setTextObject(resultTemplate.RarityText, hasResult and result.Rarity or "")
 end
 
-local function createResultLabel(root)
-	clearGeneratedResults(root)
+local function clearResultTemplate(resultTemplate)
+	renderResultTemplate(resultTemplate, nil)
+end
 
-	local label = Instance.new("TextLabel")
-	label.Name = "RollResult"
-	label:SetAttribute(GENERATED_ATTRIBUTE, true)
-	label.BackgroundTransparency = 0.25
-	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextScaled = true
-	label.Size = UDim2.new(0.6, 0, 0.08, 0)
-	label.Position = UDim2.new(0.2, 0, 0.9, 0)
-	label.ZIndex = 50
-	label.Parent = root
+local function showResultMessage(resultTemplate, message)
+	renderResultTemplate(resultTemplate, {
+		Name = tostring(message or ""),
+		Rarity = "",
+		Image = "",
+	})
+end
 
-	return label
+local function getRollResultDisplay(rollResult, fallbackMessage)
+	if type(rollResult) ~= "table" then
+		return {
+			Name = tostring(fallbackMessage or ""),
+			Rarity = "",
+			Image = "",
+		}
+	end
+
+	if rollResult.IsMiss then
+		return {
+			Name = "No pet",
+			Rarity = "",
+			Image = "",
+		}
+	end
+
+	local petConfig = PetTheta[rollResult.PetTypeId]
+	if not petConfig then
+		return {
+			Name = tostring(rollResult.PetTypeId or fallbackMessage or "?"),
+			Rarity = "",
+			Image = "",
+		}
+	end
+
+	return {
+		Name = petConfig.DisplayName or tostring(rollResult.PetTypeId),
+		Rarity = petConfig.Rarity or "",
+		Image = petConfig.Image,
+	}
 end
 
 local function createNoopView()
@@ -269,23 +304,35 @@ end
 
 function EggPanelRender.Init(player)
 	local playerGui = player:WaitForChild("PlayerGui")
-	local mainGui = playerGui:WaitForChild("Main", GUI_WAIT_SECONDS)
+	local mainGui = playerGui:WaitForChild(EggPanelTheta.ScreenGuiName or "Main", GUI_WAIT_SECONDS)
 	if not mainGui then
 		return createNoopView()
 	end
 
-	local eggScreen = waitForPath(mainGui, { "Egg" })
+	local paths = EggPanelTheta.Paths or {}
+	local eggScreen = waitForPath(mainGui, paths.PanelRoot or { "Egg" })
 	if not eggScreen then
 		return createNoopView()
 	end
 
-	local titleRoot = eggScreen:FindFirstChild("Title", true)
-	local closeButton = titleRoot and titleRoot:FindFirstChild("Close", true)
-	local rewardsContainer = waitForPath(eggScreen, { "Main" })
-	local buttonRoot = waitForPath(eggScreen, { "Button" })
-	local singleButton = buttonRoot and buttonRoot:FindFirstChild("E")
-	local tripleButton = buttonRoot and buttonRoot:FindFirstChild("R")
-	local autoButton = buttonRoot and buttonRoot:FindFirstChild("T")
+	local titleRoot = waitForPath(mainGui, paths.TitleRoot or { "Egg", "Title" })
+	local closeButton = waitForPath(mainGui, paths.CloseButton or { "Egg", "Title", "Close" })
+	local rewardSlotFields = EggPanelTheta.RewardSlotFields or DEFAULT_REWARD_SLOT_FIELDS
+	local resultTemplateFields = EggPanelTheta.ResultTemplateFields or DEFAULT_RESULT_TEMPLATE_FIELDS
+	local rewardSlots, rewardSlotCount = resolveRewardSlots(
+		mainGui,
+		paths.RewardSlots or DEFAULT_REWARD_SLOT_PATHS,
+		rewardSlotFields
+	)
+	local resultTemplate = resolveResultTemplate(
+		mainGui,
+		paths.ResultTemplate or DEFAULT_RESULT_TEMPLATE_PATH,
+		resultTemplateFields
+	)
+	local singleButton = waitForPath(mainGui, paths.SingleRollButton or { "Egg", "Button", "E" })
+	local tripleButton = waitForPath(mainGui, paths.TripleRollButton or { "Egg", "Button", "R" })
+	local autoButton = waitForPath(mainGui, paths.AutoRollButton or { "Egg", "Button", "T" })
+	local rollButtonText = EggPanelTheta.RollButtonText or {}
 
 	local currentEggId = nil
 	local latestData = nil
@@ -293,22 +340,25 @@ function EggPanelRender.Init(player)
 	local isAutoRolling = false
 
 	eggScreen.Visible = false
+	clearResultTemplate(resultTemplate)
 
 	local view = {}
 
 	local function renderEgg()
-		local eggConfig = currentEggId and EggTheta[currentEggId]
-		if not eggConfig then
+		local eggDisplayConfig = currentEggId and EggDisplayTheta[currentEggId]
+		local eggCostConfig = currentEggId and EggCostTheta.Costs and EggCostTheta.Costs[currentEggId]
+		local eggRewardConfig = currentEggId and EggRewardTheta[currentEggId]
+		if not eggDisplayConfig or not eggCostConfig or not eggRewardConfig then
 			return
 		end
 
-		setFirstText(titleRoot, eggConfig.DisplayName or currentEggId)
+		setFirstText(titleRoot, eggDisplayConfig.DisplayName or currentEggId)
 
-		local costAmount = tonumber(eggConfig.CostAmount) or 0
-		setButton(singleButton, "E", formatNumber(costAmount))
-		setButton(tripleButton, "H", formatNumber(costAmount * 3))
-		setButton(autoButton, isAutoRolling and "STOP" or "A", formatNumber(costAmount))
-		renderGeneratedRewards(rewardsContainer, eggConfig.Rewards)
+		local costAmount = tonumber(eggCostConfig.CostAmount) or 0
+		setButton(singleButton, rollButtonText.Single or "E", formatNumber(costAmount))
+		setButton(tripleButton, rollButtonText.Triple or "H", formatNumber(costAmount * 3))
+		setButton(autoButton, isAutoRolling and (rollButtonText.AutoStop or "STOP") or (rollButtonText.Auto or "A"), formatNumber(costAmount))
+		renderFixedRewards(rewardSlots, rewardSlotCount, eggRewardConfig.Rewards)
 	end
 
 	local function requestRoll(rollCount, isAuto)
@@ -359,13 +409,14 @@ function EggPanelRender.Init(player)
 		currentEggId = eggId
 		latestData = data or latestData
 		eggScreen.Visible = true
+		clearResultTemplate(resultTemplate)
 		renderEgg()
 	end
 
 	function view.Close()
 		eggScreen.Visible = false
 		isAutoRolling = false
-		renderEgg()
+		clearResultTemplate(resultTemplate)
 	end
 
 	function view.Refresh(data)
@@ -389,20 +440,12 @@ function EggPanelRender.Init(player)
 			return
 		end
 
-		local names = {}
-		if type(rollResults) == "table" then
-			for _, rollResult in ipairs(rollResults) do
-				if rollResult and rollResult.IsMiss then
-					table.insert(names, "No pet")
-				else
-					local petConfig = rollResult and PetTheta[rollResult.PetTypeId]
-					table.insert(names, petConfig and petConfig.DisplayName or tostring(rollResult and rollResult.PetTypeId or "?"))
-				end
-			end
+		if type(rollResults) ~= "table" or #rollResults == 0 then
+			showResultMessage(resultTemplate, message)
+			return
 		end
 
-		local label = createResultLabel(eggScreen)
-		label.Text = #names > 0 and table.concat(names, " / ") or tostring(message or "")
+		renderResultTemplate(resultTemplate, getRollResultDisplay(rollResults[1], message))
 	end
 
 	function view.ShowAutoSummary(rollCount)
@@ -410,8 +453,7 @@ function EggPanelRender.Init(player)
 			return
 		end
 
-		local label = createResultLabel(eggScreen)
-		label.Text = "Auto ended: " .. formatNumber(rollCount) .. " roll"
+		showResultMessage(resultTemplate, "Auto ended: " .. formatNumber(rollCount) .. " roll")
 	end
 
 	function view.IsOpen()
