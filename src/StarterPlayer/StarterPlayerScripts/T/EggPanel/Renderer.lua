@@ -12,16 +12,6 @@ local Renderer = {}
 local GUI_WAIT_SECONDS = 10
 local NODE_WAIT_SECONDS = 5
 
-local DEFAULT_REWARD_SLOT_PATHS = {
-	{ "Egg", "Main", "RewardTopRow", "RewardSlot1" },
-	{ "Egg", "Main", "RewardTopRow", "RewardSlot2" },
-	{ "Egg", "Main", "RewardTopRow", "RewardSlot3" },
-	{ "Egg", "Main", "RewardLowRow", "RewardSlot4" },
-	{ "Egg", "Main", "RewardLowRow", "RewardSlot5" },
-}
-
-local DEFAULT_RESULT_TEMPLATE_PATH = { "Egg", "EggPetElement" }
-
 local DEFAULT_REWARD_SLOT_FIELDS = {
 	Icon = "Icon",
 	ChanceText = "ChanceText",
@@ -36,6 +26,11 @@ local DEFAULT_RESULT_TEMPLATE_FIELDS = {
 
 -- 按路径等待 UI 节点。
 local function waitForPath(root, path)
+	if type(path) ~= "table" then
+		warn("Missing Egg UI path config.")
+		return nil
+	end
+
 	local current = root
 
 	for _, childName in ipairs(path) do
@@ -127,9 +122,14 @@ end
 
 -- 根据合同解析固定奖池槽位。
 local function resolveRewardSlots(mainGui, slotPaths, slotFields)
+	if type(slotPaths) ~= "table" then
+		warn("Missing Egg UI path config.")
+		return {}, 0
+	end
+
 	local slots = {}
 	local slotCount = 0
-	for index, path in ipairs(slotPaths or {}) do
+	for index, path in ipairs(slotPaths) do
 		slotCount = index
 		local slotRoot = waitForPath(mainGui, path)
 		if not slotRoot then
@@ -238,7 +238,7 @@ function Renderer.Resolve(player)
 	end
 
 	local paths = EggPanelTheta.Paths or {}
-	local panelRoot = waitForPath(mainGui, paths.PanelRoot or { "Egg" })
+	local panelRoot = waitForPath(mainGui, paths.PanelRoot)
 	if not panelRoot then
 		return nil
 	end
@@ -247,24 +247,24 @@ function Renderer.Resolve(player)
 	local resultTemplateFields = EggPanelTheta.ResultTemplateFields or DEFAULT_RESULT_TEMPLATE_FIELDS
 	local rewardSlots, rewardSlotCount = resolveRewardSlots(
 		mainGui,
-		paths.RewardSlots or DEFAULT_REWARD_SLOT_PATHS,
+		paths.RewardSlots,
 		rewardSlotFields
 	)
 
 	return {
 		PanelRoot = panelRoot,
-		TitleRoot = waitForPath(mainGui, paths.TitleRoot or { "Egg", "Title" }),
-		CloseButton = waitForPath(mainGui, paths.CloseButton or { "Egg", "Title", "Close" }),
+		TitleRoot = waitForPath(mainGui, paths.TitleRoot),
+		CloseButton = waitForPath(mainGui, paths.CloseButton),
 		RewardSlots = rewardSlots,
 		RewardSlotCount = rewardSlotCount,
 		ResultTemplate = resolveResultTemplate(
 			mainGui,
-			paths.ResultTemplate or DEFAULT_RESULT_TEMPLATE_PATH,
+			paths.ResultTemplate,
 			resultTemplateFields
 		),
-		SingleButton = waitForPath(mainGui, paths.SingleRollButton or { "Egg", "Button", "E" }),
-		TripleButton = waitForPath(mainGui, paths.TripleRollButton or { "Egg", "Button", "R" }),
-		AutoButton = waitForPath(mainGui, paths.AutoRollButton or { "Egg", "Button", "T" }),
+		SingleButton = waitForPath(mainGui, paths.SingleRollButton),
+		TripleButton = waitForPath(mainGui, paths.TripleRollButton),
+		AutoButton = waitForPath(mainGui, paths.AutoRollButton),
 	}
 end
 

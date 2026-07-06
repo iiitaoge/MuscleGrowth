@@ -19,6 +19,11 @@ local DEFAULT_PET_CARD_FIELDS = {
 
 -- 按合同路径等待 UI 节点。
 local function waitForPath(root, path)
+	if type(path) ~= "table" then
+		warn("Missing Pet UI path config.")
+		return nil
+	end
+
 	local current = root
 
 	for _, childName in ipairs(path) do
@@ -143,25 +148,18 @@ function Renderer.Resolve(player)
 	local paths = PetInventoryPanelTheta.Paths or {}
 	return {
 		CardFields = PetInventoryPanelTheta.PetCardFields or DEFAULT_PET_CARD_FIELDS,
-		PetButton = waitForPath(hud, paths.PetButton or { "LeftButtons", "Button", "Pet" }),
-		PanelRoot = waitForPath(mainGui, paths.PanelRoot or { "NewPet" }),
-		CloseButton = waitForPath(mainGui, paths.CloseButton or { "NewPet", "BackPack", "Title", "Close" }),
-		OwnedContainer = waitForPath(mainGui, paths.OwnedList or { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame" }),
-		OwnedTemplate = waitForPath(
-			mainGui,
-			paths.OwnedTemplate or { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet" }
-		),
-		-- 装备的宠物的真正容器：目录中的位置
-		EquippedContainer = waitForPath(mainGui, paths.EquippedList or { "NewPet", "BackPack", "Main", "Info", "PetEquipList","EquippedPet" }),
-		EquippedTemplate = waitForPath(
-			mainGui,
-			paths.EquippedTemplate or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet", "1" }
-		),
-		EquippedText = waitForPath(mainGui, paths.EquippedText or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedText" }),
-		NoPet = waitForPath(mainGui, paths.NoPet or { "NewPet", "BackPack", "Main", "Info", "NoPet" }),
-		EquipBestButton = waitForPath(mainGui, paths.EquipBestButton or { "NewPet", "BackPack", "Main", "BottomButton", "EquipBest" }),
-		UnequipAllButton = waitForPath(mainGui, paths.UnequipAllButton or { "NewPet", "BackPack", "Main", "BottomButton", "UnEquipAll" }),
-		DeleteButton = waitForPath(mainGui, paths.DeleteButton or { "NewPet", "BackPack", "Main", "BottomButton", "Delete" }),
+		PetButton = waitForPath(hud, paths.PetButton),
+		PanelRoot = waitForPath(mainGui, paths.PanelRoot),
+		CloseButton = waitForPath(mainGui, paths.CloseButton),
+		OwnedContainer = waitForPath(mainGui, paths.OwnedList),
+		OwnedTemplate = waitForPath(mainGui, paths.OwnedTemplate),
+		EquippedContainer = waitForPath(mainGui, paths.EquippedList),
+		EquippedTemplate = waitForPath(mainGui, paths.EquippedTemplate),
+		EquippedText = waitForPath(mainGui, paths.EquippedText),
+		NoPet = waitForPath(mainGui, paths.NoPet),
+		EquipBestButton = waitForPath(mainGui, paths.EquipBestButton),
+		UnequipAllButton = waitForPath(mainGui, paths.UnequipAllButton),
+		DeleteButton = waitForPath(mainGui, paths.DeleteButton),
 	}
 end
 

@@ -13,6 +13,11 @@ local NODE_WAIT_SECONDS = 5
 
 -- 按路径等待 UI 节点。
 local function waitForPath(root, path)
+	if type(path) ~= "table" then
+		warn("Missing Rebirth UI path config.")
+		return nil
+	end
+
 	local current = root
 
 	for _, childName in ipairs(path) do
@@ -115,7 +120,7 @@ function Renderer.Resolve(player)
 
 	local paths = RebirthPanelTheta.Paths or {}
 	local nodes = RebirthPanelTheta.Nodes or {}
-	local panelRoot = waitForPath(mainGui, paths.PanelRoot or { "Rebirth" })
+	local panelRoot = waitForPath(mainGui, paths.PanelRoot)
 	if not panelRoot then
 		return nil
 	end

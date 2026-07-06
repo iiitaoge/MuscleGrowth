@@ -13,6 +13,11 @@ local NODE_WAIT_SECONDS = 5
 
 -- 按路径等待 HUD 节点。
 local function waitForPath(root, path)
+	if type(path) ~= "table" then
+		warn("Missing HUD path config.")
+		return nil
+	end
+
 	local current = root
 
 	for _, childName in ipairs(path) do
@@ -51,15 +56,15 @@ function Renderer.Resolve(player)
 
 	local paths = HUDPanelTheta.Paths or {}
 	return {
-		StrengthText = waitForPath(hud, paths.StrengthText or { "Friend", "Power", "Text" }),
-		TrophiesText = waitForPath(hud, paths.TrophiesText or { "Friend", "trophy", "Text" }),
-		RebirthMultiplierText = waitForPath(hud, paths.RebirthMultiplierText or { "Bottom", "Bottom", "Rebirth", "Level" }),
-		BarbellMultiplierText = waitForPath(hud, paths.BarbellMultiplierText or { "Bottom", "Bottom", "Dumbbell", "Level" }),
-		PetMultiplierText = waitForPath(hud, paths.PetMultiplierText or { "Bottom", "Bottom", "Pet", "Level" }),
-		ExpBar = waitForPath(hud, paths.ExpBar or { "Bottom", "Progress", "Bar" }),
-		LevelText = waitForPath(hud, paths.LevelText or { "Bottom", "Progress", "Level" }),
-		ExpText = waitForPath(hud, paths.ExpText or { "Bottom", "Progress", "Progress" }),
-		RebirthButton = waitForPath(hud, paths.RebirthButton or { "LeftButtons", "Button", "Rebirth" }),
+		StrengthText = waitForPath(hud, paths.StrengthText),
+		TrophiesText = waitForPath(hud, paths.TrophiesText),
+		RebirthMultiplierText = waitForPath(hud, paths.RebirthMultiplierText),
+		BarbellMultiplierText = waitForPath(hud, paths.BarbellMultiplierText),
+		PetMultiplierText = waitForPath(hud, paths.PetMultiplierText),
+		ExpBar = waitForPath(hud, paths.ExpBar),
+		LevelText = waitForPath(hud, paths.LevelText),
+		ExpText = waitForPath(hud, paths.ExpText),
+		RebirthButton = waitForPath(hud, paths.RebirthButton),
 	}
 end
 
