@@ -54,6 +54,8 @@ function RemoteClient.Init()
 			return
 		end
 
+
+		-- 真正触发
 		remote:FireServer(...)
 	end
 

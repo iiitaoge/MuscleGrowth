@@ -18,6 +18,7 @@ local function failure(message, player)
 	}
 end
 
+-- 业务逻辑成功，返回玩家快照
 local function success(message, player, extraResult)
 	local result = {
 		Success = true,
@@ -25,6 +26,7 @@ local function success(message, player, extraResult)
 		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
 	}
 
+	-- 不同业务可以自由添加的额外信息
 	if type(extraResult) == "table" then
 		for key, value in pairs(extraResult) do
 			result[key] = value
@@ -84,23 +86,28 @@ local function clearEquippedDeletedPets(progressState, deletedInstanceIds)
 	end
 end
 
+-- 服务侧删除宠物
 function PetDeleteTransition.RequestDelete(player, petInstanceIds)
+	-- 先标准化传过来的宠物ID数据
 	local normalizedInstanceIds = normalizeInstanceIds(petInstanceIds)
 	if #normalizedInstanceIds <= 0 then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+	-- 在获得标准化的玩家进度数据
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
 		return failure(INVALID_REQUEST_MESSAGE, player)
 	end
 
+	-- 判断需要删除的ID是否属于该玩家
 	for _, instanceId in ipairs(normalizedInstanceIds) do
 		if not progressState.OwnedPets[instanceId] then
 			return failure(INVALID_REQUEST_MESSAGE, player)
 		end
 	end
 
+	-- 需要删除的ID标为true
 	local deletedInstanceIds = {}
 	for _, instanceId in ipairs(normalizedInstanceIds) do
 		progressState.OwnedPets[instanceId] = nil

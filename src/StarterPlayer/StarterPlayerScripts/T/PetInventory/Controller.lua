@@ -65,7 +65,7 @@ function Controller.Init(player)
 		end
 	end
 
-	-- 切换背包宠物选中状态。
+	-- 切换背包宠物选中状态。维护selectedPetInstanceIds这个表，这个表会被删除的功能引用
 	local function handleOwnedPetActivated(petSnapshot)
 		if type(petSnapshot) ~= "table" or type(petSnapshot.InstanceId) ~= "string" then
 			return
@@ -105,10 +105,13 @@ function Controller.Init(player)
 		local ownedCards = Renderer.RenderOwnedPets(refs, ownedModels)
 		local equippedCards = Renderer.RenderEquippedPets(refs, equippedModels)
 
+		-- 给每个创建的宠物卡绑定选择状态
 		for _, renderedCard in ipairs(ownedCards) do
 			local petSnapshot = renderedCard.Model.Snapshot
+			print("绑定选中事件")
 			-- 背包宠物卡点击后切换删除选择状态。
 			Renderer.ConnectActivated(renderedCard.Root, function()
+				print("选中了")
 				handleOwnedPetActivated(petSnapshot)
 				renderInventory(latestData)
 			end)
@@ -184,7 +187,7 @@ function Controller.Init(player)
 			handler()
 		end
 	end)
-	-- 删除按钮提交当前选中的宠物实例。
+	-- 绑定回调函数：点击删除按钮 提交当前选中的宠物实例。
 	Renderer.ConnectActivated(refs.DeleteButton, function()
 		local handler = actionHandlers.DeleteSelected
 		if handler then
@@ -192,6 +195,7 @@ function Controller.Init(player)
 		end
 	end)
 
+	-- 返回给客户端总线层，返回一个函数表
 	return {
 		Refresh = refresh,
 		SetOpen = setOpen,

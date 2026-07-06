@@ -18,17 +18,21 @@ function SnapshotController.Init(remoteClient, views)
 		views.BarbellDisplay.Refresh(data)
 	end
 
-	-- 处理 RemoteFunction 返回值，并在包含 Data 时刷新快照。
+	-- 统一 处理 RemoteFunction 返回值，并在包含 Data 时刷新快照。
+	-- 两种Success ：1.事件本身成功没 2.业务逻辑本身成功没？
 	local function applyRemoteResult(success, result)
+		-- 第一段：远程调用本身失败
 		if not success then
 			warn(result)
 			return nil
 		end
 
+		-- 第二段：服务器返回了新数据，就刷新 UI
 		if result and result.Data then
 			refresh(result.Data)
 		end
 
+		-- 第三段：业务失败时打印服务器消息
 		if result and result.Success == false and result.Message then
 			warn(result.Message)
 		end

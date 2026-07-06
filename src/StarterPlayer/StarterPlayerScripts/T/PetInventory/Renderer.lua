@@ -163,7 +163,7 @@ function Renderer.Resolve(player)
 	}
 end
 
--- 给按钮或 GUI 节点绑定点击事件。
+-- 给按钮或 GUI 节点绑定点击事件。通用模版，具体绑定在初始化
 function Renderer.ConnectActivated(root, callback)
 	if not root or not callback then
 		return nil

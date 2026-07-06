@@ -25,10 +25,10 @@ local SceneQuery = require(modules.SceneQuery)
 local SnapshotController = require(modules.SnapshotController)
 local TrainingGainAttributeController = require(modules.TrainingGainAttributeController)
 
-local remoteClient = RemoteClient.Init()
+local remoteClient = RemoteClient.Init()	-- 所有向服务器发送的事件
 local hudView = HUDController.Init(player)
 local floatingGainView = FloatingGainController.Init(player)
-local petInventoryView = PetInventoryController.Init(player)
+local petInventoryView = PetInventoryController.Init(player)	--初始化视图
 local rebirthPanelView = RebirthPanelController.Init(player)
 local eggPanelView = EggPanelController.Init(player)
 local barbellDisplayView = BarbellDisplayController.Init()
@@ -49,7 +49,7 @@ local eggInteractionController = EggInteractionController.Init(sceneQuery, eggPa
 PlayerVisualSync.Init()
 TrainingGainAttributeController.Init(player, floatingGainView, snapshotController)
 RebirthActionController.Init(remoteClient, snapshotController, hudView, rebirthPanelView)
-PetActionController.Init(remoteClient, snapshotController, petInventoryView)
+PetActionController.Init(remoteClient, snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口
 PetRollController.Init(remoteClient, snapshotController, eggPanelView, eggInteractionController)
 
 movementController.Bind()

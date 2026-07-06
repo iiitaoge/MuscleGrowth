@@ -135,6 +135,7 @@ requestPetRoll.OnServerInvoke = function(player, eggId, rollCount)
 	return PetTransition.RequestRoll(player, eggId, rollCount)
 end
 
+-- 处理删除宠物ID的操作
 requestPetDelete.OnServerInvoke = function(player, petInstanceIds)
 	return PetTransition.RequestDelete(player, petInstanceIds)
 end

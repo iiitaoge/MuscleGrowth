@@ -72,6 +72,7 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 
 	-- 删除背包里当前选中的宠物实例。
 	local function deleteSelected(petInstanceIds)
+		-- 确保类型为 表 确保表长度 > 0
 		if type(petInstanceIds) ~= "table" or #petInstanceIds <= 0 then
 			warn("No pets selected")
 			return
@@ -96,6 +97,7 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		petButton.Activated:Connect(handlePetButtonActivated)
 	end
 
+	-- 这个东西会传给 Petinventory 里面的 Controller，相当于给了个引用
 	petInventoryView.SetActionHandlers({
 		Equip = invokePetEquip,
 		Unequip = invokePetUnequip,
