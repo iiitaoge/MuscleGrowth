@@ -7,12 +7,13 @@ local SnapshotController = {}
 function SnapshotController.Init(remoteClient, views)
 	local latestData = nil
 
+	-- 刷新所有视图，但其实很多不需要
 	-- 把快照写入所有需要刷新的视图。
 	local function refresh(data)
 		latestData = data
 		views.HUD.Refresh(data)
 		views.FloatingGain.Refresh(data)
-		views.PetInventory.Refresh(data)
+		-- views.PetInventory.Refresh(data)
 		views.RebirthPanel.Refresh(data)
 		views.EggPanel.Refresh(data)
 		views.BarbellDisplay.Refresh(data)
