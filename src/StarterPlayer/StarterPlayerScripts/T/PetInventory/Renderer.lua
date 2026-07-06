@@ -163,17 +163,15 @@ function Renderer.Resolve(player)
 	}
 end
 
--- 内部分流，然后不用拆成两个函数
--- 给按钮或 GUI 节点绑定点击事件。通用模板，具体绑定在初始化。
-function Renderer.ConnectActivated(root, callback)
-	if not root or not callback then
+-- 解析可点击目标，但不绑定回调。
+function Renderer.GetActivatedTarget(root)
+	if not root then
 		return nil
 	end
 
 	-- 情况 1：root 本身就是按钮
 	-- 例如 Pet 按钮、Close 按钮、Delete 按钮、EquipBest 按钮
 	if root:IsA("GuiButton") then
-		root.Activated:Connect(callback)
 		return root
 	end
 
@@ -215,11 +213,25 @@ function Renderer.ConnectActivated(root, callback)
 			hitButton.ZIndex = root.ZIndex + 100
 		end
 
-		hitButton.Activated:Connect(callback)
 		return hitButton
 	end
 
 	return nil
+end
+
+-- 给按钮或 GUI 节点绑定点击事件。通用模板，具体绑定在初始化。
+function Renderer.ConnectActivated(root, callback)
+	if not callback then
+		return nil
+	end
+
+	local target = Renderer.GetActivatedTarget(root)
+	if not target then
+		return nil
+	end
+
+	target.Activated:Connect(callback)
+	return target
 end
 
 -- 切换背包面板开关。

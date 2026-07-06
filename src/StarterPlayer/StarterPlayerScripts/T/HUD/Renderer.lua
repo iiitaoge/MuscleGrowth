@@ -84,7 +84,7 @@ function Renderer.Render(refs, model)
 	setText(refs.ExpText, model.ExpText)
 end
 
--- 返回可绑定的重生入口按钮。
+-- 返回可绑定的重生入口按钮。 然后具体的重生面板内部的东西需要拆出去
 function Renderer.GetRebirthButton(refs)
 	if refs and refs.RebirthButton and refs.RebirthButton:IsA("GuiButton") then
 		return refs.RebirthButton
