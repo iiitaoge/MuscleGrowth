@@ -18,13 +18,13 @@ local PetInventoryPanelTheta = {
 		-- 关闭动作入口。
 		CloseButton = { "NewPet", "BackPack", "Title", "Close" },
 		-- 已拥有宠物列表容器。
-		OwnedList = { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame" },
+		OwnedList = { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet" },
 		-- 已拥有宠物卡模板。
-		OwnedTemplate = { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet" },
+		OwnedTemplate = { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet",  "1"},
 		-- 已装备宠物区域。
-		EquippedList = { "NewPet", "BackPack", "Main", "Info", "PetEquipList" },
+		EquippedList = { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet" },
 		-- 已装备宠物卡模板。
-		EquippedTemplate = { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet" },
+		EquippedTemplate = { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet", "1" },
 		-- 已装备数量文本。
 		EquippedText = { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedText" },
 		-- 背包为空提示。

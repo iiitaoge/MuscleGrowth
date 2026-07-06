@@ -39,6 +39,8 @@ end
 -- 初始化宠物背包控制器。
 function Controller.Init(player)
 	local refs = Renderer.Resolve(player)
+	print("EquippedContainer =", refs.EquippedContainer and refs.EquippedContainer:GetFullName())
+	print("EquippedTemplate =", refs.EquippedTemplate and refs.EquippedTemplate:GetFullName())
 	if not refs then
 		return createNoopView()
 	end

@@ -151,10 +151,11 @@ function Renderer.Resolve(player)
 			mainGui,
 			paths.OwnedTemplate or { "NewPet", "BackPack", "Main", "Info", "ScrollingFrame", "BackPackPet" }
 		),
-		EquippedContainer = waitForPath(mainGui, paths.EquippedList or { "NewPet", "BackPack", "Main", "Info", "PetEquipList" }),
+		-- 装备的宠物的真正容器：目录中的位置
+		EquippedContainer = waitForPath(mainGui, paths.EquippedList or { "NewPet", "BackPack", "Main", "Info", "PetEquipList","EquippedPet" }),
 		EquippedTemplate = waitForPath(
 			mainGui,
-			paths.EquippedTemplate or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet" }
+			paths.EquippedTemplate or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedPet", "1" }
 		),
 		EquippedText = waitForPath(mainGui, paths.EquippedText or { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedText" }),
 		NoPet = waitForPath(mainGui, paths.NoPet or { "NewPet", "BackPack", "Main", "Info", "NoPet" }),
