@@ -34,6 +34,7 @@ local function createInitialRuntimeState()
 	}
 end
 
+-- 运行时状态规范化
 local function normalizeRuntimeState(runtimeState)
 	runtimeState = runtimeState or createInitialRuntimeState()
 	runtimeState.MoveRequested = runtimeState.MoveRequested == true

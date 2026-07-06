@@ -10,9 +10,10 @@ local Renderer = {}
 
 local GUI_WAIT_SECONDS = 10
 local NODE_WAIT_SECONDS = 5
+local setTextSequenceByPredicate
 
--- 按路径等待 UI 节点。
-local function waitForPath(root, path)
+-- 按路径查找或等待 UI 节点。
+local function waitForPath(root, path, optional)
 	if type(path) ~= "table" then
 		warn("Missing Rebirth UI path config.")
 		return nil
@@ -25,7 +26,11 @@ local function waitForPath(root, path)
 			return nil
 		end
 
-		current = current:WaitForChild(childName, NODE_WAIT_SECONDS)
+		if optional then
+			current = current:FindFirstChild(childName)
+		else
+			current = current:WaitForChild(childName, NODE_WAIT_SECONDS)
+		end
 	end
 
 	return current
@@ -75,6 +80,17 @@ local function setText(label, value)
 	end
 end
 
+-- 设置 GuiObject 的 Size.X.Scale，并保留 Offset 和 Y。
+local function setSizeXScale(guiObject, value)
+	if not (guiObject and guiObject:IsA("GuiObject")) then
+		return
+	end
+
+	local ratio = math.clamp(tonumber(value) or 0, 0, 1)
+	local size = guiObject.Size
+	guiObject.Size = UDim2.new(ratio, size.X.Offset, size.Y.Scale, size.Y.Offset)
+end
+
 -- 给根节点及子孙文本节点批量写文本。
 local function setDescendantTexts(root, value)
 	if not root then
@@ -92,8 +108,98 @@ local function setDescendantTexts(root, value)
 	end
 end
 
+-- 规范化序列文本。
+local function normalizeSequenceValues(values)
+	if type(values) == "table" then
+		return values
+	end
+
+	if values == nil then
+		return {}
+	end
+
+	return { tostring(values) }
+end
+
+-- 判断文本是否匹配 theta 中声明的规则。
+local function textMatches(matchConfig, text)
+	if type(matchConfig) ~= "table" or type(text) ~= "string" then
+		return false
+	end
+
+	if matchConfig.MatchType == "Pattern" and type(matchConfig.Pattern) == "string" then
+		return text:match(matchConfig.Pattern) ~= nil
+	end
+
+	if matchConfig.MatchType == "Contains" and type(matchConfig.Contains) == "string" then
+		return text:find(matchConfig.Contains, 1, true) ~= nil
+	end
+
+	return false
+end
+
+-- 根据渲染绑定解析目标节点。
+local function resolveBindingTarget(refs, binding)
+	if binding.Ref then
+		return refs[binding.Ref]
+	end
+
+	if binding.Path then
+		return waitForPath(refs.PanelRoot, binding.Path, binding.Optional == true)
+	end
+
+	if binding.RootPath then
+		return waitForPath(refs.PanelRoot, binding.RootPath, binding.Optional == true)
+	end
+
+	return refs.PanelRoot
+end
+
+-- 解析 theta 中声明的渲染绑定。
+local function resolveRenderBindings(refs)
+	local resolvedBindings = {}
+
+	for _, binding in ipairs(RebirthPanelTheta.RenderBindings or {}) do
+		if type(binding) == "table" then
+			local target = resolveBindingTarget(refs, binding)
+			if target or binding.Optional == true then
+				table.insert(resolvedBindings, {
+					Config = binding,
+					Target = target,
+				})
+			else
+				warn("Missing Rebirth render binding target: " .. tostring(binding.Key or binding.ModelKey))
+			end
+		end
+	end
+
+	return resolvedBindings
+end
+
+-- 执行单个渲染绑定。
+local function applyRenderBinding(bindingEntry, model)
+	local binding = bindingEntry.Config
+	local target = bindingEntry.Target
+	if not binding or not target then
+		return
+	end
+
+	local value = model[binding.ModelKey]
+	if binding.Operation == "SetText" then
+		setText(target, value or "")
+	elseif binding.Operation == "SetDescendantTexts" then
+		setDescendantTexts(target, value or "")
+	elseif binding.Operation == "SetTextSequenceByMatch" then
+		setTextSequenceByPredicate(target, function(text)
+			return textMatches(binding.Match, text)
+		end, normalizeSequenceValues(value))
+	elseif binding.Operation == "SetSizeXScale" then
+		setSizeXScale(target, value)
+	end
+end
+
 -- 按谓词顺序替换文本序列。
-local function setTextSequenceByPredicate(root, predicate, values)
+setTextSequenceByPredicate = function(root, predicate, values)
 	local valueIndex = 1
 	if not root then
 		return
@@ -125,7 +231,7 @@ function Renderer.Resolve(player)
 		return nil
 	end
 
-	return {
+	local refs = {
 		PanelRoot = panelRoot,
 		CloseButton = panelRoot:FindFirstChild(nodes.CloseButtonName or "Close", true),
 		RequestButton = findActionButton(panelRoot, nodes.ActionButtonName or "Rebirth"),
@@ -133,6 +239,9 @@ function Renderer.Resolve(player)
 		TipText = findFirstText(panelRoot, nodes.TipTextName or "Tip")
 			or findFirstText(panelRoot, nodes.FallbackTipTextName or "TextLabel"),
 	}
+	refs.RenderBindings = resolveRenderBindings(refs)
+
+	return refs
 end
 
 -- 给按钮绑定 Activated 事件。
@@ -160,18 +269,9 @@ function Renderer.Render(refs, model)
 		return
 	end
 
-	setText(refs.TitleText, model.TitleText)
-	setText(refs.TipText, model.TipText)
-	setTextSequenceByPredicate(refs.PanelRoot, function(text)
-		return type(text) == "string" and text:match("^%{%d+%}$") ~= nil
-	end, model.RebirthTexts or {})
-	setTextSequenceByPredicate(refs.PanelRoot, function(text)
-		return type(text) == "string" and text:find("Power", 1, true) ~= nil
-	end, model.PowerTexts or {})
-	setTextSequenceByPredicate(refs.PanelRoot, function(text)
-		return type(text) == "string" and text:find("Max Level", 1, true) ~= nil
-	end, model.MaxLevelTexts or {})
-	setDescendantTexts(refs.RequestButton, model.RequestText or "")
+	for _, bindingEntry in ipairs(refs.RenderBindings or {}) do
+		applyRenderBinding(bindingEntry, model)
+	end
 end
 
 return Renderer
