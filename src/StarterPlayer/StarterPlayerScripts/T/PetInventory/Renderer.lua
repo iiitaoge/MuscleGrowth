@@ -170,6 +170,7 @@ function Renderer.ConnectActivated(root, callback)
 		return nil
 	end
 
+	-- 绑定指定回调函数
 	if root:IsA("GuiButton") then
 		root.Activated:Connect(callback)
 		return root

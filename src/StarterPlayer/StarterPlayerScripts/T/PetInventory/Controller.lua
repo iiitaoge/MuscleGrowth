@@ -157,7 +157,16 @@ function Controller.Init(player)
 	end)
 	-- 入口按钮打开背包。
 	petButton = Renderer.ConnectActivated(refs.PetButton, function()
+		-- print("宠物入口按钮回调触发")
+
+		-- print("PanelRoot =", refs.PanelRoot)
+		-- print("PanelRoot FullName =", refs.PanelRoot and refs.PanelRoot:GetFullName())
+		-- print("PanelRoot ClassName =", refs.PanelRoot and refs.PanelRoot.ClassName)
+		-- print("打开前 Visible =", refs.PanelRoot and refs.PanelRoot.Visible)
+
 		setOpen(true)
+
+		-- print("打开后 Visible =", refs.PanelRoot and refs.PanelRoot.Visible)
 	end)
 	-- 装备最佳按钮委托给外部处理器。
 	Renderer.ConnectActivated(refs.EquipBestButton, function()
