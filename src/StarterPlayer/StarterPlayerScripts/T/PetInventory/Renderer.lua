@@ -163,36 +163,56 @@ function Renderer.Resolve(player)
 	}
 end
 
--- 给按钮或 GUI 节点绑定点击事件。通用模版，具体绑定在初始化
+-- 内部分流，然后不用拆成两个函数
+-- 给按钮或 GUI 节点绑定点击事件。通用模板，具体绑定在初始化。
 function Renderer.ConnectActivated(root, callback)
 	if not root or not callback then
 		return nil
 	end
 
-	-- 绑定指定回调函数
+	-- 情况 1：root 本身就是按钮
+	-- 例如 Pet 按钮、Close 按钮、Delete 按钮、EquipBest 按钮
 	if root:IsA("GuiButton") then
 		root.Activated:Connect(callback)
 		return root
 	end
 
-	local button = root:FindFirstChildWhichIsA("GuiButton", true)
-	if button then
-		button.Activated:Connect(callback)
-		return button
-	end
-
+	-- 情况 2：root 是 Frame / ImageLabel / 普通 GuiObject
+	-- 不再查找子孙按钮，避免绑定到 Pet_1.mask.Button.2 这种内部按钮
 	if root:IsA("GuiObject") then
 		local hitButton = root:FindFirstChild("InteractionButton")
+
+		if hitButton and not hitButton:IsA("GuiButton") then
+			hitButton:Destroy()
+			hitButton = nil
+		end
+
 		if not hitButton then
 			hitButton = Instance.new("TextButton")
 			hitButton.Name = "InteractionButton"
 			hitButton.BackgroundTransparency = 1
 			hitButton.BorderSizePixel = 0
 			hitButton.Text = ""
+			hitButton.AutoButtonColor = false
+
 			hitButton.Size = UDim2.fromScale(1, 1)
 			hitButton.Position = UDim2.fromScale(0, 0)
+			hitButton.AnchorPoint = Vector2.new(0, 0)
+
+			-- 盖在当前 root 的内容之上，保证整张卡可以点
 			hitButton.ZIndex = root.ZIndex + 100
+
+			hitButton.Visible = true
+			hitButton.Active = true
+
 			hitButton.Parent = root
+		else
+			hitButton.Visible = true
+			hitButton.Active = true
+			hitButton.Size = UDim2.fromScale(1, 1)
+			hitButton.Position = UDim2.fromScale(0, 0)
+			hitButton.AnchorPoint = Vector2.new(0, 0)
+			hitButton.ZIndex = root.ZIndex + 100
 		end
 
 		hitButton.Activated:Connect(callback)

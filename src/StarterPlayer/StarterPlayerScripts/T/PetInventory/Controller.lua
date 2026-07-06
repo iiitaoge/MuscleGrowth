@@ -110,11 +110,13 @@ function Controller.Init(player)
 			local petSnapshot = renderedCard.Model.Snapshot
 			print("绑定选中事件")
 			-- 背包宠物卡点击后切换删除选择状态。
-			Renderer.ConnectActivated(renderedCard.Root, function()
+			local boundButton = Renderer.ConnectActivated(renderedCard.Root, function()
 				print("选中了")
 				handleOwnedPetActivated(petSnapshot)
 				renderInventory(latestData)
 			end)
+
+			print("绑定结果:", boundButton, boundButton and boundButton:GetFullName(), boundButton and boundButton.ClassName)
 		end
 
 		for _, renderedCard in ipairs(equippedCards) do

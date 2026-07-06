@@ -268,36 +268,46 @@ function Renderer.Resolve(player)
 	}
 end
 
--- 给按钮或可点击 GUI 节点绑定 Activated 事件。
+-- 内部分流，不要拆成两个函数
+-- 给按钮或 GUI 节点绑定点击事件。
 function Renderer.ConnectActivated(root, callback)
 	if not root or not callback then
 		return nil
 	end
 
+	-- 情况 1：传进来的本身就是按钮。
+	-- 入口按钮、关闭按钮、删除按钮、EquipBest 等都应该走这里。
 	if root:IsA("GuiButton") then
 		root.Activated:Connect(callback)
 		return root
 	end
 
-	local button = root:FindFirstChildWhichIsA("GuiButton", true)
-	if button then
-		button.Activated:Connect(callback)
-		return button
-	end
-
+	-- 情况 2：传进来的是 Frame / ImageLabel / 普通 GuiObject。
+	-- 默认不要再去子孙里乱找按钮，而是在 root 上创建一个透明点击层。
 	if root:IsA("GuiObject") then
 		local hitButton = root:FindFirstChild("InteractionButton")
+
+		if hitButton and not hitButton:IsA("GuiButton") then
+			hitButton:Destroy()
+			hitButton = nil
+		end
+
 		if not hitButton then
 			hitButton = Instance.new("TextButton")
 			hitButton.Name = "InteractionButton"
 			hitButton.BackgroundTransparency = 1
 			hitButton.BorderSizePixel = 0
 			hitButton.Text = ""
+			hitButton.AutoButtonColor = false
 			hitButton.Size = UDim2.fromScale(1, 1)
 			hitButton.Position = UDim2.fromScale(0, 0)
+			hitButton.AnchorPoint = Vector2.new(0, 0)
 			hitButton.ZIndex = root.ZIndex + 100
 			hitButton.Parent = root
 		end
+
+		hitButton.Visible = true
+		hitButton.Active = true
 
 		hitButton.Activated:Connect(callback)
 		return hitButton
