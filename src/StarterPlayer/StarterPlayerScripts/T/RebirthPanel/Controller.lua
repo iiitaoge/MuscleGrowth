@@ -2,14 +2,14 @@
 -- 编排重生面板打开关闭和请求按钮事件。
 
 local DataAdapter = require(script.Parent.DataAdapter)
-local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
+local UIRefs = require(script.Parent.Parent.UIRefs)
 
 local Controller = {}
 
 -- 初始化重生面板控制器。
 function Controller.Init(player)
-	local refs = Refs.Resolve(player)
+	local refs = UIRefs.ResolveRebirthPanel(player)
 
 	local requestHandler = nil
 	local latestData = nil

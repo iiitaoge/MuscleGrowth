@@ -10,40 +10,36 @@ local DataAdapter = {}
 
 -- 将数字格式化成展示文本。
 local function formatNumber(value)
-	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
+	if value == math.floor(value) then
+		return string.format("%.0f", value)
 	end
 
-	return string.format("%.2f", numberValue)
+	return string.format("%.2f", value)
 end
 
 -- 将倍率格式化成展示文本。
 local function formatMultiplier(value)
-	local numberValue = tonumber(value) or 1
-	return "x" .. string.format("%.1f", numberValue)
+	return "x" .. string.format("%.1f", value)
 end
 
 -- 根据玩家快照生成所有杠铃展示模型。
 function DataAdapter.BuildModels(data)
 	local models = {}
-	local trophies = data and tonumber(data.Trophies) or 0
-	local currentBarbellId = data and data.CurrentBarbellId
+	local trophies = data.Trophies
+	local currentBarbellId = data.CurrentBarbellId
 
 	for barbellId, barbellConfig in pairs(BarbellTheta) do
-		if type(barbellId) == "string" and type(barbellConfig) == "table" then
-			local requiredTrophies = tonumber(barbellConfig.RequiredTrophies) or 0
-			local isEquipped = currentBarbellId == barbellId
-			local isUnlocked = trophies >= requiredTrophies
+		local requiredTrophies = barbellConfig.RequiredTrophies
+		local isEquipped = currentBarbellId == barbellId
+		local isUnlocked = trophies >= requiredTrophies
 
-			table.insert(models, {
-				BarbellId = barbellId,
-				PowerText = formatMultiplier(barbellConfig.Multiplier) .. " Gain",
-				CostText = formatNumber(requiredTrophies),
-				IsUnlocked = isUnlocked,
-				IsEquipped = isEquipped,
-			})
-		end
+		table.insert(models, {
+			BarbellId = barbellId,
+			PowerText = formatMultiplier(barbellConfig.Multiplier) .. " Gain",
+			CostText = formatNumber(requiredTrophies),
+			IsUnlocked = isUnlocked,
+			IsEquipped = isEquipped,
+		})
 	end
 
 	return models

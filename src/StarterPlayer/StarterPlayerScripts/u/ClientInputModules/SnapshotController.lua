@@ -1,6 +1,8 @@
 -- SnapshotController
 -- 客户端快照刷新中心，统一把服务端数据分发给所有 UI/视觉控制器。
 
+local SnapshotContract = require(script.Parent.Parent.Parent.T.SnapshotContract)
+
 local SnapshotController = {}
 
 -- 初始化快照控制器。
@@ -10,13 +12,17 @@ function SnapshotController.Init(remoteClient, views)
 	-- 刷新所有视图，但其实很多不需要
 	-- 把快照写入所有需要刷新的视图。
 	local function refresh(data)
-		latestData = data
-		views.HUD.Refresh(data)
-		views.FloatingGain.Refresh(data)
-		-- views.PetInventory.Refresh(data)
-		views.RebirthPanel.Refresh(data)
-		views.EggPanel.Refresh(data)
-		views.BarbellDisplay.Refresh(data)
+		local snapshot = SnapshotContract.Validate(data)
+
+		latestData = snapshot
+		views.HUD.Refresh(snapshot)
+		views.FloatingGain.Refresh(snapshot)
+		-- 宠物背包打开时主动刷新，避免常驻重绘。
+		views.RebirthPanel.Refresh(snapshot)
+		views.EggPanel.Refresh(snapshot)
+		views.BarbellDisplay.Refresh(snapshot)
+
+		return snapshot
 	end
 
 	-- 统一 处理 RemoteFunction 返回值，并在包含 Data 时刷新快照。
@@ -30,7 +36,7 @@ function SnapshotController.Init(remoteClient, views)
 
 		-- 第二段：服务器返回了新数据，就刷新 UI
 		if result and result.Data then
-			refresh(result.Data)
+			result.Data = refresh(result.Data)
 		end
 
 		-- 第三段：业务失败时打印服务器消息
@@ -49,8 +55,7 @@ function SnapshotController.Init(remoteClient, views)
 			return nil
 		end
 
-		refresh(data)
-		return data
+		return refresh(data)
 	end
 
 	-- 返回最近一次缓存的玩家快照。

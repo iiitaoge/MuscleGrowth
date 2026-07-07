@@ -2,14 +2,14 @@
 -- 编排宠物背包打开关闭、选择状态和装备/卸下/删除按钮事件。
 
 local DataAdapter = require(script.Parent.DataAdapter)
-local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
+local UIRefs = require(script.Parent.Parent.UIRefs)
 
 local Controller = {}
 
 -- 初始化宠物背包控制器。
 function Controller.Init(player)
-	local refs = Refs.Resolve(player)
+	local refs = UIRefs.ResolvePetInventory(player)
 
 	local latestData = nil
 	local actionHandlers = {} :: {[string]: any}
@@ -33,20 +33,12 @@ function Controller.Init(player)
 
 	-- 切换背包宠物选中状态。维护selectedPetInstanceIds这个表，这个表会被删除的功能引用
 	local function handleOwnedPetActivated(petSnapshot)
-		if type(petSnapshot) ~= "table" or type(petSnapshot.InstanceId) ~= "string" then
-			return
-		end
-
-		local instanceId = tostring(petSnapshot.InstanceId)
+		local instanceId = petSnapshot.InstanceId
 		selectedPetInstanceIds[instanceId] = selectedPetInstanceIds[instanceId] ~= true
 	end
 
 	-- 请求卸下已装备宠物。
-	local function handleEquippedPetActivated(slotIndex, petSnapshot)
-		if type(petSnapshot) ~= "table" or type(petSnapshot.PetTypeId) ~= "string" then
-			return
-		end
-
+	local function handleEquippedPetActivated(slotIndex)
 		local unequipHandler = actionHandlers.Unequip
 		if unequipHandler then
 			unequipHandler(slotIndex)
@@ -60,8 +52,8 @@ function Controller.Init(player)
 
 	-- 按快照渲染整个宠物背包。
 	local function renderInventory(data)
-		local ownedSnapshots = data and data.OwnedPetSnapshots
-		local equippedSnapshots = data and data.EquippedPetSnapshots
+		local ownedSnapshots = data.OwnedPetSnapshots
+		local equippedSnapshots = data.EquippedPetSnapshots
 		local maxEquippedPets = DataAdapter.GetMaxEquippedPets()
 
 		clearMissingSelections(ownedSnapshots)
@@ -83,10 +75,9 @@ function Controller.Init(player)
 
 		for _, renderedCard in ipairs(equippedCards) do
 			local slotIndex = renderedCard.Model.SlotIndex
-			local petSnapshot = renderedCard.Model.Snapshot
 			-- 已装备宠物卡点击后请求卸下对应槽位。
 			Renderer.ConnectActivated(renderedCard.Root, function()
-				handleEquippedPetActivated(slotIndex, petSnapshot)
+				handleEquippedPetActivated(slotIndex)
 			end)
 		end
 

@@ -4,14 +4,14 @@
 local UserInputService = game:GetService("UserInputService")
 
 local DataAdapter = require(script.Parent.DataAdapter)
-local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
+local UIRefs = require(script.Parent.Parent.UIRefs)
 
 local Controller = {}
 
 -- 初始化蛋面板控制器。
 function Controller.Init(player)
-	local refs = Refs.Resolve(player)
+	local refs = UIRefs.ResolveEggPanel(player)
 
 	local currentEggId = nil
 	local latestData = nil

@@ -2,14 +2,14 @@
 -- 编排 HUD 长期数值刷新，并暴露重生入口按钮。
 
 local DataAdapter = require(script.Parent.DataAdapter)
-local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
+local UIRefs = require(script.Parent.Parent.UIRefs)
 
 local Controller = {}
 
 -- 初始化 HUD 控制器。
 function Controller.Init(player)
-	local refs = Refs.Resolve(player)
+	local refs = UIRefs.ResolveHUD(player)
 
 	-- 根据快照刷新 HUD。
 	local function refresh(data)

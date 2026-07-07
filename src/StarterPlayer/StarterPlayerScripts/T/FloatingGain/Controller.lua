@@ -2,8 +2,8 @@
 -- 编排训练力量飘字和奖杯增长飘字的触发时机。
 
 local DataAdapter = require(script.Parent.DataAdapter)
-local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
+local UIRefs = require(script.Parent.Parent.UIRefs)
 
 local Controller = {}
 
@@ -11,7 +11,7 @@ local STRENGTH_GAIN_PART_COUNT = 5
 
 -- 初始化飘字控制器。
 function Controller.Init(player)
-	local refs = Refs.Resolve(player)
+	local refs = UIRefs.ResolveFloatingGain(player)
 
 	local lastTrophies = nil
 

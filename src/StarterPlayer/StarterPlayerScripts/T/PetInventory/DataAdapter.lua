@@ -11,16 +11,11 @@ local DataAdapter = {}
 
 -- 将倍率数值格式化成宠物卡文本。
 local function formatMultiplier(value)
-	local numberValue = tonumber(value) or 1
-	return "x" .. string.format("%.1f", numberValue)
+	return "x" .. string.format("%.1f", value)
 end
 
 -- 统计快照表里的条目数量。
 function DataAdapter.GetSnapshotCount(snapshots)
-	if type(snapshots) ~= "table" then
-		return 0
-	end
-
 	local count = 0
 	for _ in pairs(snapshots) do
 		count += 1
@@ -31,18 +26,15 @@ end
 
 -- 读取当前最大装备宠物数量。
 function DataAdapter.GetMaxEquippedPets()
-	return math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
+	return PetSystemTheta.MaxEquippedPets
 end
 
 -- 生成背包宠物卡显示模型列表。
 function DataAdapter.BuildOwnedPetModels(petSnapshots, selectedPetInstanceIds)
 	local models = {}
-	if type(petSnapshots) ~= "table" then
-		return models
-	end
 
 	for index, petSnapshot in ipairs(petSnapshots) do
-		local instanceId = tostring(petSnapshot.InstanceId or index)
+		local instanceId = petSnapshot.InstanceId
 		table.insert(models, {
 			Name = "Pet_" .. instanceId,
 			LayoutOrder = index,
@@ -60,13 +52,10 @@ end
 -- 生成已装备宠物卡显示模型列表。
 function DataAdapter.BuildEquippedPetModels(equippedSnapshots)
 	local models = {}
-	if type(equippedSnapshots) ~= "table" then
-		return models
-	end
 
-	for index, petSnapshot in ipairs(equippedSnapshots) do
-		if type(petSnapshot) == "table" and type(petSnapshot.PetTypeId) == "string" then
-			local slotIndex = tonumber(petSnapshot.SlotIndex) or index
+	for _, petSnapshot in ipairs(equippedSnapshots) do
+		if petSnapshot.PetTypeId ~= nil then
+			local slotIndex = petSnapshot.SlotIndex
 			table.insert(models, {
 				Name = "Equipped_" .. tostring(slotIndex),
 				LayoutOrder = slotIndex,
@@ -90,14 +79,9 @@ end
 -- 根据拥有宠物快照生成实例 id 集合。
 function DataAdapter.BuildOwnedInstanceIdSet(ownedSnapshots)
 	local ownedInstanceIds = {} :: {[string]: boolean}
-	if type(ownedSnapshots) ~= "table" then
-		return ownedInstanceIds
-	end
 
 	for _, petSnapshot in ipairs(ownedSnapshots) do
-		if type(petSnapshot) == "table" and petSnapshot.InstanceId ~= nil then
-			ownedInstanceIds[tostring(petSnapshot.InstanceId)] = true
-		end
+		ownedInstanceIds[petSnapshot.InstanceId] = true
 	end
 
 	return ownedInstanceIds
@@ -111,7 +95,7 @@ function DataAdapter.BuildSelectedInstanceIdList(selectedPetInstanceIds)
 	end
 
 	table.sort(instanceIds, function(left, right)
-		return (tonumber(left) or math.huge) < (tonumber(right) or math.huge)
+		return left < right
 	end)
 
 	return instanceIds
