@@ -1,47 +1,55 @@
 -- FloatingGain/DataAdapter
--- 把训练增长和奖杯差值转换成飘字显示模型。
+-- 把训练增长和奖杯差值转换成飘字文本。
 
 local DataAdapter = {}
 
--- 将增长数值格式化成飘字文本。
+local function requireNumber(value, context)
+	assert(type(value) == "number", context .. " must be a number.")
+	return value
+end
+
 local function formatNumber(value)
-	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
+	if value == math.floor(value) then
+		return string.format("%.0f", value)
 	end
 
-	return string.format("%.2f", numberValue)
+	return string.format("%.2f", value)
 end
 
--- 生成飘字显示模型。
-function DataAdapter.BuildGainModel(amount)
-	local numberAmount = tonumber(amount) or 0
-	if numberAmount <= 0 then
-		return nil
+function DataAdapter.BuildGainText(amount)
+	local numberAmount = requireNumber(amount, "Floating gain amount")
+	assert(numberAmount > 0, "Floating gain amount must be greater than 0.")
+
+	return "+" .. formatNumber(numberAmount)
+end
+
+function DataAdapter.BuildSplitGainTexts(amount, partCount)
+	local numberAmount = requireNumber(amount, "Floating gain amount")
+	assert(numberAmount > 0, "Floating gain amount must be greater than 0.")
+	assert(
+		type(partCount) == "number" and partCount >= 1 and partCount == math.floor(partCount),
+		"Floating gain part count must be a positive integer."
+	)
+
+	local splitAmount = numberAmount / partCount
+	local texts = {}
+	for index = 1, partCount do
+		texts[index] = DataAdapter.BuildGainText(splitAmount)
 	end
 
-	return {
-		Text = "+" .. formatNumber(numberAmount),
-	}
+	return texts
 end
 
--- 根据前后快照计算奖杯增长量。
-function DataAdapter.CalculateTrophyGain(previousTrophies, data)
-	if previousTrophies == nil or not data then
-		return 0
-	end
-
-	local nextTrophies = tonumber(data.Trophies) or 0
-	return math.max(0, nextTrophies - previousTrophies)
-end
-
--- 从快照中读取当前奖杯数。
 function DataAdapter.ReadTrophies(data)
-	if not data then
-		return nil
-	end
+	assert(type(data) == "table", "Floating gain snapshot data must be a table.")
+	return requireNumber(data.Trophies, "Snapshot Trophies")
+end
 
-	return tonumber(data.Trophies) or 0
+function DataAdapter.CalculateTrophyGain(previousTrophies, nextTrophies)
+	requireNumber(previousTrophies, "Previous trophies")
+	requireNumber(nextTrophies, "Next trophies")
+
+	return math.max(0, nextTrophies - previousTrophies)
 end
 
 return DataAdapter

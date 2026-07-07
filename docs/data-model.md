@@ -11,7 +11,7 @@
 ## 映射关系
 
 - `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
-- `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`LastPetRollTime`。
+- `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`NextGrowthAt`、`GrowthLoopToken`、`LastPetRollTime`。
 - `theta` 规则参数：自动区、杠铃、宠物、宠物蛋拆分配置、宠物背包 UI 合同、宠物系统、重生、等级经验、初始状态、Remote 协议。
 - `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求。
 - `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证、宠物蛋交互距离验证。

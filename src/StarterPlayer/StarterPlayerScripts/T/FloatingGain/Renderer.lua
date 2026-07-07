@@ -1,99 +1,91 @@
 -- FloatingGain/Renderer
--- 只负责查找飘字模板、克隆模板和播放位移淡出动画。
+-- 只负责克隆模板和播放位移淡出动画。
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-
-local theta = ReplicatedStorage:WaitForChild("theta")
-local FloatingGainTheta = require(theta:WaitForChild("FloatingGainTheta"))
 
 local Renderer = {}
 
-local HUD_WAIT_SECONDS = 10
+-- 基于模板位置随机偏移的偏移量
+local RANDOM_OFFSET_SCALE_X = 0.18
+local RANDOM_OFFSET_SCALE_Y = 0.18
+local random = Random.new()
+
+local function setText(instance, value)
+	if instance:IsA("TextLabel") or instance:IsA("TextButton") then
+		instance.Text = value
+	end
+end
 
 -- 给根节点和子孙文本节点写入飘字文本。
 local function setDescendantText(root, value)
-	if not root then
-		return
-	end
-
+	setText(root, value)
 	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-			descendant.Text = value
-		end
+		setText(descendant, value)
 	end
 end
 
--- 对文本和图片子孙节点播放淡出动画。
-local function tweenDescendantTransparency(root, duration)
+local function getRandomStartPosition(templatePosition)
+	return templatePosition
+		+ UDim2.new(
+			random:NextNumber(-RANDOM_OFFSET_SCALE_X, RANDOM_OFFSET_SCALE_X),
+			0,
+			random:NextNumber(-RANDOM_OFFSET_SCALE_Y, RANDOM_OFFSET_SCALE_Y),
+			0
+		)
+end
+
+local function tweenTransparency(instance, tweenInfo)
+	if instance:IsA("TextLabel") or instance:IsA("TextButton") then
+		TweenService:Create(instance, tweenInfo, {
+			TextTransparency = 1,
+			TextStrokeTransparency = 1,
+		}):Play()
+	elseif instance:IsA("UIStroke") then
+		TweenService:Create(instance, tweenInfo, {
+			Transparency = 1,
+		}):Play()
+	elseif instance:IsA("ImageLabel") or instance:IsA("ImageButton") then
+		TweenService:Create(instance, tweenInfo, {
+			ImageTransparency = 1,
+		}):Play()
+	end
+end
+
+-- 对文本和图片节点播放淡出动画。
+local function tweenDescendantTransparency(root, tweenInfo)
+	tweenTransparency(root, tweenInfo)
 	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-			TweenService:Create(descendant, TweenInfo.new(duration), {
-				TextTransparency = 1,
-			}):Play()
-		elseif descendant:IsA("ImageLabel") or descendant:IsA("ImageButton") then
-			TweenService:Create(descendant, TweenInfo.new(duration), {
-				ImageTransparency = 1,
-			}):Play()
-		end
+		tweenTransparency(descendant, tweenInfo)
 	end
 end
 
--- 解析训练和奖杯飘字模板。
-function Renderer.Resolve(player)
-	local playerGui = player:WaitForChild("PlayerGui")
-	local hud = playerGui:WaitForChild(FloatingGainTheta.ScreenGuiName or "HUD", HUD_WAIT_SECONDS)
-	if not hud then
-		warn("Floating gain HUD ScreenGui was not found.")
-		return nil
-	end
-
-	local templates = FloatingGainTheta.Templates or {}
-	local strengthTemplate = hud:FindFirstChild(templates.StrengthGain or "+1")
-	local trophyTemplate = hud:FindFirstChild(templates.TrophyGain or "+1trophy")
-
-	if strengthTemplate and strengthTemplate:IsA("GuiObject") then
-		strengthTemplate.Visible = false
-	end
-
-	if trophyTemplate and trophyTemplate:IsA("GuiObject") then
-		trophyTemplate.Visible = false
-	end
-
-	return {
-		StrengthTemplate = strengthTemplate,
-		TrophyTemplate = trophyTemplate,
-		Animation = FloatingGainTheta.Animation or {},
-	}
-end
-
--- 播放指定模板的飘字动画。
-function Renderer.PlayGain(template, animationConfig, model)
-	if not template or not template:IsA("GuiObject") or not model then
-		return
-	end
-
-	local duration = tonumber(animationConfig.Duration) or 0.65
-	local destroyDelay = tonumber(animationConfig.DestroyDelay) or 0.75
-	local offsetScaleY = tonumber(animationConfig.OffsetScaleY) or -0.08
+local function playGain(template, animation, text, startPosition)
 	local clone = template:Clone()
+	local tweenInfo = TweenInfo.new(animation.Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 	clone.Visible = true
 	clone.Parent = template.Parent
-	clone.Position = template.Position
-	setDescendantText(clone, model.Text)
+	clone.Position = startPosition
+	setDescendantText(clone, text)
 
-	TweenService:Create(clone, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = clone.Position + UDim2.new(0, 0, offsetScaleY, 0),
+	TweenService:Create(clone, tweenInfo, {
+		Position = clone.Position + UDim2.new(0, 0, animation.OffsetScaleY, 0),
 	}):Play()
-	tweenDescendantTransparency(clone, duration)
+	tweenDescendantTransparency(clone, tweenInfo)
 
 	-- 动画结束后清理克隆出来的飘字节点。
-	task.delay(destroyDelay, function()
-		if clone then
-			clone:Destroy()
-		end
+	task.delay(animation.DestroyDelay, function()
+		clone:Destroy()
 	end)
+end
+
+-- 播放指定模板的飘字动画。
+function Renderer.PlayGain(template, animation, text)
+	playGain(template, animation, text, template.Position)
+end
+
+function Renderer.PlayGainInRandomArea(template, animation, text)
+	playGain(template, animation, text, getRandomStartPosition(template.Position))
 end
 
 return Renderer

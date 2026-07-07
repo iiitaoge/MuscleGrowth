@@ -1,52 +1,11 @@
 -- PetInventory/Renderer
--- 只负责宠物背包 UI 节点解析、模板克隆和字段填充。
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local theta = ReplicatedStorage:WaitForChild("theta")
-local PetInventoryPanelTheta = require(theta:WaitForChild("PetInventoryPanelTheta"))
+-- 只负责宠物背包 UI 显示、模板克隆和点击层绑定。
 
 local Renderer = {}
 
-local GUI_WAIT_SECONDS = 10
-local NODE_WAIT_SECONDS = 5
 local GENERATED_ATTRIBUTE = "MuscleGrowthGeneratedPetUi"
 
-local DEFAULT_PET_CARD_FIELDS = {
-	Icon = "Icon",
-	MultiplierText = "MultiplierText",
-}
-
--- 按合同路径等待 UI 节点。
-local function waitForPath(root, path)
-	if type(path) ~= "table" then
-		warn("Missing Pet UI path config.")
-		return nil
-	end
-
-	local current = root
-
-	for _, childName in ipairs(path) do
-		if not current then
-			return nil
-		end
-
-		current = current:WaitForChild(childName, NODE_WAIT_SECONDS)
-		if not current then
-			warn("Missing Pet UI node: " .. table.concat(path, "/"))
-			return nil
-		end
-	end
-
-	return current
-end
-
--- 清理上次渲染克隆出来的子节点。
 local function clearGeneratedChildren(container)
-	if not container then
-		return
-	end
-
 	for _, child in ipairs(container:GetChildren()) do
 		if child:GetAttribute(GENERATED_ATTRIBUTE) then
 			child:Destroy()
@@ -54,58 +13,36 @@ local function clearGeneratedChildren(container)
 	end
 end
 
--- 切换 GUI 节点可见性。
 local function setVisible(instance, isVisible)
-	if instance and instance:IsA("GuiObject") then
-		instance.Visible = isVisible == true
-	end
+	instance.Visible = isVisible == true
 end
 
--- 查找指定名称的任意子孙节点。
 local function findDescendant(root, childName)
-	if not root or type(childName) ~= "string" or childName == "" then
-		return nil
-	end
-
-	return root:FindFirstChild(childName, true)
+	local descendant = root:FindFirstChild(childName, true)
+	assert(descendant, "Missing pet card field '" .. childName .. "' under " .. root:GetFullName() .. ".")
+	return descendant
 end
 
--- 给文本节点写入文本。
 local function setTextObject(textObject, value)
-	if textObject and (textObject:IsA("TextLabel") or textObject:IsA("TextButton")) then
-		textObject.Text = value or ""
-	end
+	textObject.Text = value
 end
 
--- 给宠物卡图标写入图片。
 local function setPetIcon(root, fieldName, image)
 	local icon = findDescendant(root, fieldName)
-	if icon and (icon:IsA("ImageLabel") or icon:IsA("ImageButton")) then
-		icon.Image = image or ""
-		icon.Visible = type(image) == "string" and image ~= ""
-	end
+	assert(icon:IsA("ImageLabel") or icon:IsA("ImageButton"), "Pet card icon must be an image object.")
+	icon.Image = image or ""
+	icon.Visible = type(image) == "string" and image ~= ""
 end
 
--- 按显示模型填充宠物卡。
 local function setPetCard(card, petModel, cardFields)
-	if not card then
-		return
-	end
-
-	local fields = cardFields or DEFAULT_PET_CARD_FIELDS
 	local hasPet = type(petModel) == "table"
 	card.Visible = hasPet
 
-	setPetIcon(card, fields.Icon, hasPet and petModel.Icon or nil)
-	setTextObject(findDescendant(card, fields.MultiplierText), hasPet and petModel.MultiplierText or "")
+	setPetIcon(card, cardFields.Icon, hasPet and petModel.Icon or nil)
+	setTextObject(findDescendant(card, cardFields.MultiplierText), hasPet and petModel.MultiplierText or "")
 end
 
--- 设置宠物卡的选中描边。
 local function setCardSelected(card, isSelected)
-	if not card then
-		return
-	end
-
 	local stroke = card:FindFirstChild("SelectedStroke")
 	if not stroke then
 		stroke = Instance.new("UIStroke")
@@ -118,12 +55,7 @@ local function setCardSelected(card, isSelected)
 	stroke.Enabled = isSelected == true
 end
 
--- 克隆模板并标记为渲染生成节点。
 local function cloneTemplate(template, parent, name, layoutOrder)
-	if not template then
-		return nil
-	end
-
 	local clone = template:Clone()
 	clone.Name = name
 	clone.LayoutOrder = layoutOrder
@@ -134,179 +66,92 @@ local function cloneTemplate(template, parent, name, layoutOrder)
 	return clone
 end
 
--- 解析宠物背包需要的所有 UI 节点。
-function Renderer.Resolve(player)
-	local playerGui = player:WaitForChild("PlayerGui")
-	local hud = playerGui:WaitForChild(PetInventoryPanelTheta.HudScreenGuiName or "HUD", GUI_WAIT_SECONDS)
-	local mainGui = playerGui:WaitForChild(PetInventoryPanelTheta.ScreenGuiName or "Main", GUI_WAIT_SECONDS)
-
-	if not hud or not mainGui then
-		warn("Pet UI requires HUD and Main ScreenGui.")
-		return nil
-	end
-
-	local paths = PetInventoryPanelTheta.Paths or {}
-	return {
-		CardFields = PetInventoryPanelTheta.PetCardFields or DEFAULT_PET_CARD_FIELDS,
-		PetButton = waitForPath(hud, paths.PetButton),
-		PanelRoot = waitForPath(mainGui, paths.PanelRoot),
-		CloseButton = waitForPath(mainGui, paths.CloseButton),
-		OwnedContainer = waitForPath(mainGui, paths.OwnedList),
-		OwnedTemplate = waitForPath(mainGui, paths.OwnedTemplate),
-		EquippedContainer = waitForPath(mainGui, paths.EquippedList),
-		EquippedTemplate = waitForPath(mainGui, paths.EquippedTemplate),
-		EquippedText = waitForPath(mainGui, paths.EquippedText),
-		NoPet = waitForPath(mainGui, paths.NoPet),
-		EquipBestButton = waitForPath(mainGui, paths.EquipBestButton),
-		UnequipAllButton = waitForPath(mainGui, paths.UnequipAllButton),
-		DeleteButton = waitForPath(mainGui, paths.DeleteButton),
-	}
-end
-
--- 解析可点击目标，但不绑定回调。
 function Renderer.GetActivatedTarget(root)
-	if not root then
-		return nil
-	end
-
-	-- 情况 1：root 本身就是按钮
-	-- 例如 Pet 按钮、Close 按钮、Delete 按钮、EquipBest 按钮
 	if root:IsA("GuiButton") then
 		return root
 	end
 
-	-- 情况 2：root 是 Frame / ImageLabel / 普通 GuiObject
-	-- 不再查找子孙按钮，避免绑定到 Pet_1.mask.Button.2 这种内部按钮
-	if root:IsA("GuiObject") then
-		local hitButton = root:FindFirstChild("InteractionButton")
-
-		if hitButton and not hitButton:IsA("GuiButton") then
-			hitButton:Destroy()
-			hitButton = nil
-		end
-
-		if not hitButton then
-			hitButton = Instance.new("TextButton")
-			hitButton.Name = "InteractionButton"
-			hitButton.BackgroundTransparency = 1
-			hitButton.BorderSizePixel = 0
-			hitButton.Text = ""
-			hitButton.AutoButtonColor = false
-
-			hitButton.Size = UDim2.fromScale(1, 1)
-			hitButton.Position = UDim2.fromScale(0, 0)
-			hitButton.AnchorPoint = Vector2.new(0, 0)
-
-			-- 盖在当前 root 的内容之上，保证整张卡可以点
-			hitButton.ZIndex = root.ZIndex + 100
-
-			hitButton.Visible = true
-			hitButton.Active = true
-
-			hitButton.Parent = root
-		else
-			hitButton.Visible = true
-			hitButton.Active = true
-			hitButton.Size = UDim2.fromScale(1, 1)
-			hitButton.Position = UDim2.fromScale(0, 0)
-			hitButton.AnchorPoint = Vector2.new(0, 0)
-			hitButton.ZIndex = root.ZIndex + 100
-		end
-
-		return hitButton
+	local hitButton = root:FindFirstChild("InteractionButton")
+	if hitButton and not hitButton:IsA("GuiButton") then
+		hitButton:Destroy()
+		hitButton = nil
 	end
 
-	return nil
+	if not hitButton then
+		hitButton = Instance.new("TextButton")
+		hitButton.Name = "InteractionButton"
+		hitButton.BackgroundTransparency = 1
+		hitButton.BorderSizePixel = 0
+		hitButton.Text = ""
+		hitButton.AutoButtonColor = false
+		hitButton.Parent = root
+	end
+
+	hitButton.Size = UDim2.fromScale(1, 1)
+	hitButton.Position = UDim2.fromScale(0, 0)
+	hitButton.AnchorPoint = Vector2.new(0, 0)
+	hitButton.ZIndex = root.ZIndex + 100
+	hitButton.Visible = true
+	hitButton.Active = true
+
+	return hitButton
 end
 
--- 给按钮或 GUI 节点绑定点击事件。通用模板，具体绑定在初始化。
 function Renderer.ConnectActivated(root, callback)
-	if not callback then
-		return nil
-	end
-
 	local target = Renderer.GetActivatedTarget(root)
-	if not target then
-		return nil
-	end
-
 	target.Activated:Connect(callback)
 	return target
 end
 
--- 切换背包面板开关。
 function Renderer.SetOpen(refs, isOpen)
-	if refs then
-		setVisible(refs.PanelRoot, isOpen == true)
-	end
+	setVisible(refs.PanelRoot, isOpen == true)
 end
 
--- 判断背包面板是否打开。
 function Renderer.IsOpen(refs)
-	return refs and refs.PanelRoot and refs.PanelRoot.Visible == true
+	return refs.PanelRoot.Visible == true
 end
 
--- 渲染拥有宠物列表并返回生成卡片。
 function Renderer.RenderOwnedPets(refs, petModels)
-	clearGeneratedChildren(refs and refs.OwnedContainer)
-	setVisible(refs and refs.OwnedTemplate, false)
+	clearGeneratedChildren(refs.OwnedContainer)
+	setVisible(refs.OwnedTemplate, false)
 
 	local renderedCards = {}
-	if not refs or type(petModels) ~= "table" then
-		return renderedCards
-	end
-
 	for _, petModel in ipairs(petModels) do
 		local card = cloneTemplate(refs.OwnedTemplate, refs.OwnedContainer, petModel.Name, petModel.LayoutOrder)
-		if card then
-			setPetCard(card, petModel, refs.CardFields)
-			setCardSelected(card, petModel.IsSelected)
-			table.insert(renderedCards, {
-				Root = card,
-				Model = petModel,
-			})
-		end
+		setPetCard(card, petModel, refs.CardFields)
+		setCardSelected(card, petModel.IsSelected)
+		table.insert(renderedCards, {
+			Root = card,
+			Model = petModel,
+		})
 	end
 
 	return renderedCards
 end
 
--- 渲染已装备宠物列表并返回生成卡片。
 function Renderer.RenderEquippedPets(refs, petModels)
-	clearGeneratedChildren(refs and refs.EquippedContainer)
-	setVisible(refs and refs.EquippedTemplate, false)
+	clearGeneratedChildren(refs.EquippedContainer)
+	setVisible(refs.EquippedTemplate, false)
 
 	local renderedCards = {}
-	if not refs or type(petModels) ~= "table" then
-		return renderedCards
-	end
-
 	for _, petModel in ipairs(petModels) do
 		local card = cloneTemplate(refs.EquippedTemplate, refs.EquippedContainer, petModel.Name, petModel.LayoutOrder)
-		if card then
-			setPetCard(card, petModel, refs.CardFields)
-			table.insert(renderedCards, {
-				Root = card,
-				Model = petModel,
-			})
-		end
+		setPetCard(card, petModel, refs.CardFields)
+		table.insert(renderedCards, {
+			Root = card,
+			Model = petModel,
+		})
 	end
 
 	return renderedCards
 end
 
--- 设置装备数量文本。
 function Renderer.SetEquippedText(refs, text)
-	if refs then
-		setTextObject(refs.EquippedText, text)
-	end
+	setTextObject(refs.EquippedText, text)
 end
 
--- 切换空背包提示。
 function Renderer.SetNoPetVisible(refs, isVisible)
-	if refs then
-		setVisible(refs.NoPet, isVisible == true)
-	end
+	setVisible(refs.NoPet, isVisible == true)
 end
 
 return Renderer

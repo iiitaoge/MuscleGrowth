@@ -13,6 +13,7 @@ local HUDController = require(script.Parent.Parent.T.HUD.Controller)
 local PetInventoryController = require(script.Parent.Parent.T.PetInventory.Controller)
 local PlayerVisualSync = require(script.Parent.Parent.T.PlayerVisualSync)
 local RebirthPanelController = require(script.Parent.Parent.T.RebirthPanel.Controller)
+local UIContract = require(script.Parent.Parent.T.UIContract)
 
 local AutoAreaController = require(modules.AutoAreaController)
 local EggInteractionController = require(modules.EggInteractionController)
@@ -24,6 +25,8 @@ local RemoteClient = require(modules.RemoteClient)
 local SceneQuery = require(modules.SceneQuery)
 local SnapshotController = require(modules.SnapshotController)
 local TrainingGainAttributeController = require(modules.TrainingGainAttributeController)
+
+UIContract.ValidateAll()
 
 local remoteClient = RemoteClient.Init()	-- 所有向服务器发送的事件
 local hudView = HUDController.Init(player)

@@ -7,18 +7,11 @@ local theta = ReplicatedStorage:WaitForChild("theta")
 local eggTheta = theta:WaitForChild("EggTheta")
 local EggCostTheta = require(eggTheta:WaitForChild("EggCostTheta"))
 local EggDisplayTheta = require(eggTheta:WaitForChild("EggDisplayTheta"))
-local EggPanelTheta = require(eggTheta:WaitForChild("EggPanelTheta"))
 local EggRewardTheta = require(eggTheta:WaitForChild("EggRewardTheta"))
 local PetTheta = require(theta:WaitForChild("PetTheta"))
+local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}
-
-local DEFAULT_ROLL_BUTTON_TEXT = {
-	Single = "E",
-	Triple = "H",
-	Auto = "A",
-	AutoStop = "STOP",
-}
 
 -- 将数字格式化成 UI 文本。
 local function formatNumber(value)
@@ -79,16 +72,16 @@ function DataAdapter.BuildEggModel(eggId, isAutoRolling)
 	end
 
 	local costAmount = tonumber(eggCostConfig.CostAmount) or 0
-	local rollButtonText = EggPanelTheta.RollButtonText or DEFAULT_ROLL_BUTTON_TEXT
+	local rollButtonText = UIContract.GetConfig("EggPanel").RollButtonText
 
 	return {
 		Title = eggDisplayConfig.DisplayName or eggId,
 		Rewards = rewards,
 		Buttons = {
-			Single = buildButtonModel(rollButtonText.Single or "E", costAmount),
-			Triple = buildButtonModel(rollButtonText.Triple or "H", costAmount * 3),
+			Single = buildButtonModel(rollButtonText.Single, costAmount),
+			Triple = buildButtonModel(rollButtonText.Triple, costAmount * 3),
 			Auto = buildButtonModel(
-				isAutoRolling and (rollButtonText.AutoStop or "STOP") or (rollButtonText.Auto or "A"),
+				isAutoRolling and rollButtonText.AutoStop or rollButtonText.Auto,
 				costAmount
 			),
 		},

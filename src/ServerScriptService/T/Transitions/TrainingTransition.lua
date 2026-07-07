@@ -14,6 +14,7 @@ local TrainingTransition = {}
 
 local MOVE_ACTIVITY_MULTIPLIER = 1
 local MAX_UNCONFIRMED_MOVE_CHECKS = 3
+local GROWTH_INTERVAL_SECONDS = 1
 
 local function normalizeMultiplier(multiplier)
 	multiplier = tonumber(multiplier) or 1
@@ -29,7 +30,9 @@ local function createInitialRuntimeState()
 		LastMovementObservedAt = 0,
 		UnconfirmedMoveChecks = 0,
 		CurrentAutoAreaId = nil,	-- 玩家当前服务端确认的单个自动区
-		GrowthLoopActive = false,	-- 玩家是否处于增长循环中
+		GrowthLoopActive = false,	-- 玩家是否已有增长调度循环
+		NextGrowthAt = nil,	-- 当前训练会话下一次允许增长的时间戳
+		GrowthLoopToken = 0,	-- 增长循环版本号，用于让旧循环自动失效
 		LastPetRollTime = 0,	-- 玩家上次抽宠的时间戳，用于服务端冷却
 	}
 end
@@ -51,6 +54,13 @@ local function normalizeRuntimeState(runtimeState)
 
 	runtimeState.AutoAreaContacts = nil
 	runtimeState.GrowthLoopActive = runtimeState.GrowthLoopActive == true
+	local nextGrowthAt = tonumber(runtimeState.NextGrowthAt)
+	if nextGrowthAt and nextGrowthAt >= 0 then
+		runtimeState.NextGrowthAt = nextGrowthAt
+	else
+		runtimeState.NextGrowthAt = nil
+	end
+	runtimeState.GrowthLoopToken = math.max(0, math.floor(tonumber(runtimeState.GrowthLoopToken) or 0))
 	runtimeState.LastPetRollTime = math.max(0, tonumber(runtimeState.LastPetRollTime) or 0)
 	return runtimeState
 end
@@ -76,13 +86,12 @@ local function isAutoAreaUnlocked(progressState, areaConfig)
 	return rebirthCount >= requiredRebirth
 end
 
-local function clearCurrentAutoArea(player, runtimeState)
+local function clearCurrentAutoArea(runtimeState)
 	if runtimeState.CurrentAutoAreaId == nil then
 		return runtimeState
 	end
 
 	runtimeState.CurrentAutoAreaId = nil
-	TrainingRuntimeState.Set(player, runtimeState)
 	return runtimeState
 end
 
@@ -94,7 +103,7 @@ local function resolveCurrentAutoArea(player, progressState, runtimeState)
 
 	local areaConfig = AutoAreaTheta[areaId]
 	if not areaConfig or not TrainingAreaObservation.IsPlayerInArea(player, areaId) then
-		clearCurrentAutoArea(player, runtimeState)
+		clearCurrentAutoArea(runtimeState)
 		return nil, nil
 	end
 
@@ -128,6 +137,37 @@ local function observeRequestedMovement(player, runtimeState, autoAreaId)
 	return false, runtimeState
 end
 
+local function writeGrowthDecisionRuntime(player, runtimeState, initialMoveRequested, initialAutoAreaId)
+	local latestRuntimeState = TrainingRuntimeState.Get(player)
+	if not latestRuntimeState then
+		return nil, true
+	end
+
+	latestRuntimeState = normalizeRuntimeState(latestRuntimeState)
+	local hasExternalRuntimeChange = latestRuntimeState.MoveRequested ~= initialMoveRequested
+		or latestRuntimeState.CurrentAutoAreaId ~= initialAutoAreaId
+
+	runtimeState.GrowthLoopActive = latestRuntimeState.GrowthLoopActive
+	runtimeState.NextGrowthAt = latestRuntimeState.NextGrowthAt
+	runtimeState.GrowthLoopToken = latestRuntimeState.GrowthLoopToken
+	runtimeState.LastPetRollTime = latestRuntimeState.LastPetRollTime
+
+	if latestRuntimeState.MoveRequested ~= initialMoveRequested then
+		runtimeState.MoveRequested = latestRuntimeState.MoveRequested
+		runtimeState.IsMoving = latestRuntimeState.IsMoving
+		runtimeState.LastMovementPosition = latestRuntimeState.LastMovementPosition
+		runtimeState.LastMovementObservedAt = latestRuntimeState.LastMovementObservedAt
+		runtimeState.UnconfirmedMoveChecks = latestRuntimeState.UnconfirmedMoveChecks
+	end
+
+	if latestRuntimeState.CurrentAutoAreaId ~= initialAutoAreaId then
+		runtimeState.CurrentAutoAreaId = latestRuntimeState.CurrentAutoAreaId
+	end
+
+	TrainingRuntimeState.Set(player, runtimeState)
+	return runtimeState, hasExternalRuntimeChange
+end
+
 -- 检测是否需要增长
 local function getGrowthDecision(player)
 	-- 读S_r
@@ -138,10 +178,24 @@ local function getGrowthDecision(player)
 
 	-- 读或者写S_r
 	local runtimeState = getRuntimeOrInit(player)
+	local initialMoveRequested = runtimeState.MoveRequested
+	local initialAutoAreaId = runtimeState.CurrentAutoAreaId
 	local autoAreaId, autoAreaMultiplier = resolveCurrentAutoArea(player, progressState, runtimeState)
 	local isMoving
 	isMoving, runtimeState = observeRequestedMovement(player, runtimeState, autoAreaId)
-	TrainingRuntimeState.Set(player, runtimeState)
+	local hasExternalRuntimeChange
+	runtimeState, hasExternalRuntimeChange = writeGrowthDecisionRuntime(
+		player,
+		runtimeState,
+		initialMoveRequested,
+		initialAutoAreaId
+	)
+	if not runtimeState then
+		return false, 1, false
+	end
+	if hasExternalRuntimeChange then
+		return false, 1, runtimeState.MoveRequested or runtimeState.CurrentAutoAreaId ~= nil
+	end
 
 	local shouldGrow = isMoving or autoAreaId ~= nil
 	local shouldKeepLoopActive = runtimeState.MoveRequested or autoAreaId ~= nil
@@ -157,17 +211,6 @@ local function getGrowthDecision(player)
 	return shouldGrow, activityMultiplier, shouldKeepLoopActive
 end
 
--- 设置增长状态（激活，停止）
-local function setGrowthLoopActive(player, isActive)
-	local runtimeState = TrainingRuntimeState.Get(player)
-	if not runtimeState then
-		return
-	end
-
-	runtimeState.GrowthLoopActive = isActive == true
-	TrainingRuntimeState.Set(player, runtimeState)
-end
-
 local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	local nextProgressState = table.clone(progressState)
 
@@ -180,10 +223,134 @@ local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	PlayerProgressState.Set(player, nextProgressState)
 end
 
+local function isCurrentGrowthLoop(runtimeState, loopToken)
+	return runtimeState
+		and runtimeState.GrowthLoopActive == true
+		and runtimeState.GrowthLoopToken == loopToken
+		and runtimeState.NextGrowthAt ~= nil
+end
+
+local function clearGrowthLoopState(runtimeState)
+	runtimeState.GrowthLoopActive = false
+	runtimeState.NextGrowthAt = nil
+	runtimeState.GrowthLoopToken = runtimeState.GrowthLoopToken + 1
+
+	return runtimeState
+end
+
+local function stopGrowthLoop(player)
+	local runtimeState = TrainingRuntimeState.Get(player)
+	if not runtimeState then
+		return
+	end
+
+	runtimeState = normalizeRuntimeState(runtimeState)
+	clearGrowthLoopState(runtimeState)
+	TrainingRuntimeState.Set(player, runtimeState)
+end
+
+local function stopGrowthLoopIfCurrent(player, loopToken)
+	local runtimeState = TrainingRuntimeState.Get(player)
+	if not runtimeState then
+		return false
+	end
+
+	runtimeState = normalizeRuntimeState(runtimeState)
+	if runtimeState.GrowthLoopToken ~= loopToken then
+		return false
+	end
+
+	clearGrowthLoopState(runtimeState)
+	TrainingRuntimeState.Set(player, runtimeState)
+	return true
+end
+
+local function scheduleNextGrowthIfCurrent(player, loopToken)
+	local runtimeState = TrainingRuntimeState.Get(player)
+	if not runtimeState then
+		return false
+	end
+
+	runtimeState = normalizeRuntimeState(runtimeState)
+	if not isCurrentGrowthLoop(runtimeState, loopToken) then
+		return false
+	end
+
+	runtimeState.NextGrowthAt = os.clock() + GROWTH_INTERVAL_SECONDS
+	TrainingRuntimeState.Set(player, runtimeState)
+	return true
+end
+
+local function runGrowthLoop(player, loopToken)
+	while true do
+		local runtimeState = TrainingRuntimeState.Get(player)
+		if not runtimeState then
+			break
+		end
+
+		runtimeState = normalizeRuntimeState(runtimeState)
+		if not isCurrentGrowthLoop(runtimeState, loopToken) then
+			break
+		end
+
+		local waitTime = math.max(runtimeState.NextGrowthAt - os.clock(), 0)
+		if waitTime > 0 then
+			task.wait(waitTime)
+		end
+
+		runtimeState = TrainingRuntimeState.Get(player)
+		if not runtimeState then
+			break
+		end
+
+		runtimeState = normalizeRuntimeState(runtimeState)
+		if not isCurrentGrowthLoop(runtimeState, loopToken) then
+			break
+		end
+
+		if os.clock() >= runtimeState.NextGrowthAt then
+			local shouldGrow, activityMultiplier, shouldKeepLoopActive = getGrowthDecision(player)
+
+			runtimeState = TrainingRuntimeState.Get(player)
+			if not runtimeState then
+				break
+			end
+
+			runtimeState = normalizeRuntimeState(runtimeState)
+			if not isCurrentGrowthLoop(runtimeState, loopToken) then
+				break
+			end
+
+			if not shouldKeepLoopActive then
+				stopGrowthLoopIfCurrent(player, loopToken)
+				break
+			end
+
+			if shouldGrow then
+				local progressState = PlayerProgressState.Get(player)
+				if not progressState then
+					stopGrowthLoopIfCurrent(player, loopToken)
+					break
+				end
+
+				local strengthGain, expGain = TrainingGainRules.CalculateTrainingGainValues(
+					progressState,
+					activityMultiplier
+				)
+				applyTrainingGains(player, progressState, strengthGain, expGain)
+				PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
+			end
+
+			if not scheduleNextGrowthIfCurrent(player, loopToken) then
+				break
+			end
+		end
+	end
+end
+
 -- 设置增长状态为false
 function TrainingTransition.StopGrowth(player)
-	setGrowthLoopActive(player, false)
-	PlayerVisualStateSync.SetTrainingActive(player, false)
+	stopGrowthLoop(player)
 end
 
 function TrainingTransition.InitRuntime(player)
@@ -197,51 +364,23 @@ end
 
 -- 如果增长状态被激活，则开始执行增长循环
 local function startGrowthLoop(player)
-	-- 读取S_r
 	local runtimeState = getRuntimeOrInit(player)
+	if runtimeState.NextGrowthAt == nil then
+		runtimeState.NextGrowthAt = os.clock() + GROWTH_INTERVAL_SECONDS
+	end
+
 	if runtimeState.GrowthLoopActive then
+		TrainingRuntimeState.Set(player, runtimeState)
 		return
 	end
 
-	-- 写S_r
 	runtimeState.GrowthLoopActive = true
+	runtimeState.GrowthLoopToken = runtimeState.GrowthLoopToken + 1
+	local loopToken = runtimeState.GrowthLoopToken
 	TrainingRuntimeState.Set(player, runtimeState)
 
-	-- 流程控制
 	task.spawn(function()
-		while true do
-			task.wait(1)
-
-			-- 玩家可能不符合增长循环了（停止移动 不在自动区） 读取S_r 
-			local currentRuntimeState = TrainingRuntimeState.Get(player)
-			if not currentRuntimeState or not currentRuntimeState.GrowthLoopActive then
-				break
-			end
-			
-			-- 玩家需要被停止增长，更改增长状态为停止 读取S_r
-			local shouldGrow, activityMultiplier, shouldKeepLoopActive = getGrowthDecision(player)
-			PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)	-- 这里
-			if not shouldKeepLoopActive then
-				TrainingTransition.StopGrowth(player)
-				break
-			end
-
-			if shouldGrow then
-				--玩家可能在增长循环中直接退出游戏
-				local progressState = PlayerProgressState.Get(player)
-				if not progressState then
-					TrainingTransition.StopGrowth(player)
-					break
-				end
-
-				local strengthGain, expGain = TrainingGainRules.CalculateTrainingGainValues(
-					progressState,
-					activityMultiplier
-				)
-				applyTrainingGains(player, progressState, strengthGain, expGain)
-				PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
-			end
-		end
+		runGrowthLoop(player, loopToken)
 	end)
 end
 
@@ -306,8 +445,7 @@ end
 
 -- 更新增长状态
 function TrainingTransition.RefreshGrowth(player)
-	local shouldGrow, _, shouldKeepLoopActive = getGrowthDecision(player)
-	PlayerVisualStateSync.SetTrainingActive(player, shouldGrow)
+	local _, _, shouldKeepLoopActive = getGrowthDecision(player)
 	if shouldKeepLoopActive then
 		startGrowthLoop(player)
 	else

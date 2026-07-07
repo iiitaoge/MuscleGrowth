@@ -1,13 +1,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BarbellTheta"))
-local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
+local theta = ReplicatedStorage:WaitForChild("theta")
+local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
+local BarbellDisplayTheta = require(theta:WaitForChild("BarbellDisplayTheta"))
+local SceneTheta = require(theta:WaitForChild("SceneTheta"))
 
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)
 
 local BarbellWorldSync = {}
 
-local DISPLAY_MODEL_NAME = "DisplayModel"
+local DISPLAY_MODEL_NAME = BarbellDisplayTheta.DisplayModelName
 local EQUIPPED_MODEL_NAME = "EquippedBarbell"
 local PROMPT_BOUND_ATTRIBUTE = "MuscleGrowthBarbellPromptBound"
 
@@ -101,13 +103,52 @@ local function getRotationOffsetCFrame(rotationDegrees)
 	)
 end
 
-local function findTextLabel(root, labelName)
-	local label = root and root:FindFirstChild(labelName, true)
-	if label and label:IsA("TextLabel") then
-		return label
+local function findPath(root, path)
+	local current = root
+	for _, childName in ipairs(path) do
+		if not current then
+			return nil
+		end
+
+		current = current:FindFirstChild(childName)
 	end
 
-	return nil
+	return current
+end
+
+local function getParentPath(path)
+	local parentPath = {}
+	for index = 1, #path - 1 do
+		parentPath[index] = path[index]
+	end
+
+	return parentPath
+end
+
+local function ensurePath(root, path)
+	local current = root
+	for _, childName in ipairs(path) do
+		local child = current:FindFirstChild(childName)
+		if not child then
+			child = Instance.new("Folder")
+			child.Name = childName
+			child.Parent = current
+		end
+
+		current = child
+	end
+
+	return current
+end
+
+local function requireTextLabelByPath(root, path, context)
+	local label = findPath(root, path)
+	if not label then
+		error(context .. " was not found under " .. root:GetFullName() .. ".", 2)
+	end
+
+	assert(label:IsA("TextLabel"), context .. " must be a TextLabel.")
+	return label
 end
 
 local function prepareDisplayModel(instance)
@@ -120,21 +161,30 @@ local function prepareDisplayModel(instance)
 	end
 end
 
-local function cloneDisplayChildren(oldDisplay, nextDisplay)
+local function cloneDisplayBillboard(oldDisplay, nextDisplay)
 	if not oldDisplay or not nextDisplay then
 		return
 	end
 
-	local fallbackParent = BarbellObservation.GetFirstBasePart(nextDisplay) or nextDisplay
-	for _, child in ipairs(oldDisplay:GetDescendants()) do
-		if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
-			local childCopy = child:Clone()
-			if fallbackParent:IsA("BasePart") then
-				childCopy.Adornee = fallbackParent
-			end
-			childCopy.Parent = fallbackParent
-		end
+	local billboardPath = BarbellDisplayTheta.BillboardGuiPath
+	local oldBillboard = findPath(oldDisplay, billboardPath)
+	if not oldBillboard then
+		error("Barbell display billboard was not found under " .. oldDisplay:GetFullName() .. ".", 2)
 	end
+	assert(oldBillboard:IsA("BillboardGui"), "Barbell display billboard must be a BillboardGui.")
+
+	local parent = ensurePath(nextDisplay, getParentPath(billboardPath))
+	local existingBillboard = parent:FindFirstChild(oldBillboard.Name)
+	if existingBillboard then
+		existingBillboard:Destroy()
+	end
+
+	local billboardCopy = oldBillboard:Clone()
+	local adornee = BarbellObservation.GetFirstBasePart(nextDisplay)
+	if adornee then
+		billboardCopy.Adornee = adornee
+	end
+	billboardCopy.Parent = parent
 end
 
 local function renderDisplayBillboard(displayNode, barbellId)
@@ -143,16 +193,12 @@ local function renderDisplayBillboard(displayNode, barbellId)
 		return
 	end
 
-	local powerText = findTextLabel(displayNode, "power")
-	local trophiesText = findTextLabel(displayNode, "num")
+	local fieldPaths = BarbellDisplayTheta.FieldPaths
+	local powerText = requireTextLabelByPath(displayNode, fieldPaths.PowerText, "Barbell power text")
+	local trophiesText = requireTextLabelByPath(displayNode, fieldPaths.CostText, "Barbell cost text")
 
-	if powerText then
-		powerText.Text = formatMultiplier(barbellConfig.Multiplier) .. " Gain"
-	end
-
-	if trophiesText then
-		trophiesText.Text = formatNumber(barbellConfig.RequiredTrophies)
-	end
+	powerText.Text = formatMultiplier(barbellConfig.Multiplier) .. " Gain"
+	trophiesText.Text = formatNumber(barbellConfig.RequiredTrophies)
 end
 
 local function configurePrompt(displayHolder, barbellId, onPromptTriggered)
@@ -268,7 +314,7 @@ function BarbellWorldSync.RefreshDisplays(onPromptTriggered)
 			local nextDisplay = source:Clone()
 			nextDisplay.Name = DISPLAY_MODEL_NAME
 			nextDisplay.Parent = displayHolder
-			cloneDisplayChildren(oldDisplay, nextDisplay)
+			cloneDisplayBillboard(oldDisplay, nextDisplay)
 
 			if oldDisplay then
 				oldDisplay:Destroy()

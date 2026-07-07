@@ -4,8 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local PetInventoryPanelTheta = require(theta:WaitForChild("PetInventoryPanelTheta"))
 local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
+local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}
 
@@ -83,7 +83,7 @@ end
 
 -- 生成装备数量文本。
 function DataAdapter.BuildEquippedText(equippedCount, maxEquippedPets)
-	local format = PetInventoryPanelTheta.EquippedTextFormat or "Equipped ( %d/%d Pets)"
+	local format = UIContract.GetConfig("PetInventory").EquippedTextFormat
 	return string.format(format, equippedCount, maxEquippedPets)
 end
 

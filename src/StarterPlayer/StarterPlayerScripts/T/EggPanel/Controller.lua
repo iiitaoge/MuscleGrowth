@@ -4,44 +4,14 @@
 local UserInputService = game:GetService("UserInputService")
 
 local DataAdapter = require(script.Parent.DataAdapter)
+local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
 
 local Controller = {}
 
--- 空视图里使用的无操作函数。
-local function noop() end
-
--- 空视图里使用的 false 返回函数。
-local function returnFalse()
-	return false
-end
-
--- 空视图里使用的 nil 返回函数。
-local function returnNil()
-	return nil
-end
-
--- 构造 UI 不可用时的空视图。
-local function createNoopView()
-	return {
-		Open = noop,
-		Close = noop,
-		Refresh = noop,
-		SetRollHandler = noop,
-		SetAutoRolling = noop,
-		ShowRollResults = noop,
-		ShowAutoSummary = noop,
-		IsOpen = returnFalse,
-		GetCurrentEggId = returnNil,
-	}
-end
-
 -- 初始化蛋面板控制器。
 function Controller.Init(player)
-	local refs = Renderer.Resolve(player)
-	if not refs then
-		return createNoopView()
-	end
+	local refs = Refs.Resolve(player)
 
 	local currentEggId = nil
 	local latestData = nil
@@ -56,6 +26,7 @@ function Controller.Init(player)
 	-- 按当前状态刷新蛋面板。
 	local function renderEgg()
 		local eggModel = DataAdapter.BuildEggModel(currentEggId, isAutoRolling)
+		assert(eggModel, "Missing egg panel model for eggId: " .. tostring(currentEggId))
 		Renderer.RenderEgg(refs, eggModel)
 	end
 

@@ -2,28 +2,14 @@
 -- 编排重生面板打开关闭和请求按钮事件。
 
 local DataAdapter = require(script.Parent.DataAdapter)
+local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
 
 local Controller = {}
 
--- 空视图里使用的无操作函数。
-local function noop() end
-
--- 构造重生面板不可用时的空视图。
-local function createNoopView()
-	return {
-		Refresh = noop,
-		SetOpen = noop,
-		SetRequestHandler = noop,
-	}
-end
-
 -- 初始化重生面板控制器。
 function Controller.Init(player)
-	local refs = Renderer.Resolve(player)
-	if not refs then
-		return createNoopView()
-	end
+	local refs = Refs.Resolve(player)
 
 	local requestHandler = nil
 	local latestData = nil

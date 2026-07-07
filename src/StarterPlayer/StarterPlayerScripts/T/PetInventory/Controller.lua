@@ -2,48 +2,14 @@
 -- 编排宠物背包打开关闭、选择状态和装备/卸下/删除按钮事件。
 
 local DataAdapter = require(script.Parent.DataAdapter)
+local Refs = require(script.Parent.Refs)
 local Renderer = require(script.Parent.Renderer)
 
 local Controller = {}
 
--- 空视图里使用的无操作函数。
-local function noop() end
-
--- 空视图里使用的 nil 返回函数。
-local function returnNil()
-	return nil
-end
-
--- 空视图里使用的空数组返回函数。
-local function returnEmptyList()
-	return {}
-end
-
--- 空视图里使用的 false 返回函数。
-local function returnFalse()
-	return false
-end
-
--- 构造 UI 不可用时的空视图。
-local function createNoopView()
-	return {
-		Refresh = noop,
-		SetOpen = noop,
-		SetActionHandlers = noop,
-		GetPetButton = returnNil,
-		GetSelectedPetInstanceIds = returnEmptyList,
-		IsOpen = returnFalse,
-	}
-end
-
 -- 初始化宠物背包控制器。
 function Controller.Init(player)
-	local refs = Renderer.Resolve(player)
-	print("EquippedContainer =", refs.EquippedContainer and refs.EquippedContainer:GetFullName())
-	print("EquippedTemplate =", refs.EquippedTemplate and refs.EquippedTemplate:GetFullName())
-	if not refs then
-		return createNoopView()
-	end
+	local refs = Refs.Resolve(player)
 
 	local latestData = nil
 	local actionHandlers = {} :: {[string]: any}
@@ -108,15 +74,11 @@ function Controller.Init(player)
 		-- 给每个创建的宠物卡绑定选择状态
 		for _, renderedCard in ipairs(ownedCards) do
 			local petSnapshot = renderedCard.Model.Snapshot
-			print("绑定选中事件")
 			-- 背包宠物卡点击后切换删除选择状态。
-			local boundButton = Renderer.ConnectActivated(renderedCard.Root, function()
-				print("选中了")
+			Renderer.ConnectActivated(renderedCard.Root, function()
 				handleOwnedPetActivated(petSnapshot)
 				renderInventory(latestData)
 			end)
-
-			print("绑定结果:", boundButton, boundButton and boundButton:GetFullName(), boundButton and boundButton.ClassName)
 		end
 
 		for _, renderedCard in ipairs(equippedCards) do
