@@ -13,6 +13,12 @@ local ATTRIBUTES = SceneTheta.Attributes
 local VISUAL_BARBELL_NAME = "MG_ClientBarbell"
 local VISUAL_PET_FOLDER_NAME = "MG_ClientPets"
 
+-- 杠铃跟随右手；左手是否握住另一端由训练动画里的手部姿势决定。
+-- Position 是相对右手的位置：主要调 X 把杠铃中心推到两手之间，再调 Y/Z 贴合手掌。
+-- Rotation 是相对右手的旋转角度；如果杠铃没横过来，优先试 Z=90/-90，再试 Y=90/-90。
+local BARBELL_GRIP_POSITION = Vector3.new(-1.5, -0.05, -0.25)
+local BARBELL_GRIP_ROTATION_DEGREES = Vector3.new(90, 0, 0)
+
 local playerStates = {}
 local renderConnection = nil
 
@@ -110,12 +116,19 @@ local function prepareWeldedVisual(instance)
 	end
 end
 
-local function getEquipHand(character)
+local function getBarbellGripHand(character)
 	return character and (
 		character:FindFirstChild("RightHand")
 		or character:FindFirstChild("Right Arm")
 		or character:FindFirstChild("HumanoidRootPart")
 	)
+end
+
+local function getBarbellGripCFrame(hand)
+	local rotation = BARBELL_GRIP_ROTATION_DEGREES
+	return hand.CFrame
+		* CFrame.new(BARBELL_GRIP_POSITION)
+		* CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 end
 
 local function clearBarbell(character)
@@ -148,7 +161,7 @@ local function refreshBarbell(player)
 	end
 
 	local source = getBarbellSource(barbellId)
-	local hand = getEquipHand(character)
+	local hand = getBarbellGripHand(character)
 	if not source or not hand then
 		return
 	end
@@ -157,7 +170,8 @@ local function refreshBarbell(player)
 	visual.Name = VISUAL_BARBELL_NAME
 	visual.Parent = character
 	prepareWeldedVisual(visual)
-	pivotTo(visual, hand.CFrame * CFrame.new(0, -0.8, -0.7) * CFrame.Angles(0, math.rad(90), 0))
+	-- 不要同时焊左右手：单个刚体双手焊接会和手部动画互相拉扯。
+	pivotTo(visual, getBarbellGripCFrame(hand))
 	weldToHand(visual, hand)
 end
 
