@@ -65,6 +65,18 @@ local function normalizeRuntimeState(runtimeState)
 	return runtimeState
 end
 
+local function isTrainingVisualActive(runtimeState)
+	return runtimeState.MoveRequested == true or runtimeState.CurrentAutoAreaId ~= nil
+end
+
+local function setRuntimeState(player, runtimeState)
+	runtimeState = normalizeRuntimeState(runtimeState)
+	TrainingRuntimeState.Set(player, runtimeState)
+	PlayerVisualStateSync.SetTrainingActive(player, isTrainingVisualActive(runtimeState))
+
+	return runtimeState
+end
+
 -- 获取玩家的运行时数据，如果没有则初始化
 local function getRuntimeOrInit(player)
 	local runtimeState = TrainingRuntimeState.Get(player)
@@ -72,7 +84,7 @@ local function getRuntimeOrInit(player)
 		return normalizeRuntimeState(runtimeState)
 	end
 
-	TrainingRuntimeState.Init(player, createInitialRuntimeState())
+	setRuntimeState(player, createInitialRuntimeState())
 	return TrainingRuntimeState.Get(player)
 end
 
@@ -164,7 +176,7 @@ local function writeGrowthDecisionRuntime(player, runtimeState, initialMoveReque
 		runtimeState.CurrentAutoAreaId = latestRuntimeState.CurrentAutoAreaId
 	end
 
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 	return runtimeState, hasExternalRuntimeChange
 end
 
@@ -246,7 +258,7 @@ local function stopGrowthLoop(player)
 
 	runtimeState = normalizeRuntimeState(runtimeState)
 	clearGrowthLoopState(runtimeState)
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 end
 
 local function stopGrowthLoopIfCurrent(player, loopToken)
@@ -261,7 +273,7 @@ local function stopGrowthLoopIfCurrent(player, loopToken)
 	end
 
 	clearGrowthLoopState(runtimeState)
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 	return true
 end
 
@@ -277,7 +289,7 @@ local function scheduleNextGrowthIfCurrent(player, loopToken)
 	end
 
 	runtimeState.NextGrowthAt = os.clock() + GROWTH_INTERVAL_SECONDS
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 	return true
 end
 
@@ -354,12 +366,13 @@ function TrainingTransition.StopGrowth(player)
 end
 
 function TrainingTransition.InitRuntime(player)
-	TrainingRuntimeState.Init(player, createInitialRuntimeState())
+	setRuntimeState(player, createInitialRuntimeState())
 end
 
 function TrainingTransition.RemoveRuntime(player)
 	TrainingTransition.StopGrowth(player)
 	TrainingRuntimeState.Remove(player)
+	PlayerVisualStateSync.SetTrainingActive(player, false)
 end
 
 -- 如果增长状态被激活，则开始执行增长循环
@@ -370,14 +383,14 @@ local function startGrowthLoop(player)
 	end
 
 	if runtimeState.GrowthLoopActive then
-		TrainingRuntimeState.Set(player, runtimeState)
+		setRuntimeState(player, runtimeState)
 		return
 	end
 
 	runtimeState.GrowthLoopActive = true
 	runtimeState.GrowthLoopToken = runtimeState.GrowthLoopToken + 1
 	local loopToken = runtimeState.GrowthLoopToken
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 
 	task.spawn(function()
 		runGrowthLoop(player, loopToken)
@@ -403,7 +416,7 @@ function TrainingTransition.SetMoving(player, isMoving)
 	end
 
 	-- 设置为开始移动
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 	TrainingTransition.RefreshGrowth(player)
 
 	return true
@@ -421,7 +434,7 @@ function TrainingTransition.EnterAutoAreaClaim(player, areaId)
 
 	local runtimeState = getRuntimeOrInit(player)
 	runtimeState.CurrentAutoAreaId = areaId
-	TrainingRuntimeState.Set(player, runtimeState)
+	setRuntimeState(player, runtimeState)
 	TrainingTransition.RefreshGrowth(player)
 
 	return true
@@ -436,7 +449,7 @@ function TrainingTransition.LeaveAutoAreaClaim(player, areaId)
 	local runtimeState = getRuntimeOrInit(player)
 	if runtimeState.CurrentAutoAreaId == areaId then
 		runtimeState.CurrentAutoAreaId = nil
-		TrainingRuntimeState.Set(player, runtimeState)
+		setRuntimeState(player, runtimeState)
 	end
 	TrainingTransition.RefreshGrowth(player)
 
