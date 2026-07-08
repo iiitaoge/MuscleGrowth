@@ -15,18 +15,27 @@ local EggWorldSync = {}
 local WORLD_WAIT_SECONDS = 10
 local PROMPT_BOUND_ATTRIBUTE = "MuscleGrowthEggPromptConfigured"
 
-local function getUseSceneRoot()
-	return Workspace:WaitForChild(SceneTheta.WorkspaceRootName, WORLD_WAIT_SECONDS)
-end
+local function waitForPath(root, path, context)
+	if not root or type(path) ~= "table" then
+		warn(context .. " path is invalid.")
+		return nil
+	end
 
-local function getSceneRoot(sceneRootName)
-	local useScene = getUseSceneRoot()
-	return useScene and useScene:WaitForChild(sceneRootName or SceneTheta.SceneEggRootName, WORLD_WAIT_SECONDS)
-end
+	local current = root
+	for _, childName in ipairs(path) do
+		if type(childName) ~= "string" or childName == "" then
+			warn(context .. " path contains an invalid child name.")
+			return nil
+		end
 
-local function getEggSourceRoot(sourceRootName)
-	local toUseScene = ServerStorage:WaitForChild(SceneTheta.ServerToUseSceneRootName, WORLD_WAIT_SECONDS)
-	return toUseScene and toUseScene:WaitForChild(sourceRootName or SceneTheta.EggSourceFolderName, WORLD_WAIT_SECONDS)
+		current = current:WaitForChild(childName, WORLD_WAIT_SECONDS)
+		if not current then
+			warn(context .. " missing child: " .. childName)
+			return nil
+		end
+	end
+
+	return current
 end
 
 local function disableScripts(instance)
@@ -102,8 +111,10 @@ local function getExistingVisual(holder, promptPartName)
 	return nil
 end
 
-local function configurePrompt(holder, eggId)
-	local prompt = holder and holder:FindFirstChildWhichIsA("ProximityPrompt", true)
+local function configurePrompt(holder, eggId, promptPartName)
+	local promptRoot = holder and holder:FindFirstChild(promptPartName, true)
+	local prompt = promptRoot and promptRoot:FindFirstChildWhichIsA("ProximityPrompt", true)
+		or holder and holder:FindFirstChildWhichIsA("ProximityPrompt", true)
 	if not prompt then
 		return
 	end
@@ -116,50 +127,61 @@ local function configurePrompt(holder, eggId)
 	prompt:SetAttribute(PROMPT_BOUND_ATTRIBUTE, true)
 end
 
+local function refreshEggInstance(instanceId, instanceConfig)
+	if type(instanceConfig) ~= "table" then
+		warn("Egg scene instance config is invalid: " .. tostring(instanceId))
+		return false
+	end
+
+	local eggId = instanceConfig.EggId
+	local eggConfig = type(eggId) == "string" and EggSceneTheta.Eggs[eggId] or nil
+	if type(eggConfig) ~= "table" then
+		warn("Egg scene instance has invalid EggId: " .. tostring(instanceId))
+		return false
+	end
+
+	local source = waitForPath(ServerStorage, eggConfig.SourcePath, "Egg source " .. tostring(eggId))
+	local holder = waitForPath(Workspace, instanceConfig.HolderPath, "Egg holder " .. tostring(instanceId))
+	if not source or not holder then
+		return false
+	end
+
+	local promptPartName = instanceConfig.PromptPartName or eggConfig.PromptPartName or SceneTheta.EggPromptPartName
+	local existingVisual = getExistingVisual(holder, promptPartName)
+	local targetAnchor = BarbellObservation.GetFirstBasePart(existingVisual)
+	local targetCFrame = targetAnchor and targetAnchor.CFrame or BarbellObservation.GetInstancePivot(holder)
+	local nextVisual = source:Clone()
+	nextVisual.Name = SceneTheta.EggDisplayModelName
+	nextVisual.Parent = holder
+
+	if existingVisual and existingVisual ~= nextVisual then
+		existingVisual:Destroy()
+	end
+
+	prepareDisplayModel(nextVisual)
+	alignInstanceAnchorTo(nextVisual, targetCFrame)
+	configurePrompt(holder, eggId, promptPartName)
+
+	return true
+end
+
 function EggWorldSync.RefreshDisplays()
-	local hasMissingRoot = false
+	local hasMissingInstance = false
+	local instances = EggSceneTheta.Instances
 
-	for eggId, eggSceneConfig in pairs(EggSceneTheta) do
-		local sceneRoot = getSceneRoot(eggSceneConfig.SceneRootName)
-		local sourceRoot = getEggSourceRoot(eggSceneConfig.SourceRootName)
-		if not sceneRoot or not sourceRoot then
-			hasMissingRoot = true
-			continue
-		end
+	if type(instances) ~= "table" then
+		warn("EggSceneTheta.Instances is missing. Egg scene refresh skipped.")
+		return false
+	end
 
-		local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
-		local sourceNodeName = eggSceneConfig.SourceNodeName or eggId
-		local promptPartName = eggSceneConfig.PromptPartName or SceneTheta.EggPromptPartName
-		local source = sourceRoot:FindFirstChild(sourceNodeName)
-		local holder = sceneRoot:FindFirstChild(sceneNodeName)
-		local existingVisual = getExistingVisual(holder, promptPartName)
-
-		if source and holder then
-			local targetAnchor = BarbellObservation.GetFirstBasePart(existingVisual)
-			local targetCFrame = targetAnchor and targetAnchor.CFrame
-				or BarbellObservation.GetInstancePivot(holder)
-			local nextVisual = source:Clone()
-			nextVisual.Name = SceneTheta.EggDisplayModelName
-			nextVisual.Parent = holder
-
-			if existingVisual and existingVisual ~= nextVisual then
-				existingVisual:Destroy()
-			end
-
-			prepareDisplayModel(nextVisual)
-			alignInstanceAnchorTo(nextVisual, targetCFrame)
-		end
-
-		if holder then
-			configurePrompt(holder, eggId)
+	for instanceId, instanceConfig in pairs(instances) do
+		print("instanceId =", instanceId)	-- 测试
+		if not refreshEggInstance(instanceId, instanceConfig) then
+			hasMissingInstance = true
 		end
 	end
 
-	if hasMissingRoot then
-		warn("Egg scene root or source root was not found. Some egg visuals were skipped.")
-	end
-
-	return not hasMissingRoot
+	return not hasMissingInstance
 end
 
 function EggWorldSync.InitWorld()

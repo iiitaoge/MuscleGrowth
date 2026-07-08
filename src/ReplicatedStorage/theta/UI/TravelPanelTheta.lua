@@ -1,4 +1,4 @@
--- Travel panel UI path contract.
+-- 传送的路径配置
 
 local TravelPanelTheta = {
 	HudScreenGuiName = "HUD",

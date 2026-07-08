@@ -8,7 +8,6 @@ local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"
 
 local EggObservation = {}
 
-local DEFAULT_SCENE_ROOT_NAME = SceneTheta.SceneEggRootName
 local DEFAULT_INTERACTION_DISTANCE = SceneTheta.EggInteractionDistance
 local PROMPT_PART_NAME = SceneTheta.EggPromptPartName
 
@@ -26,17 +25,24 @@ local function getCharacterRoot(player)
 	return nil
 end
 
-local function getWorldRoot()
-	return Workspace:FindFirstChild(SceneTheta.WorkspaceRootName) or Workspace
-end
+local function findPath(root, path)
+	if not root or type(path) ~= "table" then
+		return nil
+	end
 
-local function getSceneRoot(eggSceneConfig)
-	local sceneRootName = type(eggSceneConfig) == "table" and eggSceneConfig.SceneRootName or DEFAULT_SCENE_ROOT_NAME
-	local worldRoot = getWorldRoot()
+	local current = root
+	for _, childName in ipairs(path) do
+		if type(childName) ~= "string" or childName == "" then
+			return nil
+		end
 
-	return worldRoot:FindFirstChild(sceneRootName)
-		or Workspace:FindFirstChild(sceneRootName)
-		or Workspace:FindFirstChild(sceneRootName, true)
+		current = current and current:FindFirstChild(childName)
+		if not current then
+			return nil
+		end
+	end
+
+	return current
 end
 
 local function getInstancePosition(instance)
@@ -56,46 +62,74 @@ local function getInstancePosition(instance)
 	return firstPart and firstPart.Position or nil
 end
 
+local function getEggConfig(eggId)
+	local eggs = EggSceneTheta.Eggs
+	return type(eggs) == "table" and eggs[eggId] or nil
+end
+
+local function getEggInteractionNode(instanceConfig, eggConfig)
+	local holder = findPath(Workspace, instanceConfig.HolderPath)
+	if not holder then
+		return nil
+	end
+
+	local promptPartName = instanceConfig.PromptPartName or eggConfig.PromptPartName or PROMPT_PART_NAME
+	return holder:FindFirstChild(promptPartName, true) or holder
+end
+
 function EggObservation.IsValidEggId(eggId)
-	return type(eggId) == "string" and EggSceneTheta[eggId] ~= nil
+	return type(eggId) == "string" and type(getEggConfig(eggId)) == "table"
 end
 
 function EggObservation.GetEggInteractionNode(eggId)
-	local eggSceneConfig = EggSceneTheta[eggId]
-	if not eggSceneConfig then
+	local eggConfig = getEggConfig(eggId)
+	if not eggConfig then
 		return nil
 	end
 
-	local sceneRoot = getSceneRoot(eggSceneConfig)
-	local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
-	local promptPartName = eggSceneConfig.PromptPartName or PROMPT_PART_NAME
-	local eggModel = sceneRoot and sceneRoot:FindFirstChild(sceneNodeName)
-	if not eggModel then
-		return nil
+	for _, instanceConfig in pairs(EggSceneTheta.Instances or {}) do
+		if type(instanceConfig) == "table" and instanceConfig.EggId == eggId then
+			local interactionNode = getEggInteractionNode(instanceConfig, eggConfig)
+			if interactionNode then
+				return interactionNode
+			end
+		end
 	end
 
-	return eggModel:FindFirstChild(promptPartName) or eggModel
+	return nil
 end
 
 function EggObservation.IsPlayerNearEgg(player, eggId)
-	local eggSceneConfig = EggSceneTheta[eggId]
-	if not eggSceneConfig then
+	local eggConfig = getEggConfig(eggId)
+	if not eggConfig then
 		return false
 	end
 
 	local root = getCharacterRoot(player)
-	local interactionNode = EggObservation.GetEggInteractionNode(eggId)
-	local interactionPosition = getInstancePosition(interactionNode)
-	if not root or not interactionPosition then
+	if not root then
 		return false
 	end
 
-	local interactionDistance = math.max(
-		0,
-		tonumber(eggSceneConfig.InteractionDistance) or DEFAULT_INTERACTION_DISTANCE
-	)
+	for _, instanceConfig in pairs(EggSceneTheta.Instances or {}) do
+		if type(instanceConfig) == "table" and instanceConfig.EggId == eggId then
+			local interactionNode = getEggInteractionNode(instanceConfig, eggConfig)
+			local interactionPosition = getInstancePosition(interactionNode)
+			if interactionPosition then
+				local interactionDistance = math.max(
+					0,
+					tonumber(instanceConfig.InteractionDistance)
+						or tonumber(eggConfig.InteractionDistance)
+						or DEFAULT_INTERACTION_DISTANCE
+				)
 
-	return (root.Position - interactionPosition).Magnitude <= interactionDistance
+				if (root.Position - interactionPosition).Magnitude <= interactionDistance then
+					return true
+				end
+			end
+		end
+	end
+
+	return false
 end
 
 return EggObservation

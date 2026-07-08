@@ -1,80 +1,155 @@
 -- EggInteractionController
--- 客户端蛋交互输入层，负责 Prompt 绑定和本地距离体验判断。
+-- Binds every configured egg scene instance to the shared egg panel for its EggId.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local EggSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("EggSceneTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local EggInteractionController = {}
+local BIND_WAIT_SECONDS = 30
+local PROMPT_RETRY_INTERVAL_SECONDS = 0.1
 
--- 初始化蛋交互控制器。
 function EggInteractionController.Init(sceneQuery, eggPanelView, snapshotController)
-	-- 取得蛋的交互节点。
-	local function getEggInteractionNode(eggId)
-		local eggSceneConfig = EggSceneTheta[eggId]
-		if type(eggSceneConfig) ~= "table" then
+	local function waitForPath(root, path, timeout)
+		if not root or type(path) ~= "table" then
 			return nil
 		end
 
-		local sceneEgg = sceneQuery.GetSceneChild(eggSceneConfig.SceneRootName or SceneTheta.SceneEggRootName)
-		local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
-		local promptPartName = eggSceneConfig.PromptPartName or SceneTheta.EggPromptPartName
-		local eggHolder = sceneEgg and sceneEgg:FindFirstChild(sceneNodeName)
-		return eggHolder and (eggHolder:FindFirstChild(promptPartName) or eggHolder)
+		local current = root
+		for _, childName in ipairs(path) do
+			if type(childName) ~= "string" or childName == "" then
+				return nil
+			end
+
+			current = current:WaitForChild(childName, timeout or 10)
+			if not current then
+				return nil
+			end
+		end
+
+		return current
 	end
 
-	-- 判断本地玩家是否仍在蛋交互距离内。
+	local function findPath(root, path)
+		if not root or type(path) ~= "table" then
+			return nil
+		end
+
+		local current = root
+		for _, childName in ipairs(path) do
+			if type(childName) ~= "string" or childName == "" then
+				return nil
+			end
+
+			current = current and current:FindFirstChild(childName)
+			if not current then
+				return nil
+			end
+		end
+
+		return current
+	end
+
+	local function getEggConfig(eggId)
+		local eggs = EggSceneTheta.Eggs
+		return type(eggs) == "table" and eggs[eggId] or nil
+	end
+
+	local function getEggInteractionNode(instanceConfig, eggConfig)
+		local holder = findPath(Workspace, instanceConfig.HolderPath)
+		if not holder then
+			return nil
+		end
+
+		local promptPartName = instanceConfig.PromptPartName or eggConfig.PromptPartName or SceneTheta.EggPromptPartName
+		return holder:FindFirstChild(promptPartName, true) or holder
+	end
+
+	local function findPrompt(holder, promptPartName)
+		local promptRoot = holder:FindFirstChild(promptPartName, true)
+		local prompt = promptRoot and promptRoot:FindFirstChildWhichIsA("ProximityPrompt", true)
+			or holder:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+		return prompt
+	end
+
+	local function waitForPrompt(holder, promptPartName, timeout)
+		local deadline = os.clock() + (timeout or BIND_WAIT_SECONDS)
+
+		repeat
+			local prompt = findPrompt(holder, promptPartName)
+			if prompt then
+				return prompt
+			end
+
+			task.wait(PROMPT_RETRY_INTERVAL_SECONDS)
+		until os.clock() >= deadline
+
+		return findPrompt(holder, promptPartName)
+	end
+
 	local function isPlayerNearEgg(eggId)
-		local eggSceneConfig = EggSceneTheta[eggId]
+		local eggConfig = getEggConfig(eggId)
 		local root = sceneQuery.GetPlayerRootPart()
-		local interactionPosition = sceneQuery.GetInstancePosition(getEggInteractionNode(eggId))
-		if not eggSceneConfig or not root or not interactionPosition then
+		if not eggConfig or not root then
 			return false
 		end
 
-		local interactionDistance = tonumber(eggSceneConfig.InteractionDistance) or SceneTheta.EggInteractionDistance
-		return (root.Position - interactionPosition).Magnitude <= interactionDistance + 2
+		for _, instanceConfig in pairs(EggSceneTheta.Instances or {}) do
+			if type(instanceConfig) == "table" and instanceConfig.EggId == eggId then
+				local interactionPosition = sceneQuery.GetInstancePosition(getEggInteractionNode(instanceConfig, eggConfig))
+				if interactionPosition then
+					local interactionDistance = tonumber(instanceConfig.InteractionDistance)
+						or tonumber(eggConfig.InteractionDistance)
+						or SceneTheta.EggInteractionDistance
+					if (root.Position - interactionPosition).Magnitude <= interactionDistance + 2 then
+						return true
+					end
+				end
+			end
+		end
+
+		return false
 	end
 
-	-- 绑定单个蛋的 ProximityPrompt。
-	local function bindEggPrompt(eggId)
-		local eggSceneConfig = EggSceneTheta[eggId]
-		if type(eggSceneConfig) ~= "table" then
-			warn("Missing egg scene config: " .. tostring(eggId))
+	local function bindEggInstance(instanceId, instanceConfig)
+		if type(instanceConfig) ~= "table" then
+			warn("Missing egg scene instance config: " .. tostring(instanceId))
 			return
 		end
 
-		local sceneEgg = sceneQuery.GetSceneChild(eggSceneConfig.SceneRootName or SceneTheta.SceneEggRootName)
-		local sceneNodeName = eggSceneConfig.SceneNodeName or eggId
-		local eggHolder = sceneEgg and sceneEgg:WaitForChild(sceneNodeName, 10)
-		if not eggHolder then
-			warn("Missing egg holder: " .. tostring(sceneNodeName))
+		local eggId = instanceConfig.EggId
+		local eggConfig = getEggConfig(eggId)
+		if type(eggId) ~= "string" or type(eggConfig) ~= "table" then
+			warn("Invalid egg scene instance EggId: " .. tostring(instanceId))
 			return
 		end
 
-		local prompt = eggHolder:FindFirstChildWhichIsA("ProximityPrompt", true)
+		local holder = waitForPath(Workspace, instanceConfig.HolderPath, BIND_WAIT_SECONDS)
+		if not holder then
+			warn("Missing egg holder: " .. tostring(instanceId))
+			return
+		end
+
+		local promptPartName = instanceConfig.PromptPartName or eggConfig.PromptPartName or SceneTheta.EggPromptPartName
+		local prompt = waitForPrompt(holder, promptPartName, BIND_WAIT_SECONDS)
 		if not prompt then
-			warn("Missing egg prompt: " .. eggId)
+			warn("Missing egg prompt: " .. tostring(instanceId))
 			return
 		end
 
-		-- Prompt 触发后打开对应蛋面板并刷新快照。
-		local function handlePromptTriggered()
+		prompt.Triggered:Connect(function()
 			eggPanelView.Open(eggId, snapshotController.GetLatestData())
 			snapshotController.RefreshFromServer()
-		end
-
-		prompt.Triggered:Connect(handlePromptTriggered)
+		end)
 	end
 
-	-- 绑定配置里的所有蛋 Prompt。
 	local function bindAll()
-		for eggId, eggSceneConfig in pairs(EggSceneTheta) do
-			if type(eggId) == "string" and type(eggSceneConfig) == "table" then
-				bindEggPrompt(eggId)
-			end
+		for instanceId, instanceConfig in pairs(EggSceneTheta.Instances or {}) do
+			task.spawn(bindEggInstance, instanceId, instanceConfig)
 		end
 	end
 
