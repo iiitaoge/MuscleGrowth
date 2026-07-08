@@ -57,6 +57,12 @@ function PlayerVisualStateSync.SetTrainingActive(player, isTraining)
 	end
 end
 
+function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall)
+	if player then
+		player:SetAttribute(ATTRIBUTES.IsPushingBall, isPushingBall == true)
+	end
+end
+
 function PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
 	if not player then
 		return
@@ -75,6 +81,7 @@ function PlayerVisualStateSync.Clear(player)
 
 	player:SetAttribute(ATTRIBUTES.CurrentBarbellId, "")
 	player:SetAttribute(ATTRIBUTES.IsTraining, false)
+	player:SetAttribute(ATTRIBUTES.IsPushingBall, false)
 	player:SetAttribute(ATTRIBUTES.EquippedPetsJson, "[]")
 	player:SetAttribute(ATTRIBUTES.LastTrainingGainSerial, 0)
 	player:SetAttribute(ATTRIBUTES.LastTrainingStrengthGain, 0)

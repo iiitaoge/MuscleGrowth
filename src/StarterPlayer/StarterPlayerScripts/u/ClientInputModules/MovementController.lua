@@ -6,9 +6,14 @@ local MovementController = {}
 -- 初始化移动控制器。
 function MovementController.Init(player, remoteClient, autoAreaController)
 	local isMoving = false
+	local isSuspended = false
 
 	-- 只在移动状态真的变化时通知服务端。
 	local function setMoving(nextIsMoving)
+		if isSuspended then
+			nextIsMoving = false
+		end
+
 		if isMoving == nextIsMoving then
 			return
 		end
@@ -30,6 +35,11 @@ function MovementController.Init(player, remoteClient, autoAreaController)
 
 		-- Running 事件负责把本地速度转换成移动状态。
 		local function handleRunning(speed)
+			if isSuspended then
+				setMoving(false)
+				return
+			end
+
 			setMoving(speed > 0.1)
 		end
 
@@ -43,6 +53,14 @@ function MovementController.Init(player, remoteClient, autoAreaController)
 		humanoid.Died:Connect(handleDied)
 	end
 
+	local function setSuspended(nextIsSuspended)
+		isSuspended = nextIsSuspended == true
+		if isSuspended then
+			setMoving(false)
+			autoAreaController.Reset()
+		end
+	end
+
 	-- 绑定当前角色和后续重生角色。
 	local function bind()
 		if player.Character then
@@ -54,6 +72,7 @@ function MovementController.Init(player, remoteClient, autoAreaController)
 
 	return {
 		Bind = bind,
+		SetSuspended = setSuspended,
 	}
 end
 

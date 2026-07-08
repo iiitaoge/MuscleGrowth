@@ -94,6 +94,7 @@ function PlayerLifecycleTransition.Init(player)
 	TrainingTransition.InitRuntime(player)	--运行时的初始化
 	PlayerVisualStateSync.Refresh(player)
 	PlayerVisualStateSync.SetTrainingActive(player, false)
+	PlayerVisualStateSync.SetPushBallActive(player, false)
 end
 
 function PlayerLifecycleTransition.Remove(player)

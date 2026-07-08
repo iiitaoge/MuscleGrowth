@@ -6,6 +6,7 @@ local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
 local PetTransition = require(script.Parent.Parent.T.Transitions.Pet.PetTransition)
+local PushBallTransition = require(script.Parent.Parent.T.Transitions.PushBallTransition)
 local RebirthTransition = require(script.Parent.Parent.T.Transitions.RebirthTransition)
 local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
@@ -19,6 +20,7 @@ local REMOTE_EVENT_MIN_INTERVALS = {
 	MoveStop = 0.05,
 	OnAutoArea = 0.25,
 	LeaveAutoArea = 0.25,
+	PushBallLateralInput = 0.05,
 }
 
 -- 模版绑定
@@ -62,6 +64,9 @@ local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
 local requestPetRoll = getOrCreateRemote("RequestPetRoll")
 local requestPetDelete = getOrCreateRemote("RequestPetDelete")
 local requestTravelDestination = getOrCreateRemote("RequestTravelDestination")
+local requestStartPushBall = getOrCreateRemote("RequestStartPushBall")
+local requestStopPushBall = getOrCreateRemote("RequestStopPushBall")
+local pushBallLateralInput = getOrCreateRemote("PushBallLateralInput")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -102,6 +107,14 @@ leaveAutoArea.OnServerEvent:Connect(function(player, areaId)
 	end
 
 	TrainingTransition.LeaveAutoAreaClaim(player, areaId)
+end)
+
+pushBallLateralInput.OnServerEvent:Connect(function(player, lateralInput)
+	if not isRemoteEventAllowed(player, "PushBallLateralInput") then
+		return
+	end
+
+	PushBallTransition.SetLateralInput(player, lateralInput)
 end)
 
 
@@ -146,10 +159,19 @@ requestTravelDestination.OnServerInvoke = function(player, destinationId)
 	return TravelTransition.Request(player, destinationId)
 end
 
+requestStartPushBall.OnServerInvoke = function(player)
+	return PushBallTransition.RequestStart(player)
+end
+
+requestStopPushBall.OnServerInvoke = function(player)
+	return PushBallTransition.RequestStop(player)
+end
+
 Players.PlayerAdded:Connect(initPlayer)
 
 Players.PlayerRemoving:Connect(function(player)
 	RemoteRateLimiter.Remove(player)
+	PushBallTransition.RemovePlayer(player)
 	TrophyTransition.RemovePlayer(player)
 	PlayerLifecycleTransition.Remove(player)
 end)

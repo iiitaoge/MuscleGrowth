@@ -59,6 +59,19 @@ local RemoteTheta = {
 		Name = "RequestTravelDestination",
 		ClassName = "RemoteFunction",
 	},
+	-- 推球事件
+	RequestStartPushBall = {
+		Name = "RequestStartPushBall",
+		ClassName = "RemoteFunction",
+	},
+	RequestStopPushBall = {
+		Name = "RequestStopPushBall",
+		ClassName = "RemoteFunction",
+	},
+	PushBallLateralInput = {
+		Name = "PushBallLateralInput",
+		ClassName = "RemoteEvent",
+	},
 }
 
 return RemoteTheta

@@ -293,10 +293,52 @@ local function refreshTrainingAnimation(player)
 	state.trainingTrack = track
 end
 
+local function stopPushBallTrack(state)
+	if state.pushBallTrack then
+		local pushBallConfig = AnimationTheta.PushBall or {}
+		state.pushBallTrack:Stop(pushBallConfig.FadeTime or 0.15)
+		state.pushBallTrack:Destroy()
+		state.pushBallTrack = nil
+	end
+end
+
+local function refreshPushBallAnimation(player)
+	local state = playerStates[player]
+	if not state then
+		return
+	end
+
+	local pushBallConfig = AnimationTheta.PushBall or {}
+	if player:GetAttribute(ATTRIBUTES.IsPushingBall) ~= true or type(pushBallConfig.AnimationId) ~= "string" or pushBallConfig.AnimationId == "" then
+		stopPushBallTrack(state)
+		return
+	end
+
+	if state.pushBallTrack and state.pushBallTrack.IsPlaying then
+		return
+	end
+
+	local animator = getAnimator(player.Character)
+	if not animator then
+		return
+	end
+
+	stopPushBallTrack(state)
+
+	local animation = Instance.new("Animation")
+	animation.AnimationId = pushBallConfig.AnimationId
+	local track = animator:LoadAnimation(animation)
+	track.Looped = true
+	track.Priority = Enum.AnimationPriority.Action
+	track:Play(pushBallConfig.FadeTime or 0.15)
+	state.pushBallTrack = track
+end
+
 local function refreshAll(player)
 	refreshBarbell(player)
 	refreshPets(player)
 	refreshTrainingAnimation(player)
+	refreshPushBallAnimation(player)
 end
 
 local function updatePetFollow()
@@ -328,6 +370,7 @@ local function bindPlayer(player)
 		petModels = {},
 		petFolder = nil,
 		trainingTrack = nil,
+		pushBallTrack = nil,
 	}
 	playerStates[player] = state
 
@@ -340,8 +383,12 @@ local function bindPlayer(player)
 	table.insert(state.connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsTraining):Connect(function()
 		refreshTrainingAnimation(player)
 	end))
+	table.insert(state.connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(function()
+		refreshPushBallAnimation(player)
+	end))
 	table.insert(state.connections, player.CharacterAdded:Connect(function()
 		stopTrainingTrack(state)
+		stopPushBallTrack(state)
 		task.defer(function()
 			refreshAll(player)
 		end)
@@ -361,6 +408,7 @@ local function unbindPlayer(player)
 	end
 
 	stopTrainingTrack(state)
+	stopPushBallTrack(state)
 	clearPets(state)
 	if player.Character then
 		clearBarbell(player.Character)
