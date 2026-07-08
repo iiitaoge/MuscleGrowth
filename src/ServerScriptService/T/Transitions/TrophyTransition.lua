@@ -89,6 +89,7 @@ local function onStageReturnTouched(player, stageReturnId, stageReturnConfig, re
 		end
 	end
 
+	PushBallTransition.ResetRuntimeState(player)
 	teleportToDestination(player, resolvedStageReturnConfig.TravelDestinationId)
 end
 

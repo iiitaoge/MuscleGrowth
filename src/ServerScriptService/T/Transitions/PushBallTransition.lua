@@ -728,6 +728,10 @@ function PushBallTransition.ConsumeClaimableStageReward(player, stageId)
 	return true
 end
 
+function PushBallTransition.ResetRuntimeState(player)
+	runtimeStates[player] = nil
+end
+
 function PushBallTransition.RemovePlayer(player)
 	cleanupState(player)
 	runtimeStates[player] = nil

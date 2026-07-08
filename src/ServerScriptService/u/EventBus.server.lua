@@ -73,7 +73,7 @@ BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
 PushBallWorldSync.InitWorld(function(player, ballInstanceId)
 	local result = PushBallTransition.RequestStart(player, ballInstanceId)
-	if result.Success == false and result.Message then
+	if result.Success == false and result.Message and result.Message ~= "Push ball does not match current stage" then
 		warn(result.Message)
 	end
 end)
