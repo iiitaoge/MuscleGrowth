@@ -21,7 +21,7 @@ local function normalizeMultiplier(multiplier)
 	return math.max(multiplier, 0)
 end
 
--- 创建运行时数据
+-- 创建运行时数据 核心
 local function createInitialRuntimeState()
 	return {
 		MoveRequested = false,	-- 客户端是否请求开始移动训练检测
@@ -69,9 +69,10 @@ local function isTrainingVisualActive(runtimeState)
 	return runtimeState.MoveRequested == true or runtimeState.CurrentAutoAreaId ~= nil
 end
 
+-- 设置玩家运行时状态
 local function setRuntimeState(player, runtimeState)
-	runtimeState = normalizeRuntimeState(runtimeState)
-	TrainingRuntimeState.Set(player, runtimeState)
+	runtimeState = normalizeRuntimeState(runtimeState)	-- 先规范化
+	TrainingRuntimeState.Set(player, runtimeState)	-- 
 	PlayerVisualStateSync.SetTrainingActive(player, isTrainingVisualActive(runtimeState))
 
 	return runtimeState
@@ -365,6 +366,7 @@ function TrainingTransition.StopGrowth(player)
 	stopGrowthLoop(player)
 end
 
+-- 初始化玩家运行时状态
 function TrainingTransition.InitRuntime(player)
 	setRuntimeState(player, createInitialRuntimeState())
 end

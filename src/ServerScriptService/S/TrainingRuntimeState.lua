@@ -39,6 +39,7 @@ function TrainingRuntimeState.Get(player)
 	return cloneState(state)
 end
 
+-- TrainingRuntimeState暴露给外界的写入函数
 function TrainingRuntimeState.Set(player, nextState)
 	if not nextState then
 		states[player] = nil

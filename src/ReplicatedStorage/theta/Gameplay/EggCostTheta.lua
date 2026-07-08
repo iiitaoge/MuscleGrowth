@@ -13,7 +13,7 @@ local EggCostTheta = {
 	Costs = {
 		Egg1 = {
 			-- 玩家进度状态里的可消费资源类型。
-			
+			CostResource = "Trophies",
 			-- 单次抽奖消耗数量；多抽由调用方按次数计算总消耗。
 			CostAmount = 25,
 		},
