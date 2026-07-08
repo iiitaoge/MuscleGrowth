@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AutoAreaTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("AutoAreaTheta"))
+local AutoAreaTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("AutoAreaTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingRuntimeState = require(script.Parent.Parent.Parent.S.TrainingRuntimeState)

@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PetTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("PetTheta"))
+local PetTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("PetTheta"))
 
 local PetRollSelector = {}
 

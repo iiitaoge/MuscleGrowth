@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("TrophyTheta"))
+local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
 
 local TrophyWorldSync = {}
 

@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("RemoteTheta"))
+local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("System"):WaitForChild("RemoteTheta"))
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)

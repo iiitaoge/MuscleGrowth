@@ -4,8 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local AutoAreaTheta = require(theta:WaitForChild("AutoAreaTheta"))
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local AutoAreaTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("AutoAreaTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local AutoAreaController = {}
 

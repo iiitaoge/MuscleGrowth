@@ -3,7 +3,7 @@
 -- 这里把稳定 EggID 和 Workspace holder、交互节点、资源库源模型解耦。
 -- y 层用它验证玩家是否靠近蛋，WorldSync 用它替换场景白模。
 
-local SceneTheta = require(script.Parent.Parent:WaitForChild("SceneTheta"))
+local SceneTheta = require(script.Parent:WaitForChild("SceneTheta"))
 
 local EggSceneTheta = {
 	-- 以稳定 EggID 为 key。SceneNodeName/SourceNodeName 可以和 EggID 不同。

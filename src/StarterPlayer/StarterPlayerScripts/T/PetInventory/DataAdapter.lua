@@ -4,7 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
+local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetSystemTheta"))
 local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}

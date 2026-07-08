@@ -4,7 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local RemoteTheta = require(theta:WaitForChild("RemoteTheta"))
+local RemoteTheta = require(theta:WaitForChild("System"):WaitForChild("RemoteTheta"))
 
 local RemoteClient = {}
 

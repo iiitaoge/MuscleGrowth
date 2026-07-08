@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local SceneQuery = {}
 

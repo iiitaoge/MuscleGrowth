@@ -4,7 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local TrainingGainAttributeController = {}
 

@@ -1,8 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local PetSystemTheta = require(theta:WaitForChild("PetSystemTheta"))
-local PlayerProgressInitialTheta = require(theta:WaitForChild("PlayerProgressInitialTheta"))
+local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetSystemTheta"))
+local PlayerProgressInitialTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PlayerProgressInitialTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingTransition = require(script.Parent.TrainingTransition)

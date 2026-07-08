@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PetTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("PetTheta"))
+local PetTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("PetTheta"))
 
 local PetMultiplierRules = require(script.Parent.Parent.Rules.Pet.PetMultiplierRules)
 local PetSystemRules = require(script.Parent.Parent.Rules.Pet.PetSystemRules)

@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local AnimationTheta = require(theta:WaitForChild("AnimationTheta"))
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local AnimationTheta = require(theta:WaitForChild("System"):WaitForChild("AnimationTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local PlayerVisualSync = {}
 

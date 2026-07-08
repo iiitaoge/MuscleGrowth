@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BarbellTheta"))
+local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)

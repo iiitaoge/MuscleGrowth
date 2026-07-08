@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local LevelTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("LevelTheta"))
+local LevelTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("LevelTheta"))
 local RebirthRules = require(script.Parent.RebirthRules)
 
 local LevelRules = {}

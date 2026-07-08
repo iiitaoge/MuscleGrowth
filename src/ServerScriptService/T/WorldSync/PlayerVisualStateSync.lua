@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local PetSnapshotBuilder = require(script.Parent.Parent.Snapshots.PetSnapshotBuilder)

@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local TrophyWorldSync = require(script.Parent.Parent.WorldSync.TrophyWorldSync)
-local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("TrophyTheta"))
+local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
 
 local TrophyTransition = {}
 

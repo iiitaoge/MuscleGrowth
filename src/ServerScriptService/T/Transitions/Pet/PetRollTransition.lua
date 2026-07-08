@@ -1,9 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local eggTheta = ReplicatedStorage:WaitForChild("theta"):WaitForChild("EggTheta")
+local theta = ReplicatedStorage:WaitForChild("theta")
 
-local EggCostTheta = require(eggTheta:WaitForChild("EggCostTheta"))
-local EggRewardTheta = require(eggTheta:WaitForChild("EggRewardTheta"))
+local EggCostTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggCostTheta"))
+local EggRewardTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggRewardTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.Parent.S.PlayerProgressState)
 local TrainingRuntimeState = require(script.Parent.Parent.Parent.Parent.S.TrainingRuntimeState)

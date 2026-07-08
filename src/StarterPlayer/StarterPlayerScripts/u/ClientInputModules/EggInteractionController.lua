@@ -4,8 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local EggSceneTheta = require(theta:WaitForChild("EggTheta"):WaitForChild("EggSceneTheta"))
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local EggSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("EggSceneTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local EggInteractionController = {}
 

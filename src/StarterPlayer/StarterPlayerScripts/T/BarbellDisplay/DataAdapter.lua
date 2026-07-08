@@ -4,7 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
+local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
 
 local DataAdapter = {}
 

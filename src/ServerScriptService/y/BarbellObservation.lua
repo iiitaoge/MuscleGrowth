@@ -2,8 +2,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
-local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("BarbellTheta"))
-local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("SceneTheta"))
+local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local BarbellObservation = {}
 

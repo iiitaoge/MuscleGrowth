@@ -2,10 +2,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local eggTheta = theta:WaitForChild("EggTheta")
 
-local EggSceneTheta = require(eggTheta:WaitForChild("EggSceneTheta"))
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
+local EggSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("EggSceneTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local EggObservation = {}
 

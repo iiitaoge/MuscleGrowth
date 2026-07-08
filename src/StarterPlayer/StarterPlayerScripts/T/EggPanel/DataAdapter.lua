@@ -4,11 +4,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local eggTheta = theta:WaitForChild("EggTheta")
-local EggCostTheta = require(eggTheta:WaitForChild("EggCostTheta"))
-local EggDisplayTheta = require(eggTheta:WaitForChild("EggDisplayTheta"))
-local EggRewardTheta = require(eggTheta:WaitForChild("EggRewardTheta"))
-local PetTheta = require(theta:WaitForChild("PetTheta"))
+local EggCostTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggCostTheta"))
+local EggDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("EggDisplayTheta"))
+local EggRewardTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggRewardTheta"))
+local PetTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetTheta"))
 local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}

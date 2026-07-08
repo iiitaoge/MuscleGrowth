@@ -4,15 +4,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local eggTheta = theta:WaitForChild("EggTheta")
 
-local HUDPanelTheta = require(theta:WaitForChild("HUDPanelTheta"))
-local FloatingGainTheta = require(theta:WaitForChild("FloatingGainTheta"))
-local RebirthPanelTheta = require(theta:WaitForChild("RebirthPanelTheta"))
-local PetInventoryPanelTheta = require(theta:WaitForChild("PetInventoryPanelTheta"))
-local BarbellDisplayTheta = require(theta:WaitForChild("BarbellDisplayTheta"))
-local SceneTheta = require(theta:WaitForChild("SceneTheta"))
-local EggPanelTheta = require(eggTheta:WaitForChild("EggPanelTheta"))
+local HUDPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("HUDPanelTheta"))
+local FloatingGainTheta = require(theta:WaitForChild("UI"):WaitForChild("FloatingGainTheta"))
+local RebirthPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("RebirthPanelTheta"))
+local PetInventoryPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("PetInventoryPanelTheta"))
+local BarbellDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
+local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
+local EggPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggPanelTheta"))
 
 local UIContract = {}
 

@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local BarbellTheta = require(theta:WaitForChild("BarbellTheta"))
+local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
 local UIContract = require(script.Parent.UIContract)
 
 local UIRefs = {}
