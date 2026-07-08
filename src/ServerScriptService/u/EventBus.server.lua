@@ -10,6 +10,7 @@ local PushBallTransition = require(script.Parent.Parent.T.Transitions.PushBallTr
 local RebirthTransition = require(script.Parent.Parent.T.Transitions.RebirthTransition)
 local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
+local PushBallWorldSync = require(script.Parent.Parent.T.WorldSync.PushBallWorldSync)
 local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.Transitions.TrainingTransition)
 local TravelTransition = require(script.Parent.Parent.T.Transitions.TravelTransition)
@@ -70,6 +71,12 @@ local pushBallLateralInput = getOrCreateRemote("PushBallLateralInput")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
+PushBallWorldSync.InitWorld(function(player, ballInstanceId)
+	local result = PushBallTransition.RequestStart(player, ballInstanceId)
+	if result.Success == false and result.Message then
+		warn(result.Message)
+	end
+end)
 EggWorldSync.InitWorld()
 
 local function initPlayer(player)
@@ -159,8 +166,8 @@ requestTravelDestination.OnServerInvoke = function(player, destinationId)
 	return TravelTransition.Request(player, destinationId)
 end
 
-requestStartPushBall.OnServerInvoke = function(player)
-	return PushBallTransition.RequestStart(player)
+requestStartPushBall.OnServerInvoke = function(player, ballInstanceId)
+	return PushBallTransition.RequestStart(player, ballInstanceId)
 end
 
 requestStopPushBall.OnServerInvoke = function(player)

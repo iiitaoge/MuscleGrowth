@@ -2,55 +2,99 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
+local theta = ReplicatedStorage:WaitForChild("theta")
+local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
+local TrophyTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
 
 local TrophyWorldSync = {}
 
-local DEFAULT_SCENE_ROOT_NAME = "UseScene"
-local DEFAULT_FREE_RETURN_PART_NAME = "FreeReturn"
 local WORLD_WAIT_SECONDS = 10
 
-local boundFreeReturnIds = {}
+local boundReturnKeys = {}
 local bindingStarted = false
 
-local function waitForDirectChild(root, childName, timeoutSeconds)
-	if not root or type(childName) ~= "string" then
+local function waitForPath(root, path, timeoutSeconds)
+	if not root or type(path) ~= "table" then
 		return nil
 	end
 
-	local endTime = os.clock() + timeoutSeconds
-
-	repeat
-		local found = root:FindFirstChild(childName)
-		if found then
-			return found
+	local current = root
+	for _, childName in ipairs(path) do
+		if type(childName) ~= "string" or childName == "" then
+			return nil
 		end
 
-		task.wait(0.25)
-	until os.clock() >= endTime
+		current = current:WaitForChild(childName, timeoutSeconds or WORLD_WAIT_SECONDS)
+		if not current then
+			return nil
+		end
+	end
 
-	return nil
+	return current
 end
 
-local function getSceneRoot(freeReturnConfig)
-	local sceneRootName = freeReturnConfig.SceneRootName or DEFAULT_SCENE_ROOT_NAME
-	return waitForDirectChild(Workspace, sceneRootName, WORLD_WAIT_SECONDS)
-end
-
-local function getFreeReturnNode(trophyId, freeReturnConfig)
-	local sceneRoot = getSceneRoot(freeReturnConfig)
-	if not sceneRoot then
+local function findPath(root, path)
+	if not root or type(path) ~= "table" then
 		return nil
 	end
 
-	local nodeName = freeReturnConfig.NodeName or trophyId
-	local node = waitForDirectChild(sceneRoot, nodeName, WORLD_WAIT_SECONDS)
-	if not node then
+	local current = root
+	for _, childName in ipairs(path) do
+		if type(childName) ~= "string" or childName == "" then
+			return nil
+		end
+
+		current = current:FindFirstChild(childName)
+		if not current then
+			return nil
+		end
+	end
+
+	return current
+end
+
+local function formatNumber(value)
+	local numberValue = tonumber(value) or 0
+	if numberValue == math.floor(numberValue) then
+		return string.format("%.0f", numberValue)
+	end
+
+	return string.format("%.2f", numberValue)
+end
+
+local function getStageReward(stageId)
+	local stageConfig = type(StageTheta.Stages) == "table" and StageTheta.Stages[stageId] or nil
+	return math.max(0, tonumber(stageConfig and stageConfig.RewardTrophies) or 0)
+end
+
+local function renderReturnText(root, stageReturnConfig, returnType, returnConfig)
+	local textPath = returnConfig and returnConfig.TextPath
+	if type(textPath) ~= "table" then
+		return
+	end
+
+	local label = findPath(root, textPath)
+	if not label then
+		warn(("Missing trophy return text: %s %s"):format(tostring(stageReturnConfig.StageId), tostring(returnType)))
+		return
+	end
+
+	if not (label:IsA("TextLabel") or label:IsA("TextButton") or label:IsA("TextBox")) then
+		warn("Trophy return text target is not a text object: " .. label:GetFullName())
+		return
+	end
+
+	local multiplier = math.max(0, tonumber(returnConfig.RewardMultiplier) or 1)
+	label.Text = "+ " .. formatNumber(getStageReward(stageReturnConfig.StageId) * multiplier) .. " Wins"
+end
+
+local function getReturnNode(root, returnConfig)
+	local returnName = returnConfig and returnConfig.Name
+	if type(returnName) ~= "string" or returnName == "" then
 		return nil
 	end
 
-	local freeReturnName = freeReturnConfig.FreeReturnName or DEFAULT_FREE_RETURN_PART_NAME
-	return node:FindFirstChild(freeReturnName, true)
+	return root:FindFirstChild(returnName) or root:FindFirstChild(returnName, true)
 end
 
 local function getTouchParts(root)
@@ -93,67 +137,51 @@ local function getPlayerFromHit(hit)
 	return nil
 end
 
-local function getCharacterRoot(player)
-	local character = player.Character
-	return character and character:FindFirstChild("HumanoidRootPart")
-end
-
-local function findSpawnPart()
-	local namedSpawn = Workspace:FindFirstChild("SpawnLocation", true)
-	if namedSpawn and namedSpawn:IsA("BasePart") then
-		return namedSpawn
-	end
-
-	for _, instance in ipairs(Workspace:GetDescendants()) do
-		if instance:IsA("SpawnLocation") then
-			return instance
-		end
-	end
-
-	local fallbackSpawn = Workspace:FindFirstChild("Spawn", true)
-	if fallbackSpawn and fallbackSpawn:IsA("BasePart") then
-		return fallbackSpawn
-	end
-
-	return nil
-end
-
-local function bindFreeReturn(trophyId, freeReturnConfig, onPlayerTouched)
-	if boundFreeReturnIds[trophyId] then
+local function bindReturnNode(stageReturnId, stageReturnConfig, root, returnType, returnConfig, onPlayerTouched)
+	local boundKey = tostring(stageReturnId) .. "." .. tostring(returnType)
+	if boundReturnKeys[boundKey] then
 		return
 	end
 
-	local freeReturn = getFreeReturnNode(trophyId, freeReturnConfig)
-	local touchParts = getTouchParts(freeReturn)
+	renderReturnText(root, stageReturnConfig, returnType, returnConfig)
 
+	local returnNode = getReturnNode(root, returnConfig)
+	local touchParts = getTouchParts(returnNode)
 	if #touchParts == 0 then
-		warn(("Trophy free return %s was not found. Trophy reward touch is disabled."):format(tostring(trophyId)))
+		warn(("Trophy return %s was not found. Touch reward is disabled."):format(boundKey))
 		return
 	end
 
-	boundFreeReturnIds[trophyId] = true
+	boundReturnKeys[boundKey] = true
 
 	for _, touchPart in ipairs(touchParts) do
 		touchPart.CanTouch = true
 		touchPart.Touched:Connect(function(hit)
 			local player = getPlayerFromHit(hit)
 			if player and onPlayerTouched then
-				onPlayerTouched(player, trophyId, freeReturnConfig)
+				onPlayerTouched(player, stageReturnId, stageReturnConfig, returnType, returnConfig)
 			end
 		end)
 	end
 end
 
-function TrophyWorldSync.TeleportToSpawn(player)
-	local root = getCharacterRoot(player)
-	local spawnPart = findSpawnPart()
+local function bindStageReturn(stageReturnId, stageReturnConfig, onPlayerTouched)
+	local root = waitForPath(Workspace, stageReturnConfig.RootPath, WORLD_WAIT_SECONDS)
+	if not root then
+		warn("Trophy stage return root was not found: " .. tostring(stageReturnId))
+		return
+	end
 
-	if root and spawnPart then
-		root.CFrame = spawnPart.CFrame + Vector3.new(0, 5, 0)
+	if type(stageReturnConfig.FreeReturn) == "table" then
+		bindReturnNode(stageReturnId, stageReturnConfig, root, "FreeReturn", stageReturnConfig.FreeReturn, onPlayerTouched)
+	end
+
+	if type(stageReturnConfig.VIPReturn) == "table" then
+		bindReturnNode(stageReturnId, stageReturnConfig, root, "VIPReturn", stageReturnConfig.VIPReturn, onPlayerTouched)
 	end
 end
 
-function TrophyWorldSync.BindFreeReturns(onPlayerTouched)
+function TrophyWorldSync.BindStageReturns(onPlayerTouched)
 	if bindingStarted then
 		return
 	end
@@ -161,22 +189,26 @@ function TrophyWorldSync.BindFreeReturns(onPlayerTouched)
 	bindingStarted = true
 
 	task.spawn(function()
-		local freeReturnConfigs = TrophyTheta.FreeReturns
-		if type(freeReturnConfigs) ~= "table" then
-			warn("TrophyTheta.FreeReturns is missing. Trophy reward touch is disabled.")
+		local stageReturns = TrophyTheta.StageReturns
+		if type(stageReturns) ~= "table" then
+			warn("TrophyTheta.StageReturns is missing. Trophy stage returns are disabled.")
 			return
 		end
 
-		for trophyId, freeReturnConfig in pairs(freeReturnConfigs) do
-			if type(trophyId) == "string" and type(freeReturnConfig) == "table" then
-				bindFreeReturn(trophyId, freeReturnConfig, onPlayerTouched)
+		for stageReturnId, stageReturnConfig in pairs(stageReturns) do
+			if type(stageReturnId) == "string" and type(stageReturnConfig) == "table" then
+				bindStageReturn(stageReturnId, stageReturnConfig, onPlayerTouched)
 			end
 		end
 	end)
 end
 
+function TrophyWorldSync.BindFreeReturns(onPlayerTouched)
+	TrophyWorldSync.BindStageReturns(onPlayerTouched)
+end
+
 function TrophyWorldSync.BindFreeReturn(onPlayerTouched)
-	TrophyWorldSync.BindFreeReturns(onPlayerTouched)
+	TrophyWorldSync.BindStageReturns(onPlayerTouched)
 end
 
 return TrophyWorldSync

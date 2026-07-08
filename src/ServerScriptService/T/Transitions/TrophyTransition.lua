@@ -1,8 +1,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
+local PushBallTransition = require(script.Parent.PushBallTransition)
 local TrophyWorldSync = require(script.Parent.Parent.WorldSync.TrophyWorldSync)
-local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
+
+local theta = ReplicatedStorage:WaitForChild("theta")
+local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
+local TrophyTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
 
 local TravelTransition = require(script.Parent.TravelTransition)
 
@@ -40,49 +44,56 @@ local function canTouchNow(player)
 	return true
 end
 
-local function getFreeReturnConfig(trophyId, fallbackConfig)
+local function getStageReturnConfig(stageReturnId, fallbackConfig)
 	if type(fallbackConfig) == "table" then
 		return fallbackConfig
 	end
 
-	local freeReturnConfigs = TrophyTheta.FreeReturns
-	return type(freeReturnConfigs) == "table" and freeReturnConfigs[trophyId] or nil
+	local stageReturns = TrophyTheta.StageReturns
+	return type(stageReturns) == "table" and stageReturns[stageReturnId] or nil
 end
 
-local function getRewardTrophies(trophyId, fallbackConfig)
-	local freeReturnConfig = getFreeReturnConfig(trophyId, fallbackConfig)
-	return math.max(0, tonumber(freeReturnConfig and freeReturnConfig.RewardTrophies) or 0)
+local function getStageReward(stageId)
+	local stageConfig = type(StageTheta.Stages) == "table" and StageTheta.Stages[stageId] or nil
+	return math.max(0, tonumber(stageConfig and stageConfig.RewardTrophies) or 0)
 end
 
-local function getTravelDestinationId(trophyId, fallbackConfig)
-	local freeReturnConfig = getFreeReturnConfig(trophyId, fallbackConfig)
-	return type(freeReturnConfig) == "table" and freeReturnConfig.TravelDestinationId or nil
+local function teleportToDestination(player, destinationId)
+	if type(destinationId) ~= "string" or destinationId == "" then
+		return
+	end
+
+	local result = TravelTransition.Request(player, destinationId)
+	if result.Success == false and result.Message then
+		warn(result.Message)
+	end
 end
 
-local function onFreeReturnTouched(player, trophyId, freeReturnConfig)
+local function onStageReturnTouched(player, stageReturnId, stageReturnConfig, returnType, returnConfig)
 	if not player or not canTouchNow(player) then
 		return
 	end
 
-	local rewardTrophies = getRewardTrophies(trophyId, freeReturnConfig)
-	if rewardTrophies <= 0 then
+	local resolvedStageReturnConfig = getStageReturnConfig(stageReturnId, stageReturnConfig)
+	if type(resolvedStageReturnConfig) ~= "table" then
 		return
 	end
 
-	-- 进行传送
-	if TrophyTransition.AddTrophies(player, rewardTrophies) then
-		local destinationId = getTravelDestinationId(trophyId, freeReturnConfig)
-		if destinationId then
-			local result = TravelTransition.Request(player, destinationId)
-			if result.Success == false and result.Message then
-				warn(result.Message)
-			end
+	local stageId = math.floor(tonumber(resolvedStageReturnConfig.StageId) or 0)
+	local rewardMultiplier = math.max(0, tonumber(returnConfig and returnConfig.RewardMultiplier) or 1)
+
+	if stageId > 0 and PushBallTransition.ConsumeClaimableStageReward(player, stageId) then
+		local rewardTrophies = getStageReward(stageId) * rewardMultiplier
+		if rewardTrophies > 0 then
+			TrophyTransition.AddTrophies(player, rewardTrophies)
 		end
 	end
+
+	teleportToDestination(player, resolvedStageReturnConfig.TravelDestinationId)
 end
 
 function TrophyTransition.InitWorld()
-	TrophyWorldSync.BindFreeReturns(onFreeReturnTouched)
+	TrophyWorldSync.BindStageReturns(onStageReturnTouched)
 end
 
 function TrophyTransition.RemovePlayer(player)

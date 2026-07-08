@@ -3,11 +3,8 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
-local PushBallTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PushBallTheta"))
-local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("PushBallSceneTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local PushBallController = {}
@@ -29,38 +26,6 @@ function PushBallController.Init(player, remoteClient, movementController)
 	local lastSentInput = 0
 	local controls = nil
 	local connections = {}
-
-	local function waitForPath(root, path, timeout)
-		if not root or type(path) ~= "table" then
-			return nil
-		end
-
-		local current = root
-		for _, childName in ipairs(path) do
-			if type(childName) ~= "string" or childName == "" then
-				return nil
-			end
-
-			current = current:WaitForChild(childName, timeout or 10)
-			if not current then
-				return nil
-			end
-		end
-
-		return current
-	end
-
-	local function getFirstBasePart(instance)
-		if not instance then
-			return nil
-		end
-
-		if instance:IsA("BasePart") then
-			return instance
-		end
-
-		return instance:FindFirstChildWhichIsA("BasePart", true)
-	end
 
 	local function getControls()
 		if controls then
@@ -150,67 +115,9 @@ function PushBallController.Init(player, remoteClient, movementController)
 		end
 	end
 
-	local function requestStart()
-		local ok, response = remoteClient.SafeInvoke("RequestStartPushBall")
-		if not ok then
-			warn(response)
-			return
-		end
-
-		if type(response) == "table" and response.Success == true then
-			enterLocalMode()
-		elseif type(response) == "table" and response.Message then
-			warn(response.Message)
-		end
-	end
-
 	local function requestStop()
 		remoteClient.SafeInvoke("RequestStopPushBall")
 		exitLocalMode()
-	end
-
-	local function ensurePrompt(ball)
-		local existingPrompt = ball:FindFirstChildWhichIsA("ProximityPrompt", true)
-		if existingPrompt then
-			return existingPrompt
-		end
-
-		local promptParent = getFirstBasePart(ball)
-		if not promptParent then
-			return nil
-		end
-
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = PushBallTheta.PromptActionText or "Push"
-		prompt.ObjectText = PushBallTheta.PromptObjectText or "Ball"
-		prompt.KeyboardKeyCode = Enum.KeyCode.E
-		prompt.MaxActivationDistance = math.max(0, tonumber(PushBallTheta.InteractionDistance) or 14)
-		prompt.RequiresLineOfSight = false
-		prompt.Parent = promptParent
-
-		return prompt
-	end
-
-	local function bindBallPrompt()
-		local ball = waitForPath(Workspace, PushBallSceneTheta.BallPath, 30)
-		if not ball then
-			warn("Missing push ball source")
-			return
-		end
-
-		local prompt = ensurePrompt(ball)
-		if not prompt then
-			warn("Missing push ball prompt target")
-			return
-		end
-
-		prompt.Triggered:Connect(function(triggeringPlayer)
-			if triggeringPlayer and triggeringPlayer ~= player then
-				return
-			end
-
-			requestStart()
-		end)
 	end
 
 	local function bindCharacter(character)
@@ -261,7 +168,6 @@ function PushBallController.Init(player, remoteClient, movementController)
 			bindCharacter(player.Character)
 		end
 
-		task.spawn(bindBallPrompt)
 		syncLocalModeFromAttribute()
 	end
 

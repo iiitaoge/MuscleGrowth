@@ -5,14 +5,21 @@ local PushBallTheta = {
 	PushSpeed = 10,
 	LateralSpeed = 14,
 	LaneHalfWidth = 10,
-	PlayerBehindBallDistance = 5,
+	PlayerBehindBallDistance = 7,	-- 人和球的距离
 	BallRadius = 3,
+	BallGroundOffsetY = 2,	-- 球和赛道的Y距离
+	PlayerGroundOffsetY = 3.5,	-- 人和赛道的Y距离
+	PlayerForwardOffset = 0,
+	PlayerLateralOffset = 0,
+	TrackRaycastHeight = 80,
+	TrackRaycastDepth = 160,
 	InteractionDistance = 14,
 	TeleportOffsetY = 5,
 	FirstStageId = 1,
 	LastStageId = 10,
 	PromptActionText = "Push",
 	PromptObjectText = "Ball",
+	DebugPushBall = true,
 }
 
 return PushBallTheta

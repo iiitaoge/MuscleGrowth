@@ -155,6 +155,10 @@ local function refreshBarbell(player)
 
 	clearBarbell(character)
 
+	if player:GetAttribute(ATTRIBUTES.IsPushingBall) == true then
+		return
+	end
+
 	local barbellId = player:GetAttribute(ATTRIBUTES.CurrentBarbellId)
 	if type(barbellId) ~= "string" or barbellId == "" then
 		return
@@ -341,6 +345,24 @@ local function refreshAll(player)
 	refreshPushBallAnimation(player)
 end
 
+local function disconnectConnection(connection)
+	local ok = true
+
+	if typeof(connection) == "RBXScriptConnection" then
+		ok = pcall(function()
+			connection:Disconnect()
+		end)
+	elseif type(connection) == "table" and type(connection.Disconnect) == "function" then
+		ok = pcall(function()
+			connection:Disconnect()
+		end)
+	end
+
+	if not ok then
+		warn("Failed to disconnect player visual sync connection.")
+	end
+end
+
 local function updatePetFollow()
 	local now = os.clock()
 
@@ -384,6 +406,7 @@ local function bindPlayer(player)
 		refreshTrainingAnimation(player)
 	end))
 	table.insert(state.connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(function()
+		refreshBarbell(player)
 		refreshPushBallAnimation(player)
 	end))
 	table.insert(state.connections, player.CharacterAdded:Connect(function()
@@ -403,8 +426,8 @@ local function unbindPlayer(player)
 		return
 	end
 
-	for _, connection in ipairs(state.connections) do
-		connection:Disconnect()
+	for _, connection in ipairs(state.connections or {}) do
+		disconnectConnection(connection)
 	end
 
 	stopTrainingTrack(state)

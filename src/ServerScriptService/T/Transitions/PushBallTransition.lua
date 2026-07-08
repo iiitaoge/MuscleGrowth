@@ -10,6 +10,7 @@ local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("Pus
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 local TrainingTransition = require(script.Parent.TrainingTransition)
+local TravelTransition = require(script.Parent.TravelTransition)
 
 local PushBallTransition = {}
 
@@ -17,10 +18,21 @@ local BALL_FOLDER_NAME = "MG_PushBalls"
 local DEFAULT_FORWARD = Vector3.new(0, 0, -1)
 local DEFAULT_LATERAL = Vector3.new(1, 0, 0)
 local PATH_WAIT_SECONDS = 5
+local UP_VECTOR = Vector3.new(0, 1, 0)
 
 local activeStates = {}
 local runtimeStates = {}
 local heartbeatConnection = nil
+
+local function debugLog(message)
+	if PushBallTheta.DebugPushBall == true then
+		print("[PushBallTransition] " .. message)
+	end
+end
+
+local function pathToString(path)
+	return type(path) == "table" and table.concat(path, "/") or tostring(path)
+end
 
 local function result(success, message, stageId)
 	return {
@@ -57,6 +69,37 @@ local function getLateralDirection(forward)
 	end
 
 	return projected.Unit
+end
+
+local function getHorizontalDirection(value, fallback)
+	if typeof(value) ~= "Vector3" then
+		return fallback
+	end
+
+	local horizontal = Vector3.new(value.X, 0, value.Z)
+	if horizontal.Magnitude <= 0 then
+		return fallback
+	end
+
+	return horizontal.Unit
+end
+
+local function getStageForward(sourcePivot, wallPivot)
+	local fallback = getHorizontalDirection(getForwardDirection(), DEFAULT_FORWARD)
+	if not sourcePivot or not wallPivot then
+		return fallback
+	end
+
+	return getHorizontalDirection(wallPivot.Position - sourcePivot.Position, fallback)
+end
+
+local function getStageLateral(forward)
+	local lateral = forward:Cross(UP_VECTOR)
+	if lateral.Magnitude > 0 then
+		return lateral.Unit
+	end
+
+	return getLateralDirection(forward)
 end
 
 local function findPath(root, path)
@@ -189,6 +232,54 @@ local function prepareBallClone(instance)
 	end
 end
 
+local function buildTrackRaycastParams(trackRoot)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { trackRoot }
+	params.IgnoreWater = true
+	return params
+end
+
+local function raycastTrackPosition(raycastParams, targetPosition)
+	if not raycastParams or typeof(targetPosition) ~= "Vector3" then
+		return nil
+	end
+
+	local height = math.max(0, tonumber(PushBallTheta.TrackRaycastHeight) or 80)
+	local depth = math.max(0, tonumber(PushBallTheta.TrackRaycastDepth) or 160)
+	local origin = targetPosition + UP_VECTOR * height
+	local direction = UP_VECTOR * -(height + depth)
+	local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
+
+	return raycastResult and raycastResult.Position or nil
+end
+
+local function warnRaycastMiss(state, label, targetPosition)
+	local now = os.clock()
+	if state.LastRaycastWarnTime and now - state.LastRaycastWarnTime < 1 then
+		return
+	end
+
+	state.LastRaycastWarnTime = now
+	warn(
+		("Push ball track raycast missed for %s stage %s at %s. Check TrackPath and CanQuery."):format(
+			label,
+			tostring(state.StageId),
+			tostring(targetPosition)
+		)
+	)
+end
+
+local function getGroundedPosition(state, targetPosition, offsetY, label, fallbackPosition)
+	local groundPosition = raycastTrackPosition(state.TrackRaycastParams, targetPosition)
+	if groundPosition then
+		return groundPosition + UP_VECTOR * offsetY
+	end
+
+	warnRaycastMiss(state, label, targetPosition)
+	return fallbackPosition
+end
+
 local function isPlayerNearSourceBall(root, sourceBall)
 	local sourcePivot = getPivot(sourceBall)
 	if not sourcePivot then
@@ -208,8 +299,13 @@ local function getRuntimeState(player)
 	if not state then
 		state = {
 			CompletedStage = 0,
+			ClaimableStageRewards = {},
 		}
 		runtimeStates[player] = state
+	end
+
+	if type(state.ClaimableStageRewards) ~= "table" then
+		state.ClaimableStageRewards = {}
 	end
 
 	return state
@@ -237,6 +333,15 @@ local function getStageConfig(stageId)
 	end
 
 	return sceneConfig, gameplayConfig
+end
+
+local function getBallConfig(ballInstanceId)
+	if type(ballInstanceId) ~= "string" or ballInstanceId == "" then
+		return nil
+	end
+
+	local balls = PushBallSceneTheta.Balls
+	return type(balls) == "table" and balls[ballInstanceId] or nil
 end
 
 local function setCharacterPushLocked(state, locked)
@@ -308,28 +413,29 @@ local function cleanupState(player, options)
 
 	if type(options) == "table" and options.TeleportStageId then
 		local sceneConfig = type(PushBallSceneTheta.Stages) == "table" and PushBallSceneTheta.Stages[options.TeleportStageId] or nil
-		teleportPlayerToPath(player, sceneConfig and sceneConfig.TeleportPath, "Stage " .. tostring(options.TeleportStageId))
+		if sceneConfig then
+			teleportPlayerToPath(player, sceneConfig.TeleportPath, "Stage " .. tostring(options.TeleportStageId))
+		end
+	end
+
+	if type(options) == "table" and type(options.TravelDestinationId) == "string" then
+		local travelResult = TravelTransition.Request(player, options.TravelDestinationId)
+		if travelResult.Success == false and travelResult.Message then
+			warn(travelResult.Message)
+		end
 	end
 
 	stopHeartbeatIfIdle()
 end
 
-local function applyStageReward(player, stageId, gameplayConfig)
-	local progressState = PlayerProgressState.Get(player)
-	if not progressState then
-		return false
-	end
-
-	local nextProgressState = table.clone(progressState)
-	nextProgressState.Trophies = math.max(0, (tonumber(nextProgressState.Trophies) or 0) + (tonumber(gameplayConfig.RewardTrophies) or 0))
-	PlayerProgressState.Set(player, nextProgressState)
-
-	return true
-end
-
 local function markStageCompleted(player, stageId)
 	local runtimeState = getRuntimeState(player)
 	runtimeState.CompletedStage = math.max(normalizeCompletedStage(runtimeState.CompletedStage), stageId)
+end
+
+local function markStageRewardClaimable(player, stageId)
+	local runtimeState = getRuntimeState(player)
+	runtimeState.ClaimableStageRewards[stageId] = true
 end
 
 local function handleStageReached(player, state)
@@ -345,15 +451,21 @@ local function handleStageReached(player, state)
 	local requiredStrength = tonumber(gameplayConfig.RecommendedStrength) or math.huge
 
 	if strength >= requiredStrength then
-		applyStageReward(player, stageId, gameplayConfig)
 		markStageCompleted(player, stageId)
+		markStageRewardClaimable(player, stageId)
 		cleanupState(player, {
 			TeleportStageId = stageId,
 		})
 	else
-		cleanupState(player, {
-			TeleportStageId = stageId - 1,
-		})
+		if stageId <= 1 then
+			cleanupState(player, {
+				TravelDestinationId = "World2",
+			})
+		else
+			cleanupState(player, {
+				TeleportStageId = stageId - 1,
+			})
+		end
 	end
 end
 
@@ -385,22 +497,41 @@ local function updateState(player, state, dt)
 	local lateralSpeed = math.max(0, tonumber(PushBallTheta.LateralSpeed) or 0)
 	local laneHalfWidth = math.max(0, tonumber(PushBallTheta.LaneHalfWidth) or 0)
 	local ballRadius = math.max(0.1, tonumber(PushBallTheta.BallRadius) or 3)
+	local ballGroundOffsetY = tonumber(PushBallTheta.BallGroundOffsetY) or 0
 
 	state.Progress += pushSpeed * dt
 	state.LateralOffset = math.clamp(state.LateralOffset + state.LateralInput * lateralSpeed * dt, -laneHalfWidth, laneHalfWidth)
 
-	local ballPosition = state.OriginPosition
+	local targetBallPosition = state.OriginPosition
 		+ state.Forward * state.Progress
 		+ state.Lateral * state.LateralOffset
+	local ballPosition = getGroundedPosition(
+		state,
+		targetBallPosition,
+		ballRadius + ballGroundOffsetY,
+		"ball",
+		state.BallPosition
+	)
 	state.BallPosition = ballPosition
 
 	local rollAngle = -state.Progress / ballRadius
 	local ballCFrame = CFrame.new(ballPosition) * CFrame.fromAxisAngle(state.Lateral, rollAngle) * state.BallBaseRotation
 	pivotTo(state.Ball, ballCFrame)
 
-	local playerPosition = ballPosition
+	local playerForwardOffset = tonumber(PushBallTheta.PlayerForwardOffset) or 0
+	local playerLateralOffset = tonumber(PushBallTheta.PlayerLateralOffset) or 0
+	local targetPlayerPosition = targetBallPosition
 		- state.Forward * (tonumber(PushBallTheta.PlayerBehindBallDistance) or 5)
-		+ Vector3.new(0, state.PlayerBallYOffset, 0)
+		+ state.Forward * playerForwardOffset
+		+ state.Lateral * playerLateralOffset
+	local playerPosition = getGroundedPosition(
+		state,
+		targetPlayerPosition,
+		state.PlayerGroundOffsetY,
+		"player",
+		state.PlayerPosition or (ballPosition - state.Forward * (tonumber(PushBallTheta.PlayerBehindBallDistance) or 5))
+	)
+	state.PlayerPosition = playerPosition
 	character:PivotTo(CFrame.lookAt(playerPosition, playerPosition + state.Forward))
 
 	if isBallTouchingWall(state) then
@@ -422,38 +553,66 @@ local function ensureHeartbeat()
 	heartbeatConnection = RunService.Heartbeat:Connect(updateAll)
 end
 
-local function createState(player, stageId, sourceBall, root, humanoid, character)
+local function createState(player, stageId, ballInstanceId, sourceBall, trackRoot, wall, root, humanoid, character)
 	local sourcePivot = getPivot(sourceBall)
 	if not sourcePivot then
 		return nil
 	end
 
-	local forward = getForwardDirection()
-	local lateral = getLateralDirection(forward)
+	local wallPivot = getPivot(wall)
+	if not wallPivot then
+		return nil
+	end
+
+	local trackRaycastParams = buildTrackRaycastParams(trackRoot)
+	local forward = getStageForward(sourcePivot, wallPivot)
+	local lateral = getStageLateral(forward)
 	local ballClone = sourceBall:Clone()
-	ballClone.Name = "PushBall_" .. tostring(player.UserId)
+	ballClone.Name = "PushBall_" .. tostring(player.UserId) .. "_" .. ballInstanceId
 	prepareBallClone(ballClone)
 	ballClone.Parent = getBallFolder()
 
 	local ballBaseRotation = sourcePivot - sourcePivot.Position
 	local originPosition = sourcePivot.Position
+	local ballRadius = math.max(0.1, tonumber(PushBallTheta.BallRadius) or 3)
+	local ballGroundOffsetY = tonumber(PushBallTheta.BallGroundOffsetY) or 0
+	local initialBallGround = raycastTrackPosition(trackRaycastParams, originPosition)
+	local initialBallPosition = initialBallGround and initialBallGround + UP_VECTOR * (ballRadius + ballGroundOffsetY)
+		or originPosition
+	local configuredPlayerGroundOffsetY = tonumber(PushBallTheta.PlayerGroundOffsetY)
+	local playerGround = raycastTrackPosition(trackRaycastParams, root.Position)
+	local playerGroundOffsetY = configuredPlayerGroundOffsetY or (playerGround and root.Position.Y - playerGround.Y) or 3
+
+	debugLog(
+		("Stage %s ball=%s track=%s forward=%s lateral=%s"):format(
+			tostring(stageId),
+			tostring(ballInstanceId),
+			trackRoot:GetFullName(),
+			tostring(forward),
+			tostring(lateral)
+		)
+	)
 
 	return {
 		Player = player,
+		BallInstanceId = ballInstanceId,
 		Character = character,
 		Humanoid = humanoid,
 		RootPart = root,
 		Ball = ballClone,
 		BallBaseRotation = ballBaseRotation,
-		BallPosition = originPosition,
+		BallPosition = initialBallPosition,
+		PlayerPosition = root.Position,
 		OriginPosition = originPosition,
 		Forward = forward,
 		Lateral = lateral,
+		TrackRoot = trackRoot,
+		TrackRaycastParams = trackRaycastParams,
 		StageId = stageId,
 		Progress = 0,
 		LateralOffset = 0,
 		LateralInput = 0,
-		PlayerBallYOffset = root.Position.Y - originPosition.Y,
+		PlayerGroundOffsetY = playerGroundOffsetY,
 		OriginalWalkSpeed = humanoid.WalkSpeed,
 		OriginalJumpPower = humanoid.JumpPower,
 		OriginalAutoRotate = humanoid.AutoRotate,
@@ -461,7 +620,7 @@ local function createState(player, stageId, sourceBall, root, humanoid, characte
 	}
 end
 
-function PushBallTransition.RequestStart(player)
+function PushBallTransition.RequestStart(player, ballInstanceId)
 	if activeStates[player] then
 		return result(false, "Already pushing ball", activeStates[player].StageId)
 	end
@@ -476,6 +635,16 @@ function PushBallTransition.RequestStart(player)
 		return result(false, "All push ball stages completed")
 	end
 
+	local ballConfig = getBallConfig(ballInstanceId)
+	if not ballConfig then
+		return result(false, "Invalid push ball", stageId)
+	end
+
+	local ballStageId = math.floor(tonumber(ballConfig.StageId) or 0)
+	if ballStageId ~= stageId then
+		return result(false, "Push ball does not match current stage", stageId)
+	end
+
 	local sceneConfig = getStageConfig(stageId)
 	if not sceneConfig then
 		return result(false, "Missing push ball stage config", stageId)
@@ -486,16 +655,26 @@ function PushBallTransition.RequestStart(player)
 		return result(false, "Missing player character", stageId)
 	end
 
-	local sourceBall = waitForPath(Workspace, PushBallSceneTheta.BallPath)
+	local sourceBall = waitForPath(Workspace, ballConfig.Path)
 	if not sourceBall then
 		return result(false, "Missing push ball source", stageId)
+	end
+
+	local trackRoot = waitForPath(Workspace, sceneConfig.TrackPath)
+	if not trackRoot then
+		return result(false, "Missing push ball track: " .. pathToString(sceneConfig.TrackPath), stageId)
+	end
+
+	local wall = waitForPath(Workspace, sceneConfig.WallPath)
+	if not wall then
+		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPath), stageId)
 	end
 
 	if not isPlayerNearSourceBall(root, sourceBall) then
 		return result(false, "Too far from push ball", stageId)
 	end
 
-	local state = createState(player, stageId, sourceBall, root, humanoid, character)
+	local state = createState(player, stageId, ballInstanceId, sourceBall, trackRoot, wall, root, humanoid, character)
 	if not state then
 		return result(false, "Invalid push ball source", stageId)
 	end
@@ -531,6 +710,22 @@ function PushBallTransition.RequestStop(player)
 	local stageId = activeStates[player] and activeStates[player].StageId or nil
 	cleanupState(player)
 	return result(true, "Push ball stopped", stageId)
+end
+
+function PushBallTransition.ConsumeClaimableStageReward(player, stageId)
+	local normalizedStageId = math.floor(tonumber(stageId) or 0)
+	if normalizedStageId <= 0 then
+		return false
+	end
+
+	local runtimeState = runtimeStates[player]
+	local claimableRewards = runtimeState and runtimeState.ClaimableStageRewards
+	if type(claimableRewards) ~= "table" or claimableRewards[normalizedStageId] ~= true then
+		return false
+	end
+
+	claimableRewards[normalizedStageId] = nil
+	return true
 end
 
 function PushBallTransition.RemovePlayer(player)
