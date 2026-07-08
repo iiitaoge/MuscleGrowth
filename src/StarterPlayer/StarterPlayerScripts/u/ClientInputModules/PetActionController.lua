@@ -9,30 +9,8 @@ local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetS
 local PetActionController = {}
 
 -- 初始化宠物动作控制器。
-function PetActionController.Init(remoteClient, snapshotController, petInventoryView)
+function PetActionController.Init(snapshotController, petInventoryView)
 	local isOpeningInventory = false
-
-	-- 用给定快照刷新宠物背包。
-	local function refreshPetInventoryFromData(data)
-		if data then
-			petInventoryView.Refresh(data)
-		end
-	end
-
-	-- 打开背包时主动向服务端拿一次完整快照。
-	local function refreshPetInventoryFromServer()
-		return snapshotController.RefreshFromServer()
-	end
-
-	-- 调用宠物 Remote，并统一处理结果。
-	local function invokePetRemote(remoteId, shouldRefreshInventory, ...)
-		local appliedResult = snapshotController.ApplyRemoteResult(remoteClient.SafeInvoke(remoteId, ...))
-		if shouldRefreshInventory and appliedResult and appliedResult.Data then
-			refreshPetInventoryFromData(appliedResult.Data)
-		end
-
-		return appliedResult
-	end
 
 	-- 按倍率和实例 id 排序宠物快照。
 	local function comparePetsByMultiplier(left, right)
@@ -69,15 +47,19 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		local latestPetResult = nil
 
 		for slotIndex = 1, maxEquippedPets do
-			latestPetResult = invokePetRemote("RequestPetUnequip", false, slotIndex) or latestPetResult
+			latestPetResult = snapshotController.InvokeAction("RequestPetUnequip", slotIndex) or latestPetResult
 		end
 
 		for slotIndex = 1, math.min(maxEquippedPets, #ownedPets) do
-			latestPetResult = invokePetRemote("RequestPetEquip", false, ownedPets[slotIndex].InstanceId, slotIndex) or latestPetResult
+			latestPetResult = snapshotController.InvokeAction(
+				"RequestPetEquip",
+				ownedPets[slotIndex].InstanceId,
+				slotIndex
+			) or latestPetResult
 		end
 
 		if latestPetResult and latestPetResult.Data then
-			refreshPetInventoryFromData(latestPetResult.Data)
+			petInventoryView.Refresh(latestPetResult.Data)
 		end
 	end
 
@@ -87,11 +69,11 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		local latestPetResult = nil
 
 		for slotIndex = 1, maxEquippedPets do
-			latestPetResult = invokePetRemote("RequestPetUnequip", false, slotIndex) or latestPetResult
+			latestPetResult = snapshotController.InvokeAction("RequestPetUnequip", slotIndex) or latestPetResult
 		end
 
 		if latestPetResult and latestPetResult.Data then
-			refreshPetInventoryFromData(latestPetResult.Data)
+			petInventoryView.Refresh(latestPetResult.Data)
 		end
 	end
 
@@ -103,17 +85,32 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 			return
 		end
 
-		invokePetRemote("RequestPetDelete", true, petInstanceIds)
+		local result = snapshotController.InvokeAction("RequestPetDelete", petInstanceIds)
+		if result and result.Data then
+			petInventoryView.Refresh(result.Data)
+		end
+
+		return result
 	end
 
 	-- 装备单只宠物并刷新背包。
 	local function equipPet(petInstanceId, slotIndex)
-		return invokePetRemote("RequestPetEquip", true, petInstanceId, slotIndex)
+		local result = snapshotController.InvokeAction("RequestPetEquip", petInstanceId, slotIndex)
+		if result and result.Data then
+			petInventoryView.Refresh(result.Data)
+		end
+
+		return result
 	end
 
 	-- 卸下单个装备槽并刷新背包。
 	local function unequipPet(slotIndex)
-		return invokePetRemote("RequestPetUnequip", true, slotIndex)
+		local result = snapshotController.InvokeAction("RequestPetUnequip", slotIndex)
+		if result and result.Data then
+			petInventoryView.Refresh(result.Data)
+		end
+
+		return result
 	end
 
 	-- 打开宠物背包：先拿数据并渲染，再显示面板。
@@ -123,11 +120,11 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		end
 
 		isOpeningInventory = true
-		local data = refreshPetInventoryFromServer()
+		local data = snapshotController.RefreshFromServer()
 		isOpeningInventory = false
 
 		if data then
-			refreshPetInventoryFromData(data)
+			petInventoryView.Refresh(data)
 			petInventoryView.SetOpen(true)
 		end
 	end

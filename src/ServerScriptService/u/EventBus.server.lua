@@ -149,22 +149,14 @@ requestBarbellEquip.OnServerInvoke = function(player, barbellId)
 end
 
 -- 处理玩家装备宠物的请求
-requestPetEquip.OnServerInvoke = function(player, petInstanceId, slotIndex)
-	return PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
-end
+requestPetEquip.OnServerInvoke = PetEquipTransition.RequestEquip
 
-requestPetUnequip.OnServerInvoke = function(player, slotIndex)
-	return PetEquipTransition.RequestUnequip(player, slotIndex)
-end
+requestPetUnequip.OnServerInvoke = PetEquipTransition.RequestUnequip
 
-requestPetRoll.OnServerInvoke = function(player, eggId, rollCount)
-	return PetRollTransition.RequestRoll(player, eggId, rollCount)
-end
+requestPetRoll.OnServerInvoke = PetRollTransition.RequestRoll
 
 -- 处理删除宠物ID的操作
-requestPetDelete.OnServerInvoke = function(player, petInstanceIds)
-	return PetDeleteTransition.RequestDelete(player, petInstanceIds)
-end
+requestPetDelete.OnServerInvoke = PetDeleteTransition.RequestDelete
 
 requestTravelDestination.OnServerInvoke = function(player, destinationId)
 	return TravelTransition.Request(player, destinationId)

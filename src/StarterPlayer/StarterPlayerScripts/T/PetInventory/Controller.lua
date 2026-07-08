@@ -45,11 +45,6 @@ function Controller.Init(player)
 		end
 	end
 
-	-- 返回当前选中的宠物实例 id 列表。
-	local function getSelectedPetInstanceIds()
-		return DataAdapter.BuildSelectedInstanceIdList(selectedPetInstanceIds)
-	end
-
 	-- 按快照渲染整个宠物背包。
 	local function renderInventory(data)
 		local ownedSnapshots = data.OwnedPetSnapshots
@@ -131,7 +126,7 @@ function Controller.Init(player)
 	Renderer.ConnectActivated(refs.DeleteButton, function()
 		local handler = actionHandlers.DeletePets
 		if handler then
-			handler(getSelectedPetInstanceIds())
+			handler(DataAdapter.BuildSelectedInstanceIdList(selectedPetInstanceIds))
 		end
 	end)
 
@@ -141,7 +136,6 @@ function Controller.Init(player)
 		SetOpen = setOpen,
 		SetActionHandlers = setActionHandlers,
 		GetPetButton = getPetButton,
-		GetSelectedPetInstanceIds = getSelectedPetInstanceIds,
 		IsOpen = isOpen,
 	}
 end

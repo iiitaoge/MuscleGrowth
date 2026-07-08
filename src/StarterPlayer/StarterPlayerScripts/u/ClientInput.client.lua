@@ -57,7 +57,7 @@ local pushBallController = PushBallController.Init(player, remoteClient, movemen
 PlayerVisualSync.Init()
 TrainingGainAttributeController.Init(player, floatingGainView, snapshotController)
 RebirthActionController.Init(remoteClient, snapshotController, hudView, rebirthPanelView)
-PetActionController.Init(remoteClient, snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口
+PetActionController.Init(snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口
 PetRollController.Init(remoteClient, snapshotController, eggPanelView, eggInteractionController)
 TravelActionController.Init(remoteClient, snapshotController, travelPanelView)
 

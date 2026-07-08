@@ -47,6 +47,11 @@ function SnapshotController.Init(remoteClient, views)
 		return result
 	end
 
+	-- 调用返回标准动作结果的 RemoteFunction，并应用其中的快照。
+	local function invokeAction(remoteId, ...)
+		return applyRemoteResult(remoteClient.SafeInvoke(remoteId, ...))
+	end
+
 	-- 主动向服务端请求完整快照。
 	local function refreshFromServer()
 		local success, data = remoteClient.SafeInvoke("GetData")
@@ -67,6 +72,7 @@ function SnapshotController.Init(remoteClient, views)
 		Refresh = refresh,
 		RefreshFromServer = refreshFromServer,
 		ApplyRemoteResult = applyRemoteResult,
+		InvokeAction = invokeAction,
 		GetLatestData = getLatestData,
 	}
 end
