@@ -11,6 +11,7 @@ local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
 local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.Transitions.TrainingTransition)
+local TravelTransition = require(script.Parent.Parent.T.Transitions.TravelTransition)
 local EggWorldSync = require(script.Parent.Parent.T.WorldSync.EggWorldSync)
 
 local REMOTE_EVENT_MIN_INTERVALS = {
@@ -60,6 +61,7 @@ local requestPetEquip = getOrCreateRemote("RequestPetEquip")
 local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
 local requestPetRoll = getOrCreateRemote("RequestPetRoll")
 local requestPetDelete = getOrCreateRemote("RequestPetDelete")
+local requestTravelDestination = getOrCreateRemote("RequestTravelDestination")
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -138,6 +140,10 @@ end
 -- 处理删除宠物ID的操作
 requestPetDelete.OnServerInvoke = function(player, petInstanceIds)
 	return PetTransition.RequestDelete(player, petInstanceIds)
+end
+
+requestTravelDestination.OnServerInvoke = function(player, destinationId)
+	return TravelTransition.Request(player, destinationId)
 end
 
 Players.PlayerAdded:Connect(initPlayer)

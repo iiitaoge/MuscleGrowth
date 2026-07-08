@@ -13,6 +13,7 @@ local HUDController = require(script.Parent.Parent.T.HUD.Controller)
 local PetInventoryController = require(script.Parent.Parent.T.PetInventory.Controller)
 local PlayerVisualSync = require(script.Parent.Parent.T.PlayerVisualSync)
 local RebirthPanelController = require(script.Parent.Parent.T.RebirthPanel.Controller)
+local TravelPanelController = require(script.Parent.Parent.T.TravelPanel.Controller)
 local UIContract = require(script.Parent.Parent.T.UIContract)
 
 local AutoAreaController = require(modules.AutoAreaController)
@@ -25,6 +26,7 @@ local RemoteClient = require(modules.RemoteClient)
 local SceneQuery = require(modules.SceneQuery)
 local SnapshotController = require(modules.SnapshotController)
 local TrainingGainAttributeController = require(modules.TrainingGainAttributeController)
+local TravelActionController = require(modules.TravelActionController)
 
 UIContract.ValidateAll()
 
@@ -35,6 +37,7 @@ local petInventoryView = PetInventoryController.Init(player)	--初始化宠物�
 local rebirthPanelView = RebirthPanelController.Init(player)
 local eggPanelView = EggPanelController.Init(player)
 local barbellDisplayView = BarbellDisplayController.Init()
+local travelPanelView = TravelPanelController.Init(player)
 
 local snapshotController = SnapshotController.Init(remoteClient, {
 	HUD = hudView,
@@ -54,6 +57,7 @@ TrainingGainAttributeController.Init(player, floatingGainView, snapshotControlle
 RebirthActionController.Init(remoteClient, snapshotController, hudView, rebirthPanelView)
 PetActionController.Init(remoteClient, snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口
 PetRollController.Init(remoteClient, snapshotController, eggPanelView, eggInteractionController)
+TravelActionController.Init(remoteClient, snapshotController, travelPanelView)
 
 movementController.Bind()
 autoAreaController.BindAll()

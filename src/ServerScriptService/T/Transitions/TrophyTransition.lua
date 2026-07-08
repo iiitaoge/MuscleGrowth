@@ -4,10 +4,9 @@ local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgress
 local TrophyWorldSync = require(script.Parent.Parent.WorldSync.TrophyWorldSync)
 local TrophyTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
 
-local TravelDestinationWorldSync = require(script.Parent.Parent.WorldSync.TravelDestinationWorldSync)
+local TravelTransition = require(script.Parent.TravelTransition)
 
 local TrophyTransition = {}
-local TravelDestinationId = "World1"	--传送目的地
 
 local TOUCH_COOLDOWN_SECONDS = 1
 
@@ -55,6 +54,11 @@ local function getRewardTrophies(trophyId, fallbackConfig)
 	return math.max(0, tonumber(freeReturnConfig and freeReturnConfig.RewardTrophies) or 0)
 end
 
+local function getTravelDestinationId(trophyId, fallbackConfig)
+	local freeReturnConfig = getFreeReturnConfig(trophyId, fallbackConfig)
+	return type(freeReturnConfig) == "table" and freeReturnConfig.TravelDestinationId or nil
+end
+
 local function onFreeReturnTouched(player, trophyId, freeReturnConfig)
 	if not player or not canTouchNow(player) then
 		return
@@ -64,15 +68,16 @@ local function onFreeReturnTouched(player, trophyId, freeReturnConfig)
 	if rewardTrophies <= 0 then
 		return
 	end
-	local world1 = workspace:WaitForChild("World1")
 
-	print("Teleport check children:")
-	for _, child in ipairs(world1:GetChildren()) do
-		print(child.Name, child.ClassName, child:GetFullName())
-	end
 	-- 进行传送
 	if TrophyTransition.AddTrophies(player, rewardTrophies) then
-		TravelDestinationWorldSync.TeleportPlayer(player, TravelDestinationId)
+		local destinationId = getTravelDestinationId(trophyId, freeReturnConfig)
+		if destinationId then
+			local result = TravelTransition.Request(player, destinationId)
+			if result.Success == false and result.Message then
+				warn(result.Message)
+			end
+		end
 	end
 end
 

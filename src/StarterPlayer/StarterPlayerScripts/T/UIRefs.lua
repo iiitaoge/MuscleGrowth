@@ -388,6 +388,38 @@ function UIRefs.ResolvePetInventory(player)
 	}
 end
 
+-- ===== TravelPanel =====
+
+function UIRefs.ResolveTravelPanel(player)
+	local config = UIContract.GetConfig("TravelPanel")
+	local playerGui = waitForPlayerGui(player)
+	local hud = waitForScreenGui(playerGui, config.HudScreenGuiName, "Travel HUD ScreenGui")
+	local mainGui = waitForScreenGui(playerGui, config.ScreenGuiName, "Travel ScreenGui")
+	local paths = config.Paths
+	local destinationButtons = {}
+
+	for key, buttonConfig in pairs(config.DestinationButtons) do
+		table.insert(destinationButtons, {
+			Key = key,
+			DestinationId = buttonConfig.DestinationId,
+			Button = requireGuiButton(
+				waitForPath(mainGui, buttonConfig.Path, "Travel destination button " .. tostring(key)),
+				"Travel destination button " .. tostring(key)
+			),
+		})
+	end
+
+	return {
+		OpenButton = requireGuiButton(waitForPath(hud, paths.OpenButton, "Travel OpenButton"), "Travel OpenButton"),
+		PanelRoot = requireGuiObject(waitForPath(mainGui, paths.PanelRoot, "Travel PanelRoot"), "Travel PanelRoot"),
+		CloseButton = requireGuiButton(
+			waitForPath(mainGui, paths.CloseButton, "Travel CloseButton"),
+			"Travel CloseButton"
+		),
+		DestinationButtons = destinationButtons,
+	}
+end
+
 -- ===== BarbellDisplay =====
 
 function UIRefs.ResolveBarbellDisplay()

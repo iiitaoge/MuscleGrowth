@@ -54,6 +54,11 @@ local RemoteTheta = {
 		Name = "RequestPetDelete",
 		ClassName = "RemoteFunction",
 	},
+	-- 传送事件
+	RequestTravelDestination = {
+		Name = "RequestTravelDestination",
+		ClassName = "RemoteFunction",
+	},
 }
 
 return RemoteTheta

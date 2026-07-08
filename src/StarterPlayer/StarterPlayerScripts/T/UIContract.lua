@@ -12,6 +12,7 @@ local PetInventoryPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("Pe
 local BarbellDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 local EggPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggPanelTheta"))
+local TravelPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("TravelPanelTheta"))
 
 local UIContract = {}
 
@@ -263,6 +264,35 @@ local function validatePetInventory()
 	}
 end
 
+local function validateTravelPanel()
+	local destinationButtons = requireTable(TravelPanelTheta.DestinationButtons, "TravelPanelTheta.DestinationButtons")
+	local validatedDestinationButtons = {}
+	local hasDestinationButton = false
+
+	for key, buttonConfig in pairs(destinationButtons) do
+		local context = "TravelPanelTheta.DestinationButtons." .. tostring(key)
+		buttonConfig = requireTable(buttonConfig, context)
+		validatedDestinationButtons[key] = {
+			DestinationId = requireString(buttonConfig.DestinationId, context .. ".DestinationId"),
+			Path = requirePath(buttonConfig.Path, context .. ".Path"),
+		}
+		hasDestinationButton = true
+	end
+
+	assert(hasDestinationButton, "TravelPanelTheta.DestinationButtons must not be empty.")
+
+	return {
+		HudScreenGuiName = requireString(TravelPanelTheta.HudScreenGuiName, "TravelPanelTheta.HudScreenGuiName"),
+		ScreenGuiName = requireString(TravelPanelTheta.ScreenGuiName, "TravelPanelTheta.ScreenGuiName"),
+		Paths = requirePathMap(TravelPanelTheta.Paths, "TravelPanelTheta.Paths", {
+			"OpenButton",
+			"PanelRoot",
+			"CloseButton",
+		}),
+		DestinationButtons = validatedDestinationButtons,
+	}
+end
+
 local function validateBarbellDisplay()
 	return {
 		WorkspaceRootName = requireString(SceneTheta.WorkspaceRootName, "SceneTheta.WorkspaceRootName"),
@@ -293,6 +323,7 @@ function UIContract.ValidateAll()
 		RebirthPanel = validateRebirthPanel(),
 		EggPanel = validateEggPanel(),
 		PetInventory = validatePetInventory(),
+		TravelPanel = validateTravelPanel(),
 		BarbellDisplay = validateBarbellDisplay(),
 	}
 

@@ -1,3 +1,4 @@
+-- 对事件的请求执行限流
 local RemoteRateLimiter = {}
 
 local DEFAULT_MIN_INTERVAL = 0.1

@@ -6,6 +6,7 @@ local TrophyTheta = {
 			NodeName = "TR1",
 			FreeReturnName = "FreeReturn",
 			RewardTrophies = 13000000,
+			TravelDestinationId = "World1",
 		},
 	},
 }
