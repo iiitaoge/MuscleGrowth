@@ -8,6 +8,9 @@
       }
     },
     "ServerScriptService": {
+      "Debug": {
+        "$path": "src/ServerScriptService/Debug"
+      },
       "S": {
         "$path": "src/ServerScriptService/S"
       },
