@@ -5,7 +5,9 @@ local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
-local PetTransition = require(script.Parent.Parent.T.Transitions.Pet.PetTransition)
+local PetDeleteTransition = require(script.Parent.Parent.T.Transitions.Pet.PetDeleteTransition)
+local PetEquipTransition = require(script.Parent.Parent.T.Transitions.Pet.PetEquipTransition)
+local PetRollTransition = require(script.Parent.Parent.T.Transitions.Pet.PetRollTransition)
 local PushBallTransition = require(script.Parent.Parent.T.Transitions.PushBallTransition)
 local RebirthTransition = require(script.Parent.Parent.T.Transitions.RebirthTransition)
 local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
@@ -63,7 +65,9 @@ local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
 local requestPetEquip = getOrCreateRemote("RequestPetEquip")
 local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
 local requestPetRoll = getOrCreateRemote("RequestPetRoll")
-local requestPetDelete = getOrCreateRemote("RequestPetDelete")
+
+local requestPetDelete = getOrCreateRemote("RequestPetDelete")	-- 删除请求
+
 local requestTravelDestination = getOrCreateRemote("RequestTravelDestination")
 local requestStartPushBall = getOrCreateRemote("RequestStartPushBall")
 local requestStopPushBall = getOrCreateRemote("RequestStopPushBall")
@@ -146,20 +150,20 @@ end
 
 -- 处理玩家装备宠物的请求
 requestPetEquip.OnServerInvoke = function(player, petInstanceId, slotIndex)
-	return PetTransition.RequestEquip(player, petInstanceId, slotIndex)
+	return PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 end
 
 requestPetUnequip.OnServerInvoke = function(player, slotIndex)
-	return PetTransition.RequestUnequip(player, slotIndex)
+	return PetEquipTransition.RequestUnequip(player, slotIndex)
 end
 
 requestPetRoll.OnServerInvoke = function(player, eggId, rollCount)
-	return PetTransition.RequestRoll(player, eggId, rollCount)
+	return PetRollTransition.RequestRoll(player, eggId, rollCount)
 end
 
 -- 处理删除宠物ID的操作
 requestPetDelete.OnServerInvoke = function(player, petInstanceIds)
-	return PetTransition.RequestDelete(player, petInstanceIds)
+	return PetDeleteTransition.RequestDelete(player, petInstanceIds)
 end
 
 requestTravelDestination.OnServerInvoke = function(player, destinationId)

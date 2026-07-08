@@ -129,7 +129,7 @@ function Controller.Init(player)
 	end)
 	-- 绑定回调函数：点击删除按钮 提交当前选中的宠物实例。
 	Renderer.ConnectActivated(refs.DeleteButton, function()
-		local handler = actionHandlers.DeleteSelected
+		local handler = actionHandlers.DeletePets
 		if handler then
 			handler(getSelectedPetInstanceIds())
 		end

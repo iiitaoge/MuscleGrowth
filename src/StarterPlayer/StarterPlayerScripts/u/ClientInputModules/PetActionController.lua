@@ -24,20 +24,14 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		return snapshotController.RefreshFromServer()
 	end
 
-	-- 统一处理宠物动作 Remote 结果，并按需刷新宠物背包。
-	local function applyPetActionResult(success, result, shouldRefreshInventory)
-		local appliedResult = snapshotController.ApplyRemoteResult(success, result)
+	-- 调用宠物 Remote，并统一处理结果。
+	local function invokePetRemote(remoteId, shouldRefreshInventory, ...)
+		local appliedResult = snapshotController.ApplyRemoteResult(remoteClient.SafeInvoke(remoteId, ...))
 		if shouldRefreshInventory and appliedResult and appliedResult.Data then
 			refreshPetInventoryFromData(appliedResult.Data)
 		end
 
 		return appliedResult
-	end
-
-	-- 调用宠物 Remote，并统一处理结果。
-	local function invokePetRemote(remoteId, shouldRefreshInventory, ...)
-		local success, result = remoteClient.SafeInvoke(remoteId, ...)
-		return applyPetActionResult(success, result, shouldRefreshInventory)
 	end
 
 	-- 按倍率和实例 id 排序宠物快照。
@@ -49,16 +43,6 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		end
 
 		return leftMultiplier > rightMultiplier
-	end
-
-	-- 调用宠物装备 Remote。
-	local function requestPetEquip(petInstanceId, slotIndex, shouldRefreshInventory)
-		return invokePetRemote("RequestPetEquip", shouldRefreshInventory, petInstanceId, slotIndex)
-	end
-
-	-- 调用宠物卸下 Remote。
-	local function requestPetUnequip(slotIndex, shouldRefreshInventory)
-		return invokePetRemote("RequestPetUnequip", shouldRefreshInventory, slotIndex)
 	end
 
 	-- 读取当前背包并按倍率排序。
@@ -85,11 +69,11 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		local latestPetResult = nil
 
 		for slotIndex = 1, maxEquippedPets do
-			latestPetResult = requestPetUnequip(slotIndex, false) or latestPetResult
+			latestPetResult = invokePetRemote("RequestPetUnequip", false, slotIndex) or latestPetResult
 		end
 
 		for slotIndex = 1, math.min(maxEquippedPets, #ownedPets) do
-			latestPetResult = requestPetEquip(ownedPets[slotIndex].InstanceId, slotIndex, false) or latestPetResult
+			latestPetResult = invokePetRemote("RequestPetEquip", false, ownedPets[slotIndex].InstanceId, slotIndex) or latestPetResult
 		end
 
 		if latestPetResult and latestPetResult.Data then
@@ -103,7 +87,7 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		local latestPetResult = nil
 
 		for slotIndex = 1, maxEquippedPets do
-			latestPetResult = requestPetUnequip(slotIndex, false) or latestPetResult
+			latestPetResult = invokePetRemote("RequestPetUnequip", false, slotIndex) or latestPetResult
 		end
 
 		if latestPetResult and latestPetResult.Data then
@@ -111,11 +95,11 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		end
 	end
 
-	-- 删除背包里当前选中的宠物实例。
-	local function deleteSelected(petInstanceIds)
+	-- 删除给定宠物实例列表。
+	local function deletePets(petInstanceIds)
 		-- 确保类型为 表 确保表长度 > 0
 		if type(petInstanceIds) ~= "table" or #petInstanceIds <= 0 then
-			warn("No pets selected")
+			warn("No pets to delete")
 			return
 		end
 
@@ -124,12 +108,12 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 
 	-- 装备单只宠物并刷新背包。
 	local function equipPet(petInstanceId, slotIndex)
-		return requestPetEquip(petInstanceId, slotIndex, true)
+		return invokePetRemote("RequestPetEquip", true, petInstanceId, slotIndex)
 	end
 
 	-- 卸下单个装备槽并刷新背包。
 	local function unequipPet(slotIndex)
-		return requestPetUnequip(slotIndex, true)
+		return invokePetRemote("RequestPetUnequip", true, slotIndex)
 	end
 
 	-- 打开宠物背包：先拿数据并渲染，再显示面板。
@@ -169,7 +153,7 @@ function PetActionController.Init(remoteClient, snapshotController, petInventory
 		Unequip = unequipPet,
 		EquipBest = equipBest,
 		UnequipAll = unequipAll,
-		DeleteSelected = deleteSelected,
+		DeletePets = deletePets,
 	})
 	bindPetButton()
 
