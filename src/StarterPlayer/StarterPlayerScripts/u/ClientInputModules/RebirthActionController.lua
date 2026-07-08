@@ -4,10 +4,10 @@
 local RebirthActionController = {}
 
 -- 初始化重生动作控制器。
-function RebirthActionController.Init(remoteClient, snapshotController, hudView, rebirthPanelView)
+function RebirthActionController.Init(snapshotController, hudView, rebirthPanelView)
 	-- 请求服务端执行重生并应用返回快照。
 	local function requestRebirth()
-		snapshotController.ApplyRemoteResult(remoteClient.SafeInvoke("RequestRebirth"))
+		snapshotController.InvokeAction("RequestRebirth")
 	end
 
 	-- 绑定 HUD 左侧重生入口按钮。
@@ -28,8 +28,6 @@ function RebirthActionController.Init(remoteClient, snapshotController, hudView,
 
 	rebirthPanelView.SetRequestHandler(requestRebirth)
 	bindRebirthButton()
-
-	return {}
 end
 
 return RebirthActionController

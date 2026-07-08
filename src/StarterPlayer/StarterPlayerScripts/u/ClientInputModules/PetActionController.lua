@@ -153,8 +153,6 @@ function PetActionController.Init(snapshotController, petInventoryView)
 		DeletePets = deletePets,
 	})
 	bindPetButton()
-
-	return {}
 end
 
 return PetActionController

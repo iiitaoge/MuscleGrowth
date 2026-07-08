@@ -9,6 +9,7 @@ local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("Pus
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
+local TransitionResult = require(script.Parent.TransitionResult)
 local TrainingTransition = require(script.Parent.TrainingTransition)
 local TravelTransition = require(script.Parent.TravelTransition)
 
@@ -35,11 +36,9 @@ local function pathToString(path)
 end
 
 local function result(success, message, stageId)
-	return {
-		Success = success == true,
-		Message = message,
+	return TransitionResult.New(success, message, {
 		StageId = stageId,
-	}
+	})
 end
 
 local function normalizeVector(value, fallback)

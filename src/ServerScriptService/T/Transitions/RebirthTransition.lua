@@ -1,6 +1,6 @@
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
-local PlayerSnapshotBuilder = require(script.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local TransitionResult = require(script.Parent.TransitionResult)
 
 local RebirthTransition = {}
 
@@ -30,11 +30,7 @@ end
 function RebirthTransition.Request(player)
 	local success, message = RebirthTransition.TryApply(player)
 
-	return {
-		Success = success,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
+	return TransitionResult.WithSnapshot(player, success, message)
 end
 
 return RebirthTransition

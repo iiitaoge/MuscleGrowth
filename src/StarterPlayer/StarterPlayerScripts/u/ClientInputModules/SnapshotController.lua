@@ -71,7 +71,6 @@ function SnapshotController.Init(remoteClient, views)
 	return {
 		Refresh = refresh,
 		RefreshFromServer = refreshFromServer,
-		ApplyRemoteResult = applyRemoteResult,
 		InvokeAction = invokeAction,
 		GetLatestData = getLatestData,
 	}

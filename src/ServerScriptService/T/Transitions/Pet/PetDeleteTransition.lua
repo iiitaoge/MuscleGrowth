@@ -2,39 +2,13 @@ local PlayerProgressState = require(script.Parent.Parent.Parent.Parent.S.PlayerP
 
 local PetStateNormalizer = require(script.Parent.Parent.Parent.Rules.Pet.PetStateNormalizer)
 local PetSystemRules = require(script.Parent.Parent.Parent.Rules.Pet.PetSystemRules)
-local PlayerSnapshotBuilder = require(script.Parent.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local TransitionResult = require(script.Parent.Parent.TransitionResult)
 local PlayerVisualStateSync = require(script.Parent.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local PetDeleteTransition = {}
 
 local INVALID_REQUEST_MESSAGE = "Invalid request"
 local MAX_DELETE_COUNT = 50
-
-local function failure(message, player)
-	return {
-		Success = false,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-end
-
--- 业务逻辑成功，返回玩家快照
-local function success(message, player, extraResult)
-	local result = {
-		Success = true,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-
-	-- 不同业务可以自由添加的额外信息
-	if type(extraResult) == "table" then
-		for key, value in pairs(extraResult) do
-			result[key] = value
-		end
-	end
-
-	return result
-end
 
 local function appendInstanceId(instanceIds, seenInstanceIds, value)
 	if PetSystemRules.IsEmptyPetSlot(value) then
@@ -91,19 +65,19 @@ function PetDeleteTransition.RequestDelete(player, petInstanceIds)
 	-- 先标准化传过来的宠物ID数据
 	local normalizedInstanceIds = normalizeInstanceIds(petInstanceIds)
 	if #normalizedInstanceIds <= 0 then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	-- 在获得标准化的玩家进度数据
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	-- 判断需要删除的ID是否属于该玩家
 	for _, instanceId in ipairs(normalizedInstanceIds) do
 		if not progressState.OwnedPets[instanceId] then
-			return failure(INVALID_REQUEST_MESSAGE, player)
+			return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 		end
 	end
 
@@ -118,7 +92,7 @@ function PetDeleteTransition.RequestDelete(player, petInstanceIds)
 	PlayerProgressState.Set(player, progressState)
 	PlayerVisualStateSync.Refresh(player)
 
-	return success("Pet deleted", player, {
+	return TransitionResult.SuccessWithSnapshot(player, "Pet deleted", {
 		DeletedPetInstanceIds = normalizedInstanceIds,
 	})
 end

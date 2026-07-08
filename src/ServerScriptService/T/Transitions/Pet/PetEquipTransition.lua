@@ -2,36 +2,12 @@ local PlayerProgressState = require(script.Parent.Parent.Parent.Parent.S.PlayerP
 
 local PetStateNormalizer = require(script.Parent.Parent.Parent.Rules.Pet.PetStateNormalizer)
 local PetSystemRules = require(script.Parent.Parent.Parent.Rules.Pet.PetSystemRules)
-local PlayerSnapshotBuilder = require(script.Parent.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local TransitionResult = require(script.Parent.Parent.TransitionResult)
 local PlayerVisualStateSync = require(script.Parent.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local PetEquipTransition = {}
 
 local INVALID_REQUEST_MESSAGE = "Invalid request"
-
-local function failure(message, player)
-	return {
-		Success = false,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-end
-
-local function success(message, player, extraResult)
-	local result = {
-		Success = true,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-
-	if type(extraResult) == "table" then
-		for key, value in pairs(extraResult) do
-			result[key] = value
-		end
-	end
-
-	return result
-end
 
 local function isPetInstanceEquipped(progressState, petInstanceId)
 	local equippedSlots = progressState and progressState.EquippedPetInstanceIds
@@ -75,12 +51,12 @@ function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 	local normalizedSlotIndex = math.floor(tonumber(slotIndex) or 0)
 	-- 判断槽位是否合法
 	if normalizedSlotIndex < 1 or normalizedSlotIndex > PetSystemRules.GetMaxEquippedPets() then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	-- 检查宠物实例ID是否为空槽标记
 	if PetSystemRules.IsEmptyPetSlot(petInstanceId) then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	-- 获取规格化宠物实例
@@ -88,18 +64,18 @@ function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 	-- 获规格化宠物数据之后的玩家数据
 	local nextprogressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not nextprogressState then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 
 	-- 检测玩家是否拥有宠物实例
 	if not nextprogressState.OwnedPets[normalizedInstanceId] then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	-- 检测同一只宠物是否装在别的槽位
 	if isPetInstanceEquippedOutsideSlot(nextprogressState, normalizedInstanceId, normalizedSlotIndex) then
-		return failure("Pet already equipped", player)
+		return TransitionResult.FailureWithSnapshot(player, "Pet already equipped")
 	end
 
 	--设置克隆数据状态，然后写回真正的数据
@@ -107,7 +83,7 @@ function PetEquipTransition.RequestEquip(player, petInstanceId, slotIndex)
 	PlayerProgressState.Set(player, nextprogressState)
 	PlayerVisualStateSync.Refresh(player)
 
-	return success("Pet equipped", player, {
+	return TransitionResult.SuccessWithSnapshot(player, "Pet equipped", {
 		PetInstanceId = normalizedInstanceId,
 		SlotIndex = normalizedSlotIndex,
 	})
@@ -116,19 +92,19 @@ end
 function PetEquipTransition.RequestUnequip(player, slotIndex)
 	local normalizedSlotIndex = math.floor(tonumber(slotIndex) or 0)
 	if normalizedSlotIndex < 1 or normalizedSlotIndex > PetSystemRules.GetMaxEquippedPets() then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	progressState.EquippedPetInstanceIds[normalizedSlotIndex] = PetSystemRules.GetEmptyPetSlot()
 	PlayerProgressState.Set(player, progressState)
 	PlayerVisualStateSync.Refresh(player)
 
-	return success("Pet unequipped", player, {
+	return TransitionResult.SuccessWithSnapshot(player, "Pet unequipped", {
 		SlotIndex = normalizedSlotIndex,
 	})
 end

@@ -5,26 +5,11 @@ local TravelDestinationTheta = require(
 )
 
 local TravelDestinationWorldSync = require(script.Parent.Parent.WorldSync.TravelDestinationWorldSync)
+local TransitionResult = require(script.Parent.TransitionResult)
 
 local TravelTransition = {}
 
 local INVALID_DESTINATION_MESSAGE = "Invalid travel destination"
-
-local function failure(message, destinationId)
-	return {
-		Success = false,
-		Message = message,
-		DestinationId = destinationId,
-	}
-end
-
-local function success(message, destinationId)
-	return {
-		Success = true,
-		Message = message,
-		DestinationId = destinationId,
-	}
-end
 
 local function isValidDestinationId(destinationId)
 	return type(destinationId) == "string"
@@ -34,15 +19,21 @@ end
 
 function TravelTransition.Request(player, destinationId)
 	if not isValidDestinationId(destinationId) then
-		return failure(INVALID_DESTINATION_MESSAGE, destinationId)
+		return TransitionResult.New(false, INVALID_DESTINATION_MESSAGE, {
+			DestinationId = destinationId,
+		})
 	end
 
 	local ok, err = pcall(TravelDestinationWorldSync.TeleportPlayer, player, destinationId)
 	if not ok then
-		return failure(tostring(err), destinationId)
+		return TransitionResult.New(false, tostring(err), {
+			DestinationId = destinationId,
+		})
 	end
 
-	return success("Travel succeeded", destinationId)
+	return TransitionResult.New(true, "Travel succeeded", {
+		DestinationId = destinationId,
+	})
 end
 
 return TravelTransition

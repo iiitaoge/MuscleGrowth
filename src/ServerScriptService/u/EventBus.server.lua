@@ -1,7 +1,4 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local RemoteTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("System"):WaitForChild("RemoteTheta"))
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
@@ -10,7 +7,7 @@ local PetEquipTransition = require(script.Parent.Parent.T.Transitions.Pet.PetEqu
 local PetRollTransition = require(script.Parent.Parent.T.Transitions.Pet.PetRollTransition)
 local PushBallTransition = require(script.Parent.Parent.T.Transitions.PushBallTransition)
 local RebirthTransition = require(script.Parent.Parent.T.Transitions.RebirthTransition)
-local RemoteRateLimiter = require(script.Parent.RemoteRateLimiter)
+local RemoteBinder = require(script.Parent.RemoteBinder)
 local PlayerSnapshotBuilder = require(script.Parent.Parent.T.Snapshots.PlayerSnapshotBuilder)
 local PushBallWorldSync = require(script.Parent.Parent.T.WorldSync.PushBallWorldSync)
 local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
@@ -26,53 +23,6 @@ local REMOTE_EVENT_MIN_INTERVALS = {
 	PushBallLateralInput = 0.05,
 }
 
--- 模版绑定
-local function getOrCreateRemote(remoteId)
-	local remoteSpec = RemoteTheta[remoteId]
-	assert(remoteSpec, "Missing remote theta: " .. tostring(remoteId))
-
-	local remote = ReplicatedStorage:FindFirstChild(remoteSpec.Name)
-
-	if remote and not remote:IsA(remoteSpec.ClassName) then
-		remote:Destroy()
-		remote = nil
-	end
-
-	if not remote then
-		remote = Instance.new(remoteSpec.ClassName)
-		remote.Name = remoteSpec.Name
-		remote.Parent = ReplicatedStorage
-	end
-
-	return remote
-end
-
--- 事件频率限制
-local function isRemoteEventAllowed(player, remoteId)
-	return RemoteRateLimiter.Allow(player, remoteId, REMOTE_EVENT_MIN_INTERVALS[remoteId])
-end
-
--- 绑定事件
-local moveStart = getOrCreateRemote("MoveStart")
-local moveStop = getOrCreateRemote("MoveStop")
-local onAutoArea = getOrCreateRemote("OnAutoArea")
-local leaveAutoArea = getOrCreateRemote("LeaveAutoArea")
-local getData = getOrCreateRemote("GetData")
-local requestRebirth = getOrCreateRemote("RequestRebirth")
--- 请求装备杠铃
-local requestBarbellEquip = getOrCreateRemote("RequestBarbellEquip")
-
-local requestPetEquip = getOrCreateRemote("RequestPetEquip")
-local requestPetUnequip = getOrCreateRemote("RequestPetUnequip")
-local requestPetRoll = getOrCreateRemote("RequestPetRoll")
-
-local requestPetDelete = getOrCreateRemote("RequestPetDelete")	-- 删除请求
-
-local requestTravelDestination = getOrCreateRemote("RequestTravelDestination")
-local requestStartPushBall = getOrCreateRemote("RequestStartPushBall")
-local requestStopPushBall = getOrCreateRemote("RequestStopPushBall")
-local pushBallLateralInput = getOrCreateRemote("PushBallLateralInput")
-
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
 PushBallWorldSync.InitWorld(function(player, ballInstanceId)
@@ -87,93 +37,46 @@ local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
 end
 
--- moveStart事件回调函数
-moveStart.OnServerEvent:Connect(function(player)
-	if not isRemoteEventAllowed(player, "MoveStart") then
-		return
-	end
+RemoteBinder.BindEvents(REMOTE_EVENT_MIN_INTERVALS, {
+	MoveStart = function(player)
+		TrainingTransition.SetMoving(player, true)
+	end,
+	MoveStop = function(player)
+		TrainingTransition.SetMoving(player, false)
+	end,
+	OnAutoArea = function(player, areaId)
+		TrainingTransition.EnterAutoAreaClaim(player, areaId)
+	end,
+	LeaveAutoArea = function(player, areaId)
+		TrainingTransition.LeaveAutoAreaClaim(player, areaId)
+	end,
+	PushBallLateralInput = function(player, lateralInput)
+		PushBallTransition.SetLateralInput(player, lateralInput)
+	end,
+})
 
-	TrainingTransition.SetMoving(player, true)
-end)
+RemoteBinder.BindFunctions({
+	GetData = PlayerSnapshotBuilder.GetPlayerSnapshot,
+	RequestRebirth = function(player)
+		local result = RebirthTransition.Request(player)
+		TrainingTransition.RefreshGrowth(player)
 
-moveStop.OnServerEvent:Connect(function(player)
-	if not isRemoteEventAllowed(player, "MoveStop") then
-		return
-	end
-
-	TrainingTransition.SetMoving(player, false)
-end)
-
-onAutoArea.OnServerEvent:Connect(function(player, areaId)
-	if not isRemoteEventAllowed(player, "OnAutoArea") then
-		return
-	end
-
-	TrainingTransition.EnterAutoAreaClaim(player, areaId)
-end)
-
-leaveAutoArea.OnServerEvent:Connect(function(player, areaId)
-	if not isRemoteEventAllowed(player, "LeaveAutoArea") then
-		return
-	end
-
-	TrainingTransition.LeaveAutoAreaClaim(player, areaId)
-end)
-
-pushBallLateralInput.OnServerEvent:Connect(function(player, lateralInput)
-	if not isRemoteEventAllowed(player, "PushBallLateralInput") then
-		return
-	end
-
-	PushBallTransition.SetLateralInput(player, lateralInput)
-end)
-
-
--- Invoke 是客户端等待返回值的东西
--- 处理获取玩家数据请求，返回当前玩家数据快照
-getData.OnServerInvoke = function(player)
-	return PlayerSnapshotBuilder.GetPlayerSnapshot(player)
-end
-
--- 处理重生请求
-requestRebirth.OnServerInvoke = function(player)
-	local result = RebirthTransition.Request(player)
-	TrainingTransition.RefreshGrowth(player)
-
-	return result
-end
-
--- 处理装备杠铃请求
-requestBarbellEquip.OnServerInvoke = function(player, barbellId)
-	return BarbellTransition.RequestEquip(player, barbellId)
-end
-
--- 处理玩家装备宠物的请求
-requestPetEquip.OnServerInvoke = PetEquipTransition.RequestEquip
-
-requestPetUnequip.OnServerInvoke = PetEquipTransition.RequestUnequip
-
-requestPetRoll.OnServerInvoke = PetRollTransition.RequestRoll
-
--- 处理删除宠物ID的操作
-requestPetDelete.OnServerInvoke = PetDeleteTransition.RequestDelete
-
-requestTravelDestination.OnServerInvoke = function(player, destinationId)
-	return TravelTransition.Request(player, destinationId)
-end
-
-requestStartPushBall.OnServerInvoke = function(player, ballInstanceId)
-	return PushBallTransition.RequestStart(player, ballInstanceId)
-end
-
-requestStopPushBall.OnServerInvoke = function(player)
-	return PushBallTransition.RequestStop(player)
-end
+		return result
+	end,
+	RequestBarbellEquip = BarbellTransition.RequestEquip,
+	RequestPetEquip = PetEquipTransition.RequestEquip,
+	RequestPetUnequip = PetEquipTransition.RequestUnequip,
+	RequestPetRoll = PetRollTransition.RequestRoll,
+	RequestPetDelete = PetDeleteTransition.RequestDelete,
+	RequestTravelDestination = TravelTransition.Request,
+	RequestStartPushBall = PushBallTransition.RequestStart,
+	RequestStopPushBall = PushBallTransition.RequestStop,
+})
 
 Players.PlayerAdded:Connect(initPlayer)
 
 Players.PlayerRemoving:Connect(function(player)
-	RemoteRateLimiter.Remove(player)
+	RemoteBinder.RemovePlayer(player)
 	PushBallTransition.RemovePlayer(player)
 	TrophyTransition.RemovePlayer(player)
 	PlayerLifecycleTransition.Remove(player)

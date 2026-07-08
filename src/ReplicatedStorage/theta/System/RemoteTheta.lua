@@ -23,11 +23,6 @@ local RemoteTheta = {
 		Name = "GetData",
 		ClassName = "RemoteFunction",
 	},
-	-- 重生事件
-	ReBirth = {
-		Name = "ReBirth",
-		ClassName = "RemoteEvent",
-	},
 	RequestRebirth = {
 		Name = "RequestRebirth",
 		ClassName = "RemoteFunction",

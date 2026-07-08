@@ -9,7 +9,7 @@ local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetS
 local PetRollController = {}
 
 -- 初始化抽蛋动作控制器。
-function PetRollController.Init(remoteClient, snapshotController, eggPanelView, eggInteractionController)
+function PetRollController.Init(snapshotController, eggPanelView, eggInteractionController)
 	local isRequestingPetRoll = false
 	local isAutoRolling = false
 
@@ -20,15 +20,13 @@ function PetRollController.Init(remoteClient, snapshotController, eggPanelView, 
 		end
 
 		isRequestingPetRoll = true
-		local success, result = remoteClient.SafeInvoke("RequestPetRoll", eggId, rollCount)
+		local result = snapshotController.InvokeAction("RequestPetRoll", eggId, rollCount)
 		isRequestingPetRoll = false
 
-		if not success then
-			warn(result)
+		if not result then
 			return nil
 		end
 
-		snapshotController.ApplyRemoteResult(success, result)
 		eggPanelView.ShowRollResults(result and result.RollResults, result and result.Message)
 		return result
 	end
@@ -97,8 +95,6 @@ function PetRollController.Init(remoteClient, snapshotController, eggPanelView, 
 	end
 
 	eggPanelView.SetRollHandler(handleRollRequest)
-
-	return {}
 end
 
 return PetRollController

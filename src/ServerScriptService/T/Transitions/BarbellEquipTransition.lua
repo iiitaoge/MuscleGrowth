@@ -4,7 +4,7 @@ local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChil
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local BarbellObservation = require(script.Parent.Parent.Parent.y.BarbellObservation)
-local PlayerSnapshotBuilder = require(script.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local TransitionResult = require(script.Parent.TransitionResult)
 local BarbellWorldSync = require(script.Parent.Parent.WorldSync.BarbellWorldSync)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
@@ -53,11 +53,7 @@ end
 function BarbellEquipTransition.RequestEquip(player, barbellId)
 	local success, message = BarbellEquipTransition.TryEquip(player, barbellId)
 
-	return {
-		Success = success,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
+	return TransitionResult.WithSnapshot(player, success, message)
 end
 
 function BarbellEquipTransition.RefreshDisplays()

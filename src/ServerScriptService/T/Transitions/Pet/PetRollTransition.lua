@@ -11,7 +11,7 @@ local EggObservation = require(script.Parent.Parent.Parent.Parent.y.EggObservati
 local PetRollSelector = require(script.Parent.Parent.Parent.Rules.Pet.PetRollSelector)
 local PetStateNormalizer = require(script.Parent.Parent.Parent.Rules.Pet.PetStateNormalizer)
 local PetSystemRules = require(script.Parent.Parent.Parent.Rules.Pet.PetSystemRules)
-local PlayerSnapshotBuilder = require(script.Parent.Parent.Parent.Snapshots.PlayerSnapshotBuilder)
+local TransitionResult = require(script.Parent.Parent.TransitionResult)
 
 local PetRollTransition = {}
 
@@ -22,30 +22,6 @@ local VALID_ROLL_COUNTS = {
 	[1] = true,
 	[3] = true,
 }
-
-local function failure(message, player)
-	return {
-		Success = false,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-end
-
-local function success(message, player, extraResult)
-	local result = {
-		Success = true,
-		Message = message,
-		Data = PlayerSnapshotBuilder.GetPlayerSnapshot(player),
-	}
-
-	if type(extraResult) == "table" then
-		for key, value in pairs(extraResult) do
-			result[key] = value
-		end
-	end
-
-	return result
-end
 
 local function getRuntimeOrInit(player)
 	local runtimeState = TrainingRuntimeState.Get(player)
@@ -118,34 +94,34 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 	local costConfig = getCostConfig(eggId)
 	local rewardConfig = getRewardConfig(eggId)
 	if not costConfig or not rewardConfig or not isSupportedCostConfig(costConfig) then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	local normalizedRollCount = normalizeRollCount(rollCount)
 	if not normalizedRollCount then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	local now = os.clock()
 	local runtimeState = getRuntimeOrInit(player)
 	if isRollOnCooldown(runtimeState, now) then
-		return failure(TOO_FREQUENT_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, TOO_FREQUENT_MESSAGE)
 	end
 	setPetRollTime(player, runtimeState, now)
 
 	if not EggObservation.IsPlayerNearEgg(player, eggId) then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	local progressState = PetStateNormalizer.NormalizeProgressState(PlayerProgressState.Get(player))
 	if not progressState then
-		return failure(INVALID_REQUEST_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, INVALID_REQUEST_MESSAGE)
 	end
 
 	local costAmount = getCostAmount(costConfig)
 	local totalCostAmount = costAmount * normalizedRollCount
 	if getTrophies(progressState) < totalCostAmount then
-		return failure(NOT_ENOUGH_TROPHIES_MESSAGE, player)
+		return TransitionResult.FailureWithSnapshot(player, NOT_ENOUGH_TROPHIES_MESSAGE)
 	end
 
 	local rollResults = {}
@@ -175,7 +151,7 @@ function PetRollTransition.RequestRoll(player, eggId, rollCount)
 
 	local firstResult = rollResults[1] or {}
 	local resultMessage = hasRolledPet and "Pet rolled" or "No pet rolled"
-	return success(resultMessage, player, {
+	return TransitionResult.SuccessWithSnapshot(player, resultMessage, {
 		EggId = eggId,
 		RollCount = normalizedRollCount,
 		RollResults = rollResults,

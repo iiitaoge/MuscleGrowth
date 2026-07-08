@@ -3,11 +3,9 @@
 
 local TravelActionController = {}
 
-function TravelActionController.Init(remoteClient, snapshotController, travelPanelView)
+function TravelActionController.Init(snapshotController, travelPanelView)
 	local function requestTravel(destinationId)
-		local result = snapshotController.ApplyRemoteResult(
-			remoteClient.SafeInvoke("RequestTravelDestination", destinationId)
-		)
+		local result = snapshotController.InvokeAction("RequestTravelDestination", destinationId)
 
 		if result and result.Success == true then
 			travelPanelView.SetOpen(false)
@@ -15,8 +13,6 @@ function TravelActionController.Init(remoteClient, snapshotController, travelPan
 	end
 
 	travelPanelView.SetDestinationHandler(requestTravel)
-
-	return {}
 end
 
 return TravelActionController

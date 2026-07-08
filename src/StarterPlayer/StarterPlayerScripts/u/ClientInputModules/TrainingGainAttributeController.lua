@@ -26,8 +26,6 @@ function TrainingGainAttributeController.Init(player, floatingGainView, snapshot
 	end
 
 	player:GetAttributeChangedSignal(SceneTheta.Attributes.LastTrainingGainSerial):Connect(handleTrainingGainChanged)
-
-	return {}
 end
 
 return TrainingGainAttributeController
