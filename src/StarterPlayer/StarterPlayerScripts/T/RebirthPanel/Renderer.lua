@@ -1,6 +1,8 @@
 -- RebirthPanel/Renderer
 -- 只负责写入重生面板文本和切换可见性。
 
+local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
+
 local Renderer = {}
 
 local setTextSequenceByPredicate
@@ -86,6 +88,7 @@ setTextSequenceByPredicate = function(root, predicate, values)
 end
 
 function Renderer.ConnectActivated(root, callback)
+	ButtonMotion.Bind(root)
 	root.Activated:Connect(callback)
 end
 

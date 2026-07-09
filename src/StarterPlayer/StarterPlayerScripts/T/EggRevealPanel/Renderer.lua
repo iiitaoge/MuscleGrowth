@@ -3,6 +3,8 @@
 
 local TweenService = game:GetService("TweenService")
 
+local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
+
 local Renderer = {}
 
 local SHAKE_ROTATIONS = { -12, 12, -10, 10, -6, 6, 0 }
@@ -80,8 +82,13 @@ local function configureContinueButton(refs)
 	end
 end
 
-function Renderer.ConnectActivated(root, callback)
+function Renderer.ConnectActivated(root, callback, options)
+	local shouldBindMotion = not (options and options.DisableMotion == true)
+
 	if root:IsA("GuiButton") then
+		if shouldBindMotion then
+			ButtonMotion.Bind(root)
+		end
 		root.Activated:Connect(callback)
 		return root
 	end
@@ -108,6 +115,9 @@ function Renderer.ConnectActivated(root, callback)
 
 	hitButton.Visible = true
 	hitButton.Active = true
+	if shouldBindMotion then
+		ButtonMotion.Bind(hitButton, root)
+	end
 	hitButton.Activated:Connect(callback)
 	return hitButton
 end

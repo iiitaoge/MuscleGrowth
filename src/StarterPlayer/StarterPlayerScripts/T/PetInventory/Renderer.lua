@@ -1,6 +1,8 @@
 -- PetInventory/Renderer
 -- 只负责宠物背包 UI 显示、模板克隆和点击层绑定。
 
+local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
+
 local Renderer = {}
 
 local GENERATED_ATTRIBUTE = "MuscleGrowthGeneratedPetUi"
@@ -68,6 +70,7 @@ end
 
 function Renderer.GetActivatedTarget(root)
 	if root:IsA("GuiButton") then
+		ButtonMotion.Bind(root)
 		return root
 	end
 
@@ -93,6 +96,7 @@ function Renderer.GetActivatedTarget(root)
 	hitButton.ZIndex = root.ZIndex + 100
 	hitButton.Visible = true
 	hitButton.Active = true
+	ButtonMotion.Bind(hitButton, root)
 
 	return hitButton
 end

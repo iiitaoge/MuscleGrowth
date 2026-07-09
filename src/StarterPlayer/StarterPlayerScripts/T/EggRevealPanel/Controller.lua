@@ -90,7 +90,9 @@ function Controller.Init(player)
 		if isWaitingForContinue then
 			releaseContinue()
 		end
-	end)
+	end, {
+		DisableMotion = true,
+	})
 
 	Renderer.ConnectActivated(refs.StopButton, function()
 		if stopHandler then

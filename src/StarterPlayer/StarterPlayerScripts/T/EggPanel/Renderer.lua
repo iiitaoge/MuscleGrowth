@@ -1,6 +1,8 @@
 -- EggPanel/Renderer
 -- 只负责填充蛋面板文本图片、切换可见性和绑定点击层。
 
+local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
+
 local Renderer = {}
 
 local function setFirstText(root, value)
@@ -85,6 +87,7 @@ end
 
 function Renderer.ConnectActivated(root, callback)
 	if root:IsA("GuiButton") then
+		ButtonMotion.Bind(root)
 		root.Activated:Connect(callback)
 		return root
 	end
@@ -111,6 +114,7 @@ function Renderer.ConnectActivated(root, callback)
 
 	hitButton.Visible = true
 	hitButton.Active = true
+	ButtonMotion.Bind(hitButton, root)
 	hitButton.Activated:Connect(callback)
 	return hitButton
 end

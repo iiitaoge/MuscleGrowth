@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
+local ButtonMotion = require(script.Parent.ButtonMotion)
 local UIContract = require(script.Parent.UIContract)
 
 local UIRefs = {}
@@ -67,6 +68,7 @@ end
 
 local function requireGuiButton(instance, context)
 	assert(instance:IsA("GuiButton"), context .. " must be a GuiButton.")
+	ButtonMotion.Bind(instance)
 	return instance
 end
 
