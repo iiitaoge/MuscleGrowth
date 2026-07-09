@@ -1,7 +1,7 @@
 -- EggPanel/Controller
--- 编排蛋面板打开关闭、按钮事件和键盘快捷键。
+-- 编排蛋面板打开关闭、按钮事件。
 
-local UserInputService = game:GetService("UserInputService")
+-- local UserInputService = game:GetService("UserInputService")
 
 local DataAdapter = require(script.Parent.DataAdapter)
 local Renderer = require(script.Parent.Renderer)
@@ -112,20 +112,20 @@ function Controller.Init(player)
 	Renderer.ConnectActivated(refs.AutoButton, function()
 		requestRoll(1, true)
 	end)
-	-- 键盘快捷键映射抽奖动作。
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed or not isOpen() then
-			return
-		end
-
-		if input.KeyCode == Enum.KeyCode.E then
-			requestRoll(1, false)
-		elseif input.KeyCode == Enum.KeyCode.H then
-			requestRoll(3, false)
-		elseif input.KeyCode == Enum.KeyCode.A then
-			requestRoll(1, true)
-		end
-	end)
+	-- 键盘快捷键已停用，避免 A/H/E 与移动或其他操作冲突。
+	-- UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	-- 	if gameProcessed or not isOpen() then
+	-- 		return
+	-- 	end
+	--
+	-- 	if input.KeyCode == Enum.KeyCode.E then
+	-- 		requestRoll(1, false)
+	-- 	elseif input.KeyCode == Enum.KeyCode.H then
+	-- 		requestRoll(3, false)
+	-- 	elseif input.KeyCode == Enum.KeyCode.A then
+	-- 		requestRoll(1, true)
+	-- 	end
+	-- end)
 
 	return {
 		Open = open,
