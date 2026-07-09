@@ -5,38 +5,25 @@ local Workspace = game:GetService("Workspace")
 local theta = ReplicatedStorage:WaitForChild("theta")
 local PushBallTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PushBallTheta"))
 local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
-local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("PushBallSceneTheta"))
 
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
-local RemoteBinder = require(script.Parent.Parent.Parent.u.RemoteBinder)
 local TransitionResult = require(script.Parent.TransitionResult)
 local TrainingTransition = require(script.Parent.TrainingTransition)
 local TravelTransition = require(script.Parent.TravelTransition)
 
 local PushBallTransition = {}
 
-local ATTRIBUTES = SceneTheta.Attributes
 local BALL_FOLDER_NAME = "MG_PushBalls"
 local DEFAULT_FORWARD = Vector3.new(0, 0, -1)
 local DEFAULT_LATERAL = Vector3.new(1, 0, 0)
 local PATH_WAIT_SECONDS = 5
 local UP_VECTOR = Vector3.new(0, 1, 0)
-local TELEPORT_OVERLAP_SIZE = Vector3.new(10, 12, 10)
-local TELEPORT_RAYCAST_HEIGHT = 5
-local TELEPORT_RAYCAST_DEPTH = 80
-local MAX_DIAGNOSTIC_PARTS = 12
 
 local activeStates = {}
 local runtimeStates = {}
 local heartbeatConnection = nil
-
-local function debugLog(message)
-	if PushBallTheta.DebugPushBall == true then
-		print("[PushBallTransition] " .. message)
-	end
-end
 
 local function pathToString(path)
 	return type(path) == "table" and table.concat(path, "/") or tostring(path)
@@ -390,233 +377,11 @@ local function setCharacterPushLocked(state, locked)
 	end
 end
 
-local function getTeleportRaycastHit(position, character)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character }
-	params.IgnoreWater = true
-
-	local origin = position + UP_VECTOR * TELEPORT_RAYCAST_HEIGHT
-	local direction = UP_VECTOR * -(TELEPORT_RAYCAST_HEIGHT + TELEPORT_RAYCAST_DEPTH)
-	return Workspace:Raycast(origin, direction, params)
-end
-
-local function getTeleportOverlapParts(position, character)
-	local params = OverlapParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character }
-
-	local parts = Workspace:GetPartBoundsInBox(CFrame.new(position), TELEPORT_OVERLAP_SIZE, params)
-	local collidable = {}
-
-	for _, part in ipairs(parts) do
-		if part:IsA("BasePart") and part.CanCollide then
-			table.insert(collidable, part)
-		end
-	end
-
-	return collidable
-end
-
-local function debugTeleportArea(player, label, path, destination, position)
-	if PushBallTheta.DebugPushBall ~= true then
-		return
-	end
-
-	local character = player and player.Character or nil
-	local groundHit = getTeleportRaycastHit(position, character)
-	local overlapParts = getTeleportOverlapParts(position, character)
-
-	debugLog(
-		("Teleport area %s player=%s path=%s position=%s destination=%s destinationSize=%s destinationTransparency=%s destinationCanCollide=%s destinationCanQuery=%s ground=%s groundPosition=%s groundMaterial=%s overlapCount=%s streamingEnabled=%s"):format(
-			tostring(label),
-			player and player.Name or "nil",
-			pathToString(path),
-			tostring(position),
-			destination and destination:GetFullName() or "nil",
-			destination and tostring(destination.Size) or "nil",
-			destination and tostring(destination.Transparency) or "nil",
-			destination and tostring(destination.CanCollide) or "nil",
-			destination and tostring(destination.CanQuery) or "nil",
-			groundHit and groundHit.Instance and groundHit.Instance:GetFullName() or "nil",
-			groundHit and tostring(groundHit.Position) or "nil",
-			groundHit and groundHit.Material.Name or "nil",
-			tostring(#overlapParts),
-			tostring(Workspace.StreamingEnabled)
-		)
-	)
-
-	for index, part in ipairs(overlapParts) do
-		if index > MAX_DIAGNOSTIC_PARTS then
-			break
-		end
-
-		debugLog(
-			("Teleport area overlap %s player=%s part=%s size=%s position=%s transparency=%s canQuery=%s collisionGroup=%s"):format(
-				tostring(index),
-				player and player.Name or "nil",
-				part:GetFullName(),
-				tostring(part.Size),
-				tostring(part.Position),
-				tostring(part.Transparency),
-				tostring(part.CanQuery),
-				tostring(part.CollisionGroup)
-			)
-		)
-	end
-end
-
-local function requestTeleportStream(player, position, label)
-	if not player or typeof(position) ~= "Vector3" then
-		return false
-	end
-
-	if Workspace.StreamingEnabled ~= true then
-		debugLog(("Teleport stream skipped player=%s label=%s reason=streaming disabled"):format(
-			player.Name,
-			tostring(label)
-		))
-		return true
-	end
-
-	local timeout = math.max(0, tonumber(PushBallTheta.TeleportStreamTimeout) or 0)
-	debugLog(("Teleport stream request player=%s label=%s position=%s timeout=%s"):format(
-		player.Name,
-		tostring(label),
-		tostring(position),
-		tostring(timeout)
-	))
-
-	local success, err = pcall(function()
-		if timeout > 0 then
-			player:RequestStreamAroundAsync(position, timeout)
-		else
-			player:RequestStreamAroundAsync(position)
-		end
-	end)
-
-	if not success then
-		warn(("Push ball teleport stream request failed for %s (%s): %s"):format(
-			player.Name,
-			tostring(label),
-			tostring(err)
-		))
-		return false
-	end
-
-	debugLog(("Teleport stream finished player=%s label=%s position=%s"):format(
-		player.Name,
-		tostring(label),
-		tostring(position)
-	))
-	return true
-end
-
-local function debugClientTeleportResult(player, label, result)
-	if PushBallTheta.DebugPushBall ~= true then
-		return
-	end
-
-	debugLog(
-		("Client teleport prepare result player=%s label=%s success=%s streamOk=%s destinationVisible=%s destination=%s ground=%s groundMaterial=%s overlapCount=%s error=%s"):format(
-			player and player.Name or "nil",
-			tostring(label),
-			type(result) == "table" and tostring(result.Success) or "nil",
-			type(result) == "table" and tostring(result.StreamOk) or "nil",
-			type(result) == "table" and tostring(result.DestinationVisible) or "nil",
-			type(result) == "table" and tostring(result.DestinationFullName) or "nil",
-			type(result) == "table" and tostring(result.GroundHitName) or "nil",
-			type(result) == "table" and tostring(result.GroundHitMaterial) or "nil",
-			type(result) == "table" and tostring(result.OverlapCount) or "nil",
-			type(result) == "table" and tostring(result.Error or result.StreamError) or tostring(result)
-		)
-	)
-
-	if type(result) ~= "table" or type(result.OverlapParts) ~= "table" then
-		return
-	end
-
-	for index, partInfo in ipairs(result.OverlapParts) do
-		if index > MAX_DIAGNOSTIC_PARTS then
-			break
-		end
-
-		debugLog(
-			("Client teleport overlap %s player=%s part=%s size=%s position=%s transparency=%s collisionGroup=%s"):format(
-				tostring(index),
-				player and player.Name or "nil",
-				tostring(partInfo.Name),
-				tostring(partInfo.Size),
-				tostring(partInfo.Position),
-				tostring(partInfo.Transparency),
-				tostring(partInfo.CollisionGroup)
-			)
-		)
-	end
-end
-
-local function requestClientTeleportReadiness(player, path, position, label)
-	if not player or typeof(position) ~= "Vector3" then
-		return false, "invalid request"
-	end
-
-	local timeout = math.max(0.5, tonumber(PushBallTheta.TeleportClientPrepareTimeout) or 8)
-	local remote = RemoteBinder.GetOrCreate("PushBallPrepareTeleport")
-	local done = false
-	local invokeOk = false
-	local result = nil
-
-	task.spawn(function()
-		invokeOk, result = pcall(function()
-			return remote:InvokeClient(player, {
-				Label = label,
-				Path = path,
-				Position = position,
-				StreamTimeout = math.max(0, tonumber(PushBallTheta.TeleportStreamTimeout) or 0),
-				VerifyTimeout = math.max(0, tonumber(PushBallTheta.TeleportClientVerifyTimeout) or 0),
-			})
-		end)
-		done = true
-	end)
-
-	local startedAt = os.clock()
-	while not done and os.clock() - startedAt < timeout do
-		task.wait(0.05)
-	end
-
-	if not done then
-		warn(("Push ball client teleport prepare timed out for %s (%s) after %.2fs"):format(
-			player.Name,
-			tostring(label),
-			timeout
-		))
-		return false, "timeout"
-	end
-
-	if not invokeOk then
-		warn(("Push ball client teleport prepare failed for %s (%s): %s"):format(
-			player.Name,
-			tostring(label),
-			tostring(result)
-		))
-		return false, result
-	end
-
-	debugClientTeleportResult(player, label, result)
-	return type(result) == "table" and result.Success == true, result
-end
-
 local function teleportPlayerToPath(player, path, label)
 	if type(path) ~= "table" then
 		warn("Missing push ball teleport path: " .. tostring(label))
 		return false
 	end
-
-	debugLog(("Teleport start player=%s label=%s path=%s"):format(
-		player and player.Name or "nil",
-		tostring(label),
-		pathToString(path)
-	))
 
 	local destination = waitForPath(Workspace, path)
 	if not destination or not destination:IsA("BasePart") then
@@ -631,39 +396,7 @@ local function teleportPlayerToPath(player, path, label)
 	end
 
 	local offsetY = tonumber(PushBallTheta.TeleportOffsetY) or 5
-	local teleportPosition = destination.Position + Vector3.new(0, offsetY, 0)
-	debugTeleportArea(player, "before stream", path, destination, teleportPosition)
-	if not requestTeleportStream(player, teleportPosition, label) then
-		warn(("Push ball teleport cancelled because target area was not streamed: %s"):format(tostring(label)))
-		return false
-	end
-	debugTeleportArea(player, "after server stream", path, destination, teleportPosition)
-
-	local clientReady = requestClientTeleportReadiness(player, path, teleportPosition, label)
-	if not clientReady then
-		warn(("Push ball teleport cancelled because client target area was not ready: %s"):format(tostring(label)))
-		return false
-	end
-	debugTeleportArea(player, "after client prepare", path, destination, teleportPosition)
-
 	character:PivotTo(destination.CFrame + Vector3.new(0, offsetY, 0))
-	debugLog(("Teleport done player=%s label=%s destination=%s offsetY=%s"):format(
-		player.Name,
-		tostring(label),
-		destination:GetFullName(),
-		tostring(offsetY)
-	))
-
-	local settleTime = math.max(0, tonumber(PushBallTheta.TeleportStreamSettleTime) or 0)
-	if settleTime > 0 then
-		task.wait(settleTime)
-		debugLog(("Teleport settle done player=%s label=%s seconds=%s"):format(
-			player.Name,
-			tostring(label),
-			tostring(settleTime)
-		))
-	end
-
 	return true
 end
 
@@ -678,30 +411,6 @@ local function clearCharacterVelocity(character)
 			descendant.AssemblyAngularVelocity = Vector3.zero
 		end
 	end
-end
-
-local function debugCharacterPhysics(state, label)
-	if PushBallTheta.DebugPushBall ~= true then
-		return
-	end
-
-	local humanoid = state and state.Humanoid
-	local root = state and state.RootPart
-	debugLog(("%s player=%s pos=%s velocity=%s angularVelocity=%s walkSpeed=%s jumpPower=%s autoRotate=%s rootAnchored=%s platformStand=%s sit=%s humanoidState=%s floor=%s"):format(
-		tostring(label),
-		state and state.Player and state.Player.Name or "nil",
-		root and tostring(root.Position) or "nil",
-		root and tostring(root.AssemblyLinearVelocity) or "nil",
-		root and tostring(root.AssemblyAngularVelocity) or "nil",
-		humanoid and tostring(humanoid.WalkSpeed) or "nil",
-		humanoid and tostring(humanoid.JumpPower) or "nil",
-		humanoid and tostring(humanoid.AutoRotate) or "nil",
-		root and tostring(root.Anchored) or "nil",
-		humanoid and tostring(humanoid.PlatformStand) or "nil",
-		humanoid and tostring(humanoid.Sit) or "nil",
-		humanoid and humanoid:GetState().Name or "nil",
-		humanoid and humanoid.FloorMaterial.Name or "nil"
-	))
 end
 
 local function prepareCharacterForPushExit(state)
@@ -743,65 +452,37 @@ end
 local function cleanupState(player, options)
 	local state = activeStates[player]
 	if not state then
-		debugLog(("Cleanup skipped player=%s reason=no active state"):format(player and player.Name or "nil"))
 		return
 	end
-
-	debugLog(("Cleanup start player=%s stage=%s teleportStage=%s travelDestination=%s"):format(
-		player.Name,
-		tostring(state.StageId),
-		type(options) == "table" and tostring(options.TeleportStageId) or "nil",
-		type(options) == "table" and tostring(options.TravelDestinationId) or "nil"
-	))
 
 	activeStates[player] = nil
 
 	if state.Ball then
-		debugLog(("Destroy push ball clone player=%s ball=%s"):format(player.Name, state.Ball:GetFullName()))
 		state.Ball:Destroy()
 	end
 
-	debugCharacterPhysics(state, "Cleanup before teleport while locked")
 	if type(options) == "table" and options.TeleportStageId then
 		local sceneConfig = type(PushBallSceneTheta.Stages) == "table" and PushBallSceneTheta.Stages[options.TeleportStageId] or nil
 		if sceneConfig then
-			local teleportOk = teleportPlayerToPath(player, sceneConfig.TeleportPath, "Stage " .. tostring(options.TeleportStageId))
-			debugLog(("Cleanup teleport result player=%s stage=%s ok=%s"):format(
-				player.Name,
-				tostring(options.TeleportStageId),
-				tostring(teleportOk)
-			))
+			teleportPlayerToPath(player, sceneConfig.TeleportPath, "Stage " .. tostring(options.TeleportStageId))
 		else
 			warn("Missing push ball cleanup scene config: " .. tostring(options.TeleportStageId))
 		end
 	end
 
 	if type(options) == "table" and type(options.TravelDestinationId) == "string" then
-		debugLog(("Cleanup travel start player=%s destination=%s"):format(player.Name, options.TravelDestinationId))
 		local travelResult = TravelTransition.Request(player, options.TravelDestinationId)
 		if travelResult.Success == false and travelResult.Message then
 			warn(travelResult.Message)
 		end
-		debugLog(("Cleanup travel result player=%s success=%s message=%s"):format(
-			player.Name,
-			tostring(travelResult.Success),
-			tostring(travelResult.Message)
-		))
 	end
 
 	prepareCharacterForPushExit(state)
-	debugCharacterPhysics(state, "Cleanup before unlock after teleport")
 	setCharacterPushLocked(state, false)
 	recoverHumanoidAfterPushExit(state)
-	debugCharacterPhysics(state, "Cleanup after unlock recover")
 	PlayerVisualStateSync.SetPushBallActive(player, false)
-	debugLog(("Push attribute after cleanup player=%s isPushingBall=%s"):format(
-		player.Name,
-		tostring(player:GetAttribute(ATTRIBUTES.IsPushingBall))
-	))
 
 	stopHeartbeatIfIdle()
-	debugLog(("Cleanup done player=%s heartbeatActive=%s"):format(player.Name, tostring(heartbeatConnection ~= nil)))
 end
 
 local function markStageCompleted(player, stageId)
@@ -815,11 +496,9 @@ local function markStageRewardClaimable(player, stageId)
 end
 
 local function handleStageReached(player, state)
-	print("撞墙的处理")
 	local stageId = state.StageId
 	local _, gameplayConfig = getStageConfig(stageId)
 	if not gameplayConfig then
-		debugLog(("Stage reached without gameplay config player=%s stage=%s"):format(player.Name, tostring(stageId)))
 		cleanupState(player)
 		return
 	end
@@ -827,33 +506,19 @@ local function handleStageReached(player, state)
 	local progressState = PlayerProgressState.Get(player)
 	local strength = tonumber(progressState and progressState.Strength) or 0
 	local requiredStrength = tonumber(gameplayConfig.RecommendedStrength) or math.huge
-	debugLog(("Stage reached player=%s stage=%s strength=%s required=%s passes=%s"):format(
-		player.Name,
-		tostring(stageId),
-		tostring(strength),
-		tostring(requiredStrength),
-		tostring(strength >= requiredStrength)
-	))
 
 	if strength >= requiredStrength then
 		markStageCompleted(player, stageId)
 		markStageRewardClaimable(player, stageId)
-		debugLog(("Stage complete marked player=%s stage=%s"):format(player.Name, tostring(stageId)))
 		cleanupState(player, {
 			TeleportStageId = stageId,
 		})
 	else
 		if stageId <= 1 then
-			debugLog(("Stage failed travel player=%s stage=%s destination=World2"):format(player.Name, tostring(stageId)))
 			cleanupState(player, {
 				TravelDestinationId = "World2",
 			})
 		else
-			debugLog(("Stage failed fallback player=%s stage=%s fallbackStage=%s"):format(
-				player.Name,
-				tostring(stageId),
-				tostring(stageId - 1)
-			))
 			cleanupState(player, {
 				TeleportStageId = stageId - 1,
 			})
@@ -861,51 +526,20 @@ local function handleStageReached(player, state)
 	end
 end
 
-local function debugFinishWallCheck(state, logicalBallPosition, wallPartCount, matchedPart, relative, halfSize, isTouching, reason)
-	if PushBallTheta.DebugPushBall ~= true then
-		return
-	end
-
-	local now = os.clock()
-	if not isTouching and state.LastFinishWallDebugTime and now - state.LastFinishWallDebugTime < 1 then
-		return
-	end
-
-	state.LastFinishWallDebugTime = now
-	debugLog(
-		("Finish wall check stage=%s reason=%s wallPath=%s logicalBallPosition=%s wallPartCount=%s matchedPart=%s relative=%s halfSize=%s touching=%s"):format(
-			tostring(state.StageId),
-			tostring(reason or "checked"),
-			pathToString(state.FinishWallPath),
-			tostring(logicalBallPosition),
-			tostring(wallPartCount or 0),
-			matchedPart and matchedPart:GetFullName() or "nil",
-			tostring(relative),
-			tostring(halfSize),
-			tostring(isTouching)
-		)
-	)
-end
-
 -- 使用逻辑球位置判断是否进入终点墙触发体，不依赖视觉球位置或物理碰撞。
 local function isLogicalBallTouchingFinishWall(state, logicalBallPosition)
 	if typeof(logicalBallPosition) ~= "Vector3" then
-		debugFinishWallCheck(state, logicalBallPosition, 0, nil, nil, nil, false, "missing logical ball position")
 		return false
 	end
 
 	local finishWallParts = type(state.FinishWallParts) == "table" and state.FinishWallParts or {}
 	if #finishWallParts <= 0 then
-		debugFinishWallCheck(state, logicalBallPosition, 0, nil, nil, nil, false, "missing finish wall parts")
 		return false
 	end
 
 	local radius = math.max(0, tonumber(PushBallTheta.BallRadius) or 0)
 	local buffer = math.max(0, tonumber(PushBallTheta.FinishWallBuffer) or 0)
 	local extent = radius + buffer
-	local bestPart = nil
-	local bestRelative = nil
-	local bestHalfSize = nil
 
 	for _, wallPart in ipairs(finishWallParts) do
 		if wallPart and wallPart.Parent and wallPart:IsA("BasePart") then
@@ -916,43 +550,11 @@ local function isLogicalBallTouchingFinishWall(state, logicalBallPosition)
 				and math.abs(relative.Z) <= halfSize.Z
 
 			if isTouching then
-				debugFinishWallCheck(
-					state,
-					logicalBallPosition,
-					#finishWallParts,
-					wallPart,
-					relative,
-					halfSize,
-					true,
-					"matched"
-				)
-				debugLog(
-					("Finish wall reached stage=%s wallPart=%s logicalBallPosition=%s"):format(
-						tostring(state.StageId),
-						wallPart:GetFullName(),
-						tostring(logicalBallPosition)
-					)
-				)
-				print("撞墙 触发了");
 				return true
 			end
-
-			bestPart = wallPart
-			bestRelative = relative
-			bestHalfSize = halfSize
 		end
 	end
 
-	debugFinishWallCheck(
-		state,
-		logicalBallPosition,
-		#finishWallParts,
-		bestPart,
-		bestRelative,
-		bestHalfSize,
-		false,
-		"checked"
-	)
 	return false
 end
 
@@ -1026,7 +628,7 @@ local function ensureHeartbeat()
 	heartbeatConnection = RunService.Heartbeat:Connect(updateAll)
 end
 
-local function createState(player, stageId, ballInstanceId, sourceBall, trackRoot, wall, wallPath, root, humanoid, character)
+local function createState(player, stageId, ballInstanceId, sourceBall, trackRoot, wall, root, humanoid, character)
 	local sourcePivot = getPivot(sourceBall)
 	if not sourcePivot then
 		return nil
@@ -1061,17 +663,6 @@ local function createState(player, stageId, ballInstanceId, sourceBall, trackRoo
 	local playerGround = raycastTrackPosition(trackRaycastParams, root.Position)
 	local playerGroundOffsetY = configuredPlayerGroundOffsetY or (playerGround and root.Position.Y - playerGround.Y) or 3
 
-	debugLog(
-		("Stage %s ball=%s track=%s forward=%s lateral=%s finishWallParts=%s"):format(
-			tostring(stageId),
-			tostring(ballInstanceId),
-			trackRoot:GetFullName(),
-			tostring(forward),
-			tostring(lateral),
-			tostring(#finishWallParts)
-		)
-	)
-
 	return {
 		Player = player,
 		BallInstanceId = ballInstanceId,
@@ -1089,7 +680,6 @@ local function createState(player, stageId, ballInstanceId, sourceBall, trackRoo
 		TrackRaycastParams = trackRaycastParams,
 		StageId = stageId,
 		FinishWallParts = finishWallParts,
-		FinishWallPath = wallPath,
 		Progress = 0,
 		LateralOffset = 0,
 		LateralInput = 0,
@@ -1162,7 +752,6 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		sourceBall,
 		trackRoot,
 		wall,
-		sceneConfig.WallPath,
 		root,
 		humanoid,
 		character

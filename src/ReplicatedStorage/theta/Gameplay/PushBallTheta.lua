@@ -16,15 +16,11 @@ local PushBallTheta = {
 	TrackRaycastDepth = 160,
 	InteractionDistance = 14,
 	TeleportOffsetY = 5,
-	TeleportStreamTimeout = 6,
-	TeleportStreamSettleTime = 0.15,
-	TeleportClientPrepareTimeout = 8,
-	TeleportClientVerifyTimeout = 3,
 	FirstStageId = 1,
 	LastStageId = 10,
 	PromptActionText = "Push",
 	PromptObjectText = "Ball",
-	DebugPushBall = true,
+	DebugPushBall = false,
 }
 
 return PushBallTheta

@@ -175,7 +175,6 @@ function EggWorldSync.RefreshDisplays()
 	end
 
 	for instanceId, instanceConfig in pairs(instances) do
-		print("instanceId =", instanceId)	-- 测试
 		if not refreshEggInstance(instanceId, instanceConfig) then
 			hasMissingInstance = true
 		end
