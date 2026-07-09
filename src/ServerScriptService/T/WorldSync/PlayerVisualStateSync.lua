@@ -68,7 +68,7 @@ function PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
 		return
 	end
 	-- 时间测试
-	print("gain", player.Name, os.clock(), strengthGain)
+	-- print("gain", player.Name, os.clock(), strengthGain)
 	local gainSerial = math.max(0, tonumber(player:GetAttribute(ATTRIBUTES.LastTrainingGainSerial)) or 0)
 	player:SetAttribute(ATTRIBUTES.LastTrainingStrengthGain, math.max(0, tonumber(strengthGain) or 0))
 	player:SetAttribute(ATTRIBUTES.LastTrainingGainSerial, gainSerial + 1)

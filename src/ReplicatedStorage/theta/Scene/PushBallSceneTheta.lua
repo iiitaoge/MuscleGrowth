@@ -53,7 +53,7 @@ local PushBallSceneTheta = {
 			StageId = 1,
 			TrackPath = { "World2", "LeveLs", "L1" },
 			WallPath = { "Hint", "LA1" },
-			TeleportPath = { "TRTele", "TR1", "Teleport" },
+			TeleportPath = { "TRTele", "TR1", "Teleport" },	-- 测试
 		},
 		[2] = {
 			StageId = 2,
@@ -83,7 +83,7 @@ local PushBallSceneTheta = {
 			StageId = 6,
 			TrackPath = { "World2", "LeveLs", "L6" },
 			WallPath = { "Hint", "LA6" },
-			TeleportPath = { "TRTele", "TR6", "Teleport" },
+			TeleportPath = { "TRTele", "TR6", "Teleport" },	-- 测试修改
 		},
 		[7] = {
 			StageId = 7,

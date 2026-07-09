@@ -72,6 +72,7 @@ RemoteBinder.BindFunctions({
 	RequestStartPushBall = PushBallTransition.RequestStart,
 	RequestStopPushBall = PushBallTransition.RequestStop,
 })
+RemoteBinder.GetOrCreate("PushBallPrepareTeleport")
 
 Players.PlayerAdded:Connect(initPlayer)
 

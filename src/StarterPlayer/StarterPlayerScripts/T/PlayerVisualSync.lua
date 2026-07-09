@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
+local PushBallTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PushBallTheta"))
 local AnimationTheta = require(theta:WaitForChild("System"):WaitForChild("AnimationTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
@@ -21,6 +22,12 @@ local BARBELL_GRIP_ROTATION_DEGREES = Vector3.new(90, 0, 0)
 
 local playerStates = {}
 local renderConnection = nil
+
+local function debugLog(...)
+	if PushBallTheta.DebugPushBall == true then
+		print("[PlayerVisualSync]", ...)
+	end
+end
 
 local function getToUseSceneRoot()
 	local assets = ReplicatedStorage:FindFirstChild(SceneTheta.ReplicatedAssetsRootName)
@@ -300,6 +307,7 @@ end
 local function stopPushBallTrack(state)
 	if state.pushBallTrack then
 		local pushBallConfig = AnimationTheta.PushBall or {}
+		debugLog("StopPushBallTrack", "fadeTime=", pushBallConfig.FadeTime or 0.15)
 		state.pushBallTrack:Stop(pushBallConfig.FadeTime or 0.15)
 		state.pushBallTrack:Destroy()
 		state.pushBallTrack = nil
@@ -313,17 +321,28 @@ local function refreshPushBallAnimation(player)
 	end
 
 	local pushBallConfig = AnimationTheta.PushBall or {}
-	if player:GetAttribute(ATTRIBUTES.IsPushingBall) ~= true or type(pushBallConfig.AnimationId) ~= "string" or pushBallConfig.AnimationId == "" then
+	local isPushingBall = player:GetAttribute(ATTRIBUTES.IsPushingBall) == true
+	local hasAnimationId = type(pushBallConfig.AnimationId) == "string" and pushBallConfig.AnimationId ~= ""
+	debugLog(
+		"RefreshPushBallAnimation",
+		"player=", player.Name,
+		"isPushingBall=", isPushingBall,
+		"hasAnimationId=", hasAnimationId,
+		"hasTrack=", state.pushBallTrack ~= nil
+	)
+	if not isPushingBall or not hasAnimationId then
 		stopPushBallTrack(state)
 		return
 	end
 
 	if state.pushBallTrack and state.pushBallTrack.IsPlaying then
+		debugLog("RefreshPushBallAnimation skipped", "reason=", "already playing", "player=", player.Name)
 		return
 	end
 
 	local animator = getAnimator(player.Character)
 	if not animator then
+		debugLog("RefreshPushBallAnimation skipped", "reason=", "missing animator", "player=", player.Name)
 		return
 	end
 
@@ -336,6 +355,7 @@ local function refreshPushBallAnimation(player)
 	track.Priority = Enum.AnimationPriority.Action
 	track:Play(pushBallConfig.FadeTime or 0.15)
 	state.pushBallTrack = track
+	debugLog("StartPushBallTrack", "player=", player.Name, "animationId=", pushBallConfig.AnimationId)
 end
 
 local function refreshAll(player)
@@ -406,10 +426,12 @@ local function bindPlayer(player)
 		refreshTrainingAnimation(player)
 	end))
 	table.insert(state.connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(function()
+		debugLog("IsPushingBall changed", "player=", player.Name, "value=", player:GetAttribute(ATTRIBUTES.IsPushingBall))
 		refreshBarbell(player)
 		refreshPushBallAnimation(player)
 	end))
 	table.insert(state.connections, player.CharacterAdded:Connect(function()
+		debugLog("CharacterAdded", "player=", player.Name)
 		stopTrainingTrack(state)
 		stopPushBallTrack(state)
 		task.defer(function()

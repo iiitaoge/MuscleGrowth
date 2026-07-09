@@ -67,6 +67,10 @@ local RemoteTheta = {
 		Name = "PushBallLateralInput",
 		ClassName = "RemoteEvent",
 	},
+	PushBallPrepareTeleport = {
+		Name = "PushBallPrepareTeleport",
+		ClassName = "RemoteFunction",
+	},
 }
 
 return RemoteTheta
