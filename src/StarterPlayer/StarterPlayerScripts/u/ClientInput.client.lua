@@ -8,6 +8,7 @@ local modules = script.Parent:WaitForChild("ClientInputModules")
 
 local BarbellDisplayController = require(script.Parent.Parent.T.BarbellDisplay.Controller)
 local EggPanelController = require(script.Parent.Parent.T.EggPanel.Controller)
+local EggRevealPanelController = require(script.Parent.Parent.T.EggRevealPanel.Controller)
 local FloatingGainController = require(script.Parent.Parent.T.FloatingGain.Controller)
 local HUDController = require(script.Parent.Parent.T.HUD.Controller)
 local PetInventoryController = require(script.Parent.Parent.T.PetInventory.Controller)
@@ -37,6 +38,7 @@ local floatingGainView = FloatingGainController.Init(player)
 local petInventoryView = PetInventoryController.Init(player)	--初始化宠物视图
 local rebirthPanelView = RebirthPanelController.Init(player)
 local eggPanelView = EggPanelController.Init(player)
+local eggRevealView = EggRevealPanelController.Init(player)
 local barbellDisplayView = BarbellDisplayController.Init()
 local travelPanelView = TravelPanelController.Init(player)
 
@@ -58,7 +60,7 @@ PlayerVisualSync.Init()
 TrainingGainAttributeController.Init(player, floatingGainView, snapshotController)
 RebirthActionController.Init(snapshotController, hudView, rebirthPanelView)
 PetActionController.Init(snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口
-PetRollController.Init(snapshotController, eggPanelView, eggInteractionController)
+PetRollController.Init(snapshotController, eggPanelView, eggInteractionController, eggRevealView)
 TravelActionController.Init(snapshotController, travelPanelView)
 
 movementController.Bind()

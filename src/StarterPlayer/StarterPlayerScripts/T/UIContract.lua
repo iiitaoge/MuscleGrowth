@@ -12,6 +12,7 @@ local PetInventoryPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("Pe
 local BarbellDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 local EggPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggPanelTheta"))
+local EggRevealPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggRevealPanelTheta"))
 local TravelPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("TravelPanelTheta"))
 
 local UIContract = {}
@@ -237,6 +238,40 @@ local function validateEggPanel()
 	}
 end
 
+local function validateEggRevealPanel()
+	local paths = requireTable(EggRevealPanelTheta.Paths, "EggRevealPanelTheta.Paths")
+	local rewardSlots = requireTable(paths.RewardSlots, "EggRevealPanelTheta.Paths.RewardSlots")
+	assert(#rewardSlots == 3, "EggRevealPanelTheta.Paths.RewardSlots must have exactly 3 slots.")
+
+	local clonedRewardSlots = {}
+	for index, path in ipairs(rewardSlots) do
+		clonedRewardSlots[index] = requirePath(path, "EggRevealPanelTheta.Paths.RewardSlots[" .. tostring(index) .. "]")
+	end
+
+	local clonedPaths = requirePathMap(paths, "EggRevealPanelTheta.Paths", {
+		"PanelRoot",
+		"Background",
+		"ContinueButton",
+		"ContinueText",
+		"StopButton",
+	})
+	clonedPaths.RewardSlots = clonedRewardSlots
+
+	return {
+		ScreenGuiName = requireString(EggRevealPanelTheta.ScreenGuiName, "EggRevealPanelTheta.ScreenGuiName"),
+		Paths = clonedPaths,
+		RewardSlotFields = requireStringMap(EggRevealPanelTheta.RewardSlotFields, "EggRevealPanelTheta.RewardSlotFields", {
+			"Icon",
+			"NameText",
+			"RarityText",
+		}),
+		ContinuePromptText = requireString(
+			EggRevealPanelTheta.ContinuePromptText,
+			"EggRevealPanelTheta.ContinuePromptText"
+		),
+	}
+end
+
 local function validatePetInventory()
 	return {
 		HudScreenGuiName = requireString(PetInventoryPanelTheta.HudScreenGuiName, "PetInventoryPanelTheta.HudScreenGuiName"),
@@ -322,6 +357,7 @@ function UIContract.ValidateAll()
 		FloatingGain = validateFloatingGain(),
 		RebirthPanel = validateRebirthPanel(),
 		EggPanel = validateEggPanel(),
+		EggRevealPanel = validateEggRevealPanel(),
 		PetInventory = validatePetInventory(),
 		TravelPanel = validateTravelPanel(),
 		BarbellDisplay = validateBarbellDisplay(),

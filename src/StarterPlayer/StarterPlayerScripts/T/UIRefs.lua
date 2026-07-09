@@ -332,6 +332,63 @@ function UIRefs.ResolveEggPanel(player)
 	}
 end
 
+-- ===== EggRevealPanel =====
+
+local function resolveEggRevealSlots(mainGui, slotPaths, slotFields)
+	local slots = {}
+	for index, path in ipairs(slotPaths) do
+		local slotRoot = requireGuiObject(
+			waitForPath(mainGui, path, "Egg reveal slot " .. tostring(index)),
+			"Egg reveal slot " .. tostring(index)
+		)
+		slots[index] = {
+			Root = slotRoot,
+			Icon = requireImageObject(
+				findRequiredDescendant(slotRoot, slotFields.Icon, "Egg reveal slot icon"),
+				"Egg reveal slot icon"
+			),
+			NameText = requireTextObject(
+				findRequiredDescendant(slotRoot, slotFields.NameText, "Egg reveal slot name text"),
+				"Egg reveal slot name text"
+			),
+			RarityText = requireTextObject(
+				findRequiredDescendant(slotRoot, slotFields.RarityText, "Egg reveal slot rarity text"),
+				"Egg reveal slot rarity text"
+			),
+		}
+	end
+
+	return slots, #slotPaths
+end
+
+function UIRefs.ResolveEggRevealPanel(player)
+	local config = UIContract.GetConfig("EggRevealPanel")
+	local playerGui = waitForPlayerGui(player)
+	local mainGui = waitForScreenGui(playerGui, config.ScreenGuiName, "Egg reveal ScreenGui")
+	local paths = config.Paths
+	local rewardSlots, rewardSlotCount = resolveEggRevealSlots(mainGui, paths.RewardSlots, config.RewardSlotFields)
+
+	return {
+		PanelRoot = requireGuiObject(waitForPath(mainGui, paths.PanelRoot, "Egg reveal PanelRoot"), "Egg reveal PanelRoot"),
+		Background = requireGuiObject(waitForPath(mainGui, paths.Background, "Egg reveal Background"), "Egg reveal Background"),
+		RewardSlots = rewardSlots,
+		RewardSlotCount = rewardSlotCount,
+		ContinueButton = requireGuiObject(
+			waitForPath(mainGui, paths.ContinueButton, "Egg reveal ContinueButton"),
+			"Egg reveal ContinueButton"
+		),
+		ContinueText = requireTextObject(
+			waitForPath(mainGui, paths.ContinueText, "Egg reveal ContinueText"),
+			"Egg reveal ContinueText"
+		),
+		StopButton = requireGuiObject(
+			waitForPath(mainGui, paths.StopButton, "Egg reveal StopButton"),
+			"Egg reveal StopButton"
+		),
+		ContinuePromptText = config.ContinuePromptText,
+	}
+end
+
 -- ===== PetInventory =====
 
 function UIRefs.ResolvePetInventory(player)
