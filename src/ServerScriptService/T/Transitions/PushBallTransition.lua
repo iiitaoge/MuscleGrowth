@@ -483,6 +483,7 @@ local function cleanupState(player, options)
 	PlayerVisualStateSync.SetPushBallActive(player, false)
 
 	stopHeartbeatIfIdle()
+
 end
 
 local function markStageCompleted(player, stageId)
@@ -763,7 +764,8 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 	activeStates[player] = state
 	setCharacterPushLocked(state, true)
 	TrainingTransition.SetMoving(player, false)
-	PlayerVisualStateSync.SetPushBallActive(player, true)
+	-- 发布 推球状态 目前球的ID 可扩展
+	PlayerVisualStateSync.SetPushBallActive(player, true, ballInstanceId)
 	ensureHeartbeat()
 
 	return result(true, "Push ball started", stageId)

@@ -27,12 +27,15 @@ local SceneTheta = {
 	EggInteractionDistance = 12,
 
 	Attributes = {
+		-- 这里只是定义 Attribute 的名字
 		CurrentBarbellId = "MG_CurrentBarbellId",
 		IsTraining = "MG_IsTraining",
 		IsPushingBall = "MG_IsPushingBall",
 		EquippedPetsJson = "MG_EquippedPetsJson",
 		LastTrainingGainSerial = "MG_LastTrainingGainSerial",
 		LastTrainingStrengthGain = "MG_LastTrainingStrengthGain",
+		-- 当前被推的球实例ID
+		ActivePushBallInstanceId = "MG_ActivePushBallInstanceId",
 	},
 }
 

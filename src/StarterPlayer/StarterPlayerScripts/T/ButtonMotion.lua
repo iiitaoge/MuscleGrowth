@@ -13,7 +13,8 @@ local HOVER_TWEEN = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirecti
 local PRESS_TWEEN = TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local function getOrCreateScale(visualTarget)
-	local scale = visualTarget:FindFirstChild(SCALE_NAME)
+	-- 按名字查找
+	local scale = visualTarget:FindFirstChild(SCALE_NAME) -- 目前是 UIScale
 	if scale and not scale:IsA("UIScale") then
 		scale:Destroy()
 		scale = nil

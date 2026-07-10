@@ -57,9 +57,24 @@ function PlayerVisualStateSync.SetTrainingActive(player, isTraining)
 	end
 end
 
-function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall)
-	if player then
-		player:SetAttribute(ATTRIBUTES.IsPushingBall, isPushingBall == true)
+-- 发布自定义属性
+-- 发布自定义属性
+function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall, ballInstanceId)
+	if not player then
+		return
+	end
+
+	local active = isPushingBall == true
+
+	-- 设置是否正在推球
+	player:SetAttribute(ATTRIBUTES.IsPushingBall, active)
+
+	if active then
+		-- 设置当前正在推动的球 ID
+		player:SetAttribute(ATTRIBUTES.ActivePushBallInstanceId, ballInstanceId)
+	else
+		-- 停止推球时清空球 ID
+		player:SetAttribute(ATTRIBUTES.ActivePushBallInstanceId, "")
 	end
 end
 
@@ -84,6 +99,7 @@ function PlayerVisualStateSync.Clear(player)
 	player:SetAttribute(ATTRIBUTES.EquippedPetsJson, "[]")
 	player:SetAttribute(ATTRIBUTES.LastTrainingGainSerial, 0)
 	player:SetAttribute(ATTRIBUTES.LastTrainingStrengthGain, 0)
+	player:SetAttribute(ATTRIBUTES.ActivePushBallInstanceId, "")
 end
 
 return PlayerVisualStateSync
