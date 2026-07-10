@@ -15,10 +15,14 @@ local FloatingGainTheta = {
 	Animation = {
 		-- 飘字向上移动的 Scale 偏移。
 		OffsetScaleY = -0.08,
-		-- 移动和淡出的时长。
+		-- 奖杯飘字上浮和淡出的时长。
 		Duration = 0.65,
-		-- 克隆节点销毁延迟。
-		DestroyDelay = 0.75,
+		-- 力量飘字上浮阶段时长。
+		FloatDuration = 0.22,
+		-- 力量飘字归拢到 IconGlow 的时长。
+		ConvergeDuration = 0.38,
+		-- 动画完成后的克隆节点销毁延迟。
+		DestroyDelay = 0.05,
 	},
 }
 

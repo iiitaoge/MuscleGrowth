@@ -10,15 +10,19 @@ local Controller = {}
 local STRENGTH_GAIN_PART_COUNT = 5
 
 -- 初始化飘字控制器。
-function Controller.Init(player)
+function Controller.Init(player, strengthGainTarget)
 	local refs = UIRefs.ResolveFloatingGain(player)
+	assert(
+		strengthGainTarget and strengthGainTarget:IsA("GuiObject"),
+		"Floating gain strength target must be a GuiObject."
+	)
 
 	local lastTrophies = nil
 
 	-- 播放训练力量增长飘字。
 	local function playStrengthGain(amount)
 		for _, text in ipairs(DataAdapter.BuildSplitGainTexts(amount, STRENGTH_GAIN_PART_COUNT)) do
-			Renderer.PlayGainInRandomArea(refs.StrengthTemplate, refs.Animation, text)
+			Renderer.PlayGainInRandomAreaToTarget(refs.StrengthTemplate, refs.Animation, text, strengthGainTarget)
 		end
 	end
 

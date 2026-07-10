@@ -106,6 +106,7 @@ local function validateHUD()
 		ScreenGuiName = requireString(HUDPanelTheta.ScreenGuiName, "HUDPanelTheta.ScreenGuiName"),
 		Paths = requirePathMap(HUDPanelTheta.Paths, "HUDPanelTheta.Paths", {
 			"StrengthText",
+			"StrengthIconGlow",
 			"TrophiesText",
 			"RebirthMultiplierText",
 			"BarbellMultiplierText",
@@ -131,6 +132,11 @@ local function validateFloatingGain()
 		Animation = {
 			OffsetScaleY = requireNumber(animation.OffsetScaleY, "FloatingGainTheta.Animation.OffsetScaleY"),
 			Duration = requireNumber(animation.Duration, "FloatingGainTheta.Animation.Duration"),
+			FloatDuration = requireNumber(animation.FloatDuration, "FloatingGainTheta.Animation.FloatDuration"),
+			ConvergeDuration = requireNumber(
+				animation.ConvergeDuration,
+				"FloatingGainTheta.Animation.ConvergeDuration"
+			),
 			DestroyDelay = requireNumber(animation.DestroyDelay, "FloatingGainTheta.Animation.DestroyDelay"),
 		},
 	}

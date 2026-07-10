@@ -34,7 +34,7 @@ UIContract.ValidateAll()
 
 local remoteClient = RemoteClient.Init()	-- 所有向服务器发送的事件
 local hudView = HUDController.Init(player)
-local floatingGainView = FloatingGainController.Init(player)
+local floatingGainView = FloatingGainController.Init(player, hudView.GetStrengthGainTarget())
 local petInventoryView = PetInventoryController.Init(player)	--初始化宠物视图
 local rebirthPanelView = RebirthPanelController.Init(player)
 local eggPanelView = EggPanelController.Init(player)

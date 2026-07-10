@@ -21,9 +21,14 @@ function Controller.Init(player)
 		return Renderer.GetRebirthButton(refs)
 	end
 
+	local function getStrengthGainTarget()
+		return refs.StrengthIconGlow
+	end
+
 	return {
 		Refresh = refresh,
 		GetRebirthButton = getRebirthButton,
+		GetStrengthGainTarget = getStrengthGainTarget,
 	}
 end
 

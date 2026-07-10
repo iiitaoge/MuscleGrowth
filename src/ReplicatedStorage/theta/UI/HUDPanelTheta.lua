@@ -12,6 +12,8 @@ local HUDPanelTheta = {
 	Paths = {
 		-- 力量数值文本。
 		StrengthText = screenGuiPath({ "Friend", "Power", "Text" }),
+		-- 力量增长飘字的归拢目标。
+		StrengthIconGlow = screenGuiPath({ "Friend", "Power", "IconGlow" }),
 		-- 奖杯数值文本。
 		TrophiesText = screenGuiPath({ "Friend", "trophy", "Text" }),
 		-- 重生倍率文本。

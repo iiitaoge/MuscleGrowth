@@ -107,6 +107,10 @@ function UIRefs.ResolveHUD(player)
 
 	return {
 		StrengthText = requireTextObject(waitForPath(hud, paths.StrengthText, "HUD StrengthText"), "HUD StrengthText"),
+		StrengthIconGlow = requireGuiObject(
+			waitForPath(hud, paths.StrengthIconGlow, "HUD StrengthIconGlow"),
+			"HUD StrengthIconGlow"
+		),
 		TrophiesText = requireTextObject(waitForPath(hud, paths.TrophiesText, "HUD TrophiesText"), "HUD TrophiesText"),
 		RebirthMultiplierText = requireTextObject(
 			waitForPath(hud, paths.RebirthMultiplierText, "HUD RebirthMultiplierText"),
