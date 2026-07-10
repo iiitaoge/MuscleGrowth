@@ -3,7 +3,7 @@ local TweenService = game:GetService("TweenService")
 local ButtonMotion = {}
 
 local BOUND_ATTRIBUTE = "MuscleGrowthButtonMotionBound"
-local SCALE_NAME = "ButtonMotionScale"
+local SCALE_NAME = "UIScale"	-- 查找的UIScale的节点名称
 
 local NORMAL_SCALE = 1
 local HOVER_SCALE = 1.06
