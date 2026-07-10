@@ -21,7 +21,7 @@ function EggInteractionController.Init(sceneQuery, eggPanelView, snapshotControl
 	end
 
 	local function getEggInteractionNode(instanceConfig, eggConfig)
-		local holder = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.HolderPath)
+		local holder = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.HolderPathSpec)
 		if not holder then
 			return nil
 		end
@@ -90,7 +90,7 @@ function EggInteractionController.Init(sceneQuery, eggPanelView, snapshotControl
 			return
 		end
 
-		local holder = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.HolderPath, BIND_WAIT_SECONDS)
+		local holder = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.HolderPathSpec, BIND_WAIT_SECONDS)
 		if not holder then
 			warn("Missing egg holder: " .. tostring(instanceId))
 			return

@@ -128,7 +128,7 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 
 ## 统一路径合同
 
-所有需要按固定层级查找 Instance 的配置都使用路径规格，而不是把根节点名称混进路径：
+所有需要按固定层级查找 Instance 的配置都必须使用唯一的路径规格；旧数组路径不再被解析器接受：
 
 ```lua
 {
@@ -142,6 +142,23 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 - `Find(root, pathSpec)` 立即逐层查找，缺失返回 `nil`。
 - `Wait(root, pathSpec, timeout)` 在总超时时间内逐层等待。
 - `Require(root, pathSpec, context)` 缺失时抛出包含 RootKey、完整 Path 和上下文的错误。
+- `FindSpec`、`WaitSpec`、`RequireSpec` 接收调用者的根节点映射，并使用 `RootKey` 选择根节点。
 - `Format`、`Components` 只用于日志或需要创建父节点的特殊流程。
+
+当前约定的根键含义：
+
+- `Workspace`：`game:GetService("Workspace")`。
+- `ServerStorage`：`game:GetService("ServerStorage")`。
+- `ReplicatedStorage`：`game:GetService("ReplicatedStorage")`，用于客户端可见的共享场景源。
+- `ScreenGui`：具体的 `PlayerGui` ScreenGui，例如 `Main` 或 `HUD`。
+- `HUDScreenGui`：HUD ScreenGui，供跨面板入口路径使用。
+- `PanelRoot`：已经解析出的 UI 面板根节点。
+- `RewardSlot`：已经解析出的蛋奖励槽根节点。
+- `ResultTemplate`：已经解析出的蛋抽奖结果模板根节点。
+- `PetCard`：已经克隆出的宠物卡根节点。
+- `DisplayModel`：已经解析出的场景展示模型。
+- `ReturnNode`：已经通过奖杯语义查询得到的 Free/VIP 领奖节点。
+
+Scene 配置中的固定路径字段统一使用 `*PathSpec` 命名，例如 `TouchPathSpec`、`HolderPathSpec`、`TrackPathSpec`、`RootPathSpec`；客户端共享场景源同样使用 `ClientTrainEquipmentPathSpec`、`ClientPetSourcePathSpec`。
 
 递归名称查找、`FindFirstChildWhichIsA`、Prompt 类型查询和动态生成父节点不是固定路径解析，仍保持在各自的业务模块中；它们不能替代直接路径合同。

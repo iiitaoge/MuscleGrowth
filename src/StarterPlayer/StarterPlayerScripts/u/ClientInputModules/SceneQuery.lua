@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
 
 local SceneQuery = {}
 
@@ -13,7 +14,7 @@ local SceneQuery = {}
 function SceneQuery.Init(player)
 	-- 获取 UseScene 根节点。
 	local function getUseSceneRoot()
-		return Workspace:WaitForChild(SceneTheta.WorkspaceRootName, 10)
+		return InstancePath.WaitSpec({ Workspace = Workspace }, SceneTheta.UseSceneRootPathSpec, 10)
 	end
 
 	-- 获取 UseScene 下的指定子节点。

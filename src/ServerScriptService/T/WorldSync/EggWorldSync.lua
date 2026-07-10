@@ -120,13 +120,13 @@ local function refreshEggInstance(instanceId, instanceConfig)
 	end
 
 	local roots = { ServerStorage = ServerStorage, Workspace = Workspace }
-	local source = InstancePath.WaitSpec(roots, eggConfig.SourcePath, WORLD_WAIT_SECONDS)
-	local holder = InstancePath.WaitSpec(roots, instanceConfig.HolderPath, WORLD_WAIT_SECONDS)
+	local source = InstancePath.WaitSpec(roots, eggConfig.SourcePathSpec, WORLD_WAIT_SECONDS)
+	local holder = InstancePath.WaitSpec(roots, instanceConfig.HolderPathSpec, WORLD_WAIT_SECONDS)
 	if not source then
-		warn("Egg source missing: " .. tostring(eggId) .. " at " .. InstancePath.Format(eggConfig.SourcePath))
+		warn("Egg source missing: " .. tostring(eggId) .. " at " .. InstancePath.Format(eggConfig.SourcePathSpec))
 	end
 	if not holder then
-		warn("Egg holder missing: " .. tostring(instanceId) .. " at " .. InstancePath.Format(instanceConfig.HolderPath))
+		warn("Egg holder missing: " .. tostring(instanceId) .. " at " .. InstancePath.Format(instanceConfig.HolderPathSpec))
 	end
 	if not source or not holder then
 		return false

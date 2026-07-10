@@ -37,7 +37,7 @@ function AutoAreaController.Init(remoteClient, sceneQuery)
 			return
 		end
 
-		local touch = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.TouchPath, BIND_WAIT_SECONDS)
+		local touch = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.TouchPathSpec, BIND_WAIT_SECONDS)
 		if not touch or not touch:IsA("BasePart") then
 			warn("Missing auto area Touch part: " .. tostring(instanceId))
 			return

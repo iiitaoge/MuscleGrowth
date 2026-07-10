@@ -5,10 +5,9 @@ local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
 
 local Renderer = {}
 
-local setTextSequenceByPredicate
-
 local function isTextObject(instance)
-	return instance and (instance:IsA("TextLabel") or instance:IsA("TextButton"))
+	return instance
+		and (instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox"))
 end
 
 local function setText(label, value)
@@ -19,18 +18,6 @@ local function setSizeXScale(guiObject, value)
 	local ratio = math.clamp(tonumber(value) or 0, 0, 1)
 	local size = guiObject.Size
 	guiObject.Size = UDim2.new(ratio, size.X.Offset, size.Y.Scale, size.Y.Offset)
-end
-
-local function setDescendantTexts(root, value)
-	if isTextObject(root) then
-		root.Text = value
-	end
-
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if isTextObject(descendant) then
-			descendant.Text = value
-		end
-	end
 end
 
 local function setTextTargets(targets, values)
@@ -53,47 +40,20 @@ local function normalizeSequenceValues(values)
 	return { tostring(values) }
 end
 
-local function textMatches(matchConfig, text)
-	if matchConfig.MatchType == "Pattern" then
-		return text:match(matchConfig.Pattern) ~= nil
-	end
-
-	return text:find(matchConfig.Contains, 1, true) ~= nil
-end
-
 local function applyRenderBinding(bindingEntry, model)
 	local binding = bindingEntry.Config
 	local target = bindingEntry.Target
-	if not target then
+	if not target and binding.Operation ~= "SetTextTargets" then
 		return
 	end
 
 	local value = model[binding.ModelKey]
 	if binding.Operation == "SetText" then
 		setText(target, value or "")
-	elseif binding.Operation == "SetDescendantTexts" then
-		setDescendantTexts(target, value or "")
 	elseif binding.Operation == "SetTextTargets" then
 		setTextTargets(bindingEntry.Targets, normalizeSequenceValues(value))
-	elseif binding.Operation == "SetTextSequenceByMatch" then
-		setTextSequenceByPredicate(target, function(text)
-			return textMatches(binding.Match, text)
-		end, normalizeSequenceValues(value))
 	elseif binding.Operation == "SetSizeXScale" then
 		setSizeXScale(target, value)
-	end
-end
-
-setTextSequenceByPredicate = function(root, predicate, values)
-	local valueIndex = 1
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if isTextObject(descendant) and predicate(descendant.Text, descendant) then
-			descendant.Text = values[valueIndex] or values[#values] or descendant.Text
-			valueIndex += 1
-			if valueIndex > #values then
-				break
-			end
-		end
 	end
 end
 

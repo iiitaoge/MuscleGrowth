@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local theta = ReplicatedStorage:WaitForChild("theta")
 local AnimationTheta = require(theta:WaitForChild("System"):WaitForChild("AnimationTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
 
 local PlayerVisualSync = {}
 
@@ -22,21 +23,20 @@ local BARBELL_GRIP_ROTATION_DEGREES = Vector3.new(90, 0, 0)
 local playerStates = {}
 local renderConnection = nil
 
-local function getToUseSceneRoot()
-	local assets = ReplicatedStorage:FindFirstChild(SceneTheta.ReplicatedAssetsRootName)
-	return assets and assets:FindFirstChild(SceneTheta.ClientToUseSceneRootName)
-end
-
 local function getBarbellSource(barbellId)
-	local toUseScene = getToUseSceneRoot()
-	local trainEquipment = toUseScene and toUseScene:FindFirstChild(SceneTheta.TrainEquipmentSourceFolderName)
+	local trainEquipment = InstancePath.FindSpec(
+		{ ReplicatedStorage = ReplicatedStorage },
+		SceneTheta.ClientTrainEquipmentPathSpec
+	)
 	local barbellNode = trainEquipment and trainEquipment:FindFirstChild(tostring(barbellId))
 	return barbellNode and barbellNode:FindFirstChild(SceneTheta.BarbellTrainModelName)
 end
 
 local function getPetSource(modelName)
-	local toUseScene = getToUseSceneRoot()
-	local petRoot = toUseScene and toUseScene:FindFirstChild(SceneTheta.PetSourceFolderName)
+	local petRoot = InstancePath.FindSpec(
+		{ ReplicatedStorage = ReplicatedStorage },
+		SceneTheta.ClientPetSourcePathSpec
+	)
 	return petRoot and petRoot:FindFirstChild(tostring(modelName))
 end
 

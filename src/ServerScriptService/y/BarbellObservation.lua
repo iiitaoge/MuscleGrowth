@@ -2,13 +2,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
 local BarbellTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
+local BarbellDisplayTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
 local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local BarbellObservation = {}
 
-local DISPLAY_ROOT_NAME = SceneTheta.SceneEquipmentRootName
-local TRAIN_ROOT_NAME = SceneTheta.TrainEquipmentSourceFolderName
 local DISPLAY_MODEL_NAME = SceneTheta.BarbellDisplayModelName
 local PROMPT_PART_NAME = SceneTheta.BarbellPromptPartName
 local TRAIN_MODEL_NAME = SceneTheta.BarbellTrainModelName
@@ -22,40 +22,21 @@ local function getCharacterRoot(player)
 end
 
 local function getWorldRoot()
-	return Workspace:FindFirstChild(SceneTheta.WorkspaceRootName) or Workspace
+	return InstancePath.FindSpec({ Workspace = Workspace }, BarbellDisplayTheta.DisplayRootPathSpec)
 end
 
 local function getServerToUseSceneRoot()
-	return ServerStorage:FindFirstChild(SceneTheta.ServerToUseSceneRootName)
+	return InstancePath.FindSpec({ ServerStorage = ServerStorage }, BarbellDisplayTheta.TrainSourceRootPathSpec)
 end
 
 local function findSceneChild(childName)
 	local worldRoot = getWorldRoot()
-
-	return worldRoot:FindFirstChild(childName)
-		or Workspace:FindFirstChild(childName)
-		or Workspace:FindFirstChild(childName, true)
-end
-
-local function waitForSceneChild(childName)
-	local worldRoot = Workspace:WaitForChild(SceneTheta.WorkspaceRootName, WORLD_WAIT_SECONDS) or Workspace
-	local child = worldRoot:WaitForChild(childName, WORLD_WAIT_SECONDS)
-
-	if child then
-		return child
-	end
-
-	return Workspace:WaitForChild(childName, WORLD_WAIT_SECONDS)
+	return worldRoot and worldRoot:FindFirstChild(childName)
 end
 
 local function findServerSourceChild(childName)
 	local sourceRoot = getServerToUseSceneRoot()
 	return sourceRoot and sourceRoot:FindFirstChild(childName)
-end
-
-local function waitForServerSourceChild(childName)
-	local sourceRoot = ServerStorage:WaitForChild(SceneTheta.ServerToUseSceneRootName, WORLD_WAIT_SECONDS)
-	return sourceRoot and sourceRoot:WaitForChild(childName, WORLD_WAIT_SECONDS)
 end
 
 function BarbellObservation.GetBaseParts(instance)
@@ -113,24 +94,29 @@ function BarbellObservation.IsValidBarbellId(barbellId)
 end
 
 function BarbellObservation.WaitForWorldRoots()
-	local dumbbellRoot = waitForServerSourceChild(TRAIN_ROOT_NAME)
-	local displayRoot = waitForSceneChild(DISPLAY_ROOT_NAME)
+	local dumbbellRoot = InstancePath.WaitSpec(
+		{ ServerStorage = ServerStorage },
+		BarbellDisplayTheta.TrainSourceRootPathSpec,
+		WORLD_WAIT_SECONDS
+	)
+	local displayRoot = InstancePath.WaitSpec(
+		{ Workspace = Workspace },
+		BarbellDisplayTheta.DisplayRootPathSpec,
+		WORLD_WAIT_SECONDS
+	)
 
 	return dumbbellRoot, displayRoot
 end
 
 -- 这个函数有点奇怪，不是很理解
 function BarbellObservation.GetTrainSource(barbellId)
-	local dumbbellRoot = findServerSourceChild(TRAIN_ROOT_NAME)
-	local barbellNode = dumbbellRoot and dumbbellRoot:FindFirstChild(barbellId)
+	local barbellNode = findServerSourceChild(tostring(barbellId))
 
 	return barbellNode and barbellNode:FindFirstChild(TRAIN_MODEL_NAME)
 end
 
 function BarbellObservation.GetDisplayHolder(barbellId)
-	local displayRoot = findSceneChild(DISPLAY_ROOT_NAME)
-
-	return displayRoot and displayRoot:FindFirstChild(barbellId)
+	return findSceneChild(tostring(barbellId))
 end
 
 function BarbellObservation.GetDisplayNode(barbellId)

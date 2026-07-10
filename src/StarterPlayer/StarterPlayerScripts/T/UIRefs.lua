@@ -28,35 +28,24 @@ local function waitForChild(parent, childName, context, timeout)
 	return child
 end
 
-local function waitForPath(root, path, context, timeout)
-	local current = InstancePath.Wait(root, path, timeout or NODE_WAIT_SECONDS)
-	if not current then
-		error(
-			(context or "Path")
-				.. " was not found under "
-				.. root:GetFullName()
-				.. " ("
-				.. InstancePath.Format(path)
-				.. ").",
-			2
+local function resolvePathSpec(roots, pathSpec, context, timeout)
+	if typeof(roots) == "Instance" then
+		assert(
+			type(pathSpec) == "table" and type(pathSpec.RootKey) == "string" and pathSpec.RootKey ~= "",
+			(context or "UI path") .. " must use { RootKey, Path }."
 		)
+		roots = { [pathSpec.RootKey] = roots }
 	end
 
-	return current
-end
-
-local function findPath(root, path)
-	return InstancePath.Find(root, path)
-end
-
-local function findRequiredDescendant(root, childName, context)
-	local descendant = root:FindFirstChild(childName, true)
-	if not descendant then
-		error(context .. " '" .. childName .. "' was not found under " .. root:GetFullName() .. ".", 2)
+	local current = InstancePath.WaitSpec(roots, pathSpec, timeout or NODE_WAIT_SECONDS)
+	if current then
+		return current
 	end
 
-	return descendant
+	return InstancePath.RequireSpec(roots, pathSpec, context)
 end
+
+local waitForPath = resolvePathSpec
 
 local function requireScreenGui(instance, context)
 	assert(instance:IsA("ScreenGui"), context .. " must be a ScreenGui.")
@@ -80,7 +69,10 @@ local function requireTextLabel(instance, context)
 end
 
 local function requireTextObject(instance, context)
-	assert(instance:IsA("TextLabel") or instance:IsA("TextButton"), context .. " must be a text object.")
+	assert(
+		instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox"),
+		context .. " must be a text object."
+	)
 	return instance
 end
 
@@ -141,11 +133,11 @@ function UIRefs.ResolveFloatingGain(player)
 	local playerGui = waitForPlayerGui(player)
 	local hud = waitForScreenGui(playerGui, config.ScreenGuiName, "Floating gain HUD ScreenGui")
 	local strengthTemplate = requireGuiObject(
-		waitForChild(hud, config.Templates.StrengthGain, "Floating gain strength template"),
+		resolvePathSpec({ ScreenGui = hud }, config.Paths.StrengthGain, "Floating gain strength template"),
 		"Floating gain strength template"
 	)
 	local trophyTemplate = requireGuiObject(
-		waitForChild(hud, config.Templates.TrophyGain, "Floating gain trophy template"),
+		resolvePathSpec({ ScreenGui = hud }, config.Paths.TrophyGain, "Floating gain trophy template"),
 		"Floating gain trophy template"
 	)
 
@@ -160,45 +152,6 @@ function UIRefs.ResolveFloatingGain(player)
 end
 
 -- ===== RebirthPanel =====
-
-local function findFirstText(root, childName)
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant.Name == childName and descendant:IsA("TextLabel") then
-			return descendant
-		end
-	end
-
-	return nil
-end
-
-local function requireFirstText(root, names, context)
-	for _, childName in ipairs(names) do
-		local textObject = findFirstText(root, childName)
-		if textObject then
-			return textObject
-		end
-	end
-
-	error(context .. " was not found under " .. root:GetFullName() .. ".", 2)
-end
-
-local function findActionButton(root, actionButtonName)
-	for _, descendant in ipairs(root:GetDescendants()) do
-		if descendant:IsA("GuiButton") and descendant.Name == actionButtonName then
-			return descendant
-		end
-	end
-
-	error("Rebirth action button '" .. actionButtonName .. "' was not found under " .. root:GetFullName() .. ".", 2)
-end
-
-local function resolveOptionalPath(root, path)
-	return findPath(root, path)
-end
-
-local function resolveRequiredPath(root, path, context)
-	return waitForPath(root, path, context)
-end
 
 local function validateRebirthTargetType(target, targetType, context)
 	if not target then
@@ -218,27 +171,15 @@ local function validateRebirthTargetType(target, targetType, context)
 end
 
 local function resolveRebirthBindingTarget(refs, binding)
-	if binding.Ref then
-		local target = refs[binding.Ref]
-		assert(target, "Missing Rebirth render binding ref: " .. binding.Ref)
-		return target
-	end
-
 	if binding.Path then
-		if binding.Optional == true then
-			return resolveOptionalPath(refs.PanelRoot, binding.Path)
-		end
-		return resolveRequiredPath(refs.PanelRoot, binding.Path, "Rebirth render binding " .. binding.Key)
+		return resolvePathSpec(
+			{ PanelRoot = refs.PanelRoot },
+			binding.Path,
+			"Rebirth render binding " .. binding.Key
+		)
 	end
 
-	if binding.RootPath then
-		if binding.Optional == true then
-			return resolveOptionalPath(refs.PanelRoot, binding.RootPath)
-		end
-		return resolveRequiredPath(refs.PanelRoot, binding.RootPath, "Rebirth render binding " .. binding.Key)
-	end
-
-	return refs.PanelRoot
+	return nil
 end
 
 local function resolveRebirthRenderBindings(refs, bindings)
@@ -249,21 +190,15 @@ local function resolveRebirthRenderBindings(refs, bindings)
 		if binding.TargetPaths then
 			targets = {}
 			for targetIndex, targetPath in ipairs(binding.TargetPaths) do
-				local targetInstance
-				if binding.Optional == true then
-					targetInstance = resolveOptionalPath(refs.PanelRoot, targetPath)
-				else
-					targetInstance = resolveRequiredPath(
-						refs.PanelRoot,
-						targetPath,
-						"Rebirth render binding " .. binding.Key .. " target " .. tostring(targetIndex)
-					)
-				end
-				targets[targetIndex] = targetInstance
+				targets[targetIndex] = resolvePathSpec(
+					{ PanelRoot = refs.PanelRoot },
+					targetPath,
+					"Rebirth render binding " .. binding.Key .. " target " .. tostring(targetIndex)
+				)
 			end
 		end
 
-		if target or targets or binding.Optional == true then
+		if target or targets then
 			validateRebirthTargetType(target, binding.TargetType, "Rebirth render binding " .. binding.Key)
 			for targetIndex, targetInstance in ipairs(targets or {}) do
 				validateRebirthTargetType(
@@ -293,13 +228,24 @@ function UIRefs.ResolveRebirthPanel(player)
 		waitForPath(mainGui, config.Paths.PanelRoot, "Rebirth PanelRoot"),
 		"Rebirth PanelRoot"
 	)
-	local nodes = config.Nodes
 	local refs = {
 		PanelRoot = panelRoot,
-		CloseButton = findActionButton(panelRoot, nodes.CloseButtonName),
-		RequestButton = findActionButton(panelRoot, nodes.ActionButtonName),
-		TitleText = requireFirstText(panelRoot, { nodes.TitleTextName }, "Rebirth title text"),
-		TipText = requireFirstText(panelRoot, { nodes.TipTextName, nodes.FallbackTipTextName }, "Rebirth tip text"),
+		CloseButton = requireGuiButton(
+			waitForPath(panelRoot, config.Paths.CloseButton, "Rebirth CloseButton"),
+			"Rebirth CloseButton"
+		),
+		RequestButton = requireGuiButton(
+			waitForPath(panelRoot, config.Paths.RequestButton, "Rebirth RequestButton"),
+			"Rebirth RequestButton"
+		),
+		TitleText = requireTextObject(
+			waitForPath(panelRoot, config.Paths.TitleText, "Rebirth TitleText"),
+			"Rebirth TitleText"
+		),
+		TipText = requireTextObject(
+			waitForPath(panelRoot, config.Paths.TipText, "Rebirth TipText"),
+			"Rebirth TipText"
+		),
 	}
 
 	refs.RenderBindings = resolveRebirthRenderBindings(refs, config.RenderBindings)
@@ -308,7 +254,7 @@ end
 
 -- ===== EggPanel =====
 
-local function resolveEggRewardSlots(mainGui, slotPaths, slotFields)
+local function resolveEggRewardSlots(mainGui, slotPaths, slotFieldPathSpecs)
 	local slots = {}
 	for index, path in ipairs(slotPaths) do
 		local slotRoot = requireGuiObject(
@@ -318,15 +264,19 @@ local function resolveEggRewardSlots(mainGui, slotPaths, slotFields)
 		slots[index] = {
 			Root = slotRoot,
 			Icon = requireImageObject(
-				findRequiredDescendant(slotRoot, slotFields.Icon, "Egg reward slot icon"),
+				resolvePathSpec({ RewardSlot = slotRoot }, slotFieldPathSpecs.Icon, "Egg reward slot icon"),
 				"Egg reward slot icon"
 			),
 			ChanceText = requireTextObject(
-				findRequiredDescendant(slotRoot, slotFields.ChanceText, "Egg reward slot chance text"),
+				resolvePathSpec({ RewardSlot = slotRoot }, slotFieldPathSpecs.ChanceText, "Egg reward slot chance text"),
 				"Egg reward slot chance text"
 			),
 			MultiplierText = requireTextObject(
-				findRequiredDescendant(slotRoot, slotFields.MultiplierText, "Egg reward slot multiplier text"),
+				resolvePathSpec(
+					{ RewardSlot = slotRoot },
+					slotFieldPathSpecs.MultiplierText,
+					"Egg reward slot multiplier text"
+				),
 				"Egg reward slot multiplier text"
 			),
 		}
@@ -335,7 +285,7 @@ local function resolveEggRewardSlots(mainGui, slotPaths, slotFields)
 	return slots, #slotPaths
 end
 
-local function resolveEggResultTemplate(mainGui, templatePath, templateFields)
+local function resolveEggResultTemplate(mainGui, templatePath, templateFieldPathSpecs)
 	local templateRoot = requireGuiObject(
 		waitForPath(mainGui, templatePath, "Egg result template"),
 		"Egg result template"
@@ -344,15 +294,23 @@ local function resolveEggResultTemplate(mainGui, templatePath, templateFields)
 	return {
 		Root = templateRoot,
 		Icon = requireImageObject(
-			findRequiredDescendant(templateRoot, templateFields.Icon, "Egg result template icon"),
+			resolvePathSpec({ ResultTemplate = templateRoot }, templateFieldPathSpecs.Icon, "Egg result template icon"),
 			"Egg result template icon"
 		),
 		NameText = requireTextObject(
-			findRequiredDescendant(templateRoot, templateFields.NameText, "Egg result template name text"),
+			resolvePathSpec(
+				{ ResultTemplate = templateRoot },
+				templateFieldPathSpecs.NameText,
+				"Egg result template name text"
+			),
 			"Egg result template name text"
 		),
 		RarityText = requireTextObject(
-			findRequiredDescendant(templateRoot, templateFields.RarityText, "Egg result template rarity text"),
+			resolvePathSpec(
+				{ ResultTemplate = templateRoot },
+				templateFieldPathSpecs.RarityText,
+				"Egg result template rarity text"
+			),
 			"Egg result template rarity text"
 		),
 	}
@@ -363,7 +321,7 @@ function UIRefs.ResolveEggPanel(player)
 	local playerGui = waitForPlayerGui(player)
 	local mainGui = waitForScreenGui(playerGui, config.ScreenGuiName, "Egg ScreenGui")
 	local paths = config.Paths
-	local rewardSlots, rewardSlotCount = resolveEggRewardSlots(mainGui, paths.RewardSlots, config.RewardSlotFields)
+	local rewardSlots, rewardSlotCount = resolveEggRewardSlots(mainGui, paths.RewardSlots, config.RewardSlotFieldPathSpecs)
 
 	return {
 		PanelRoot = requireGuiObject(waitForPath(mainGui, paths.PanelRoot, "Egg PanelRoot"), "Egg PanelRoot"),
@@ -371,7 +329,7 @@ function UIRefs.ResolveEggPanel(player)
 		CloseButton = requireGuiObject(waitForPath(mainGui, paths.CloseButton, "Egg CloseButton"), "Egg CloseButton"),
 		RewardSlots = rewardSlots,
 		RewardSlotCount = rewardSlotCount,
-		ResultTemplate = resolveEggResultTemplate(mainGui, paths.ResultTemplate, config.ResultTemplateFields),
+		ResultTemplate = resolveEggResultTemplate(mainGui, paths.ResultTemplate, config.ResultTemplateFieldPathSpecs),
 		SingleButton = requireGuiObject(
 			waitForPath(mainGui, paths.SingleRollButton, "Egg SingleRollButton"),
 			"Egg SingleRollButton"
@@ -386,7 +344,7 @@ end
 
 -- ===== EggRevealPanel =====
 
-local function resolveEggRevealSlots(mainGui, slotPaths, slotFields)
+local function resolveEggRevealSlots(mainGui, slotPaths, slotFieldPathSpecs)
 	local slots = {}
 	for index, path in ipairs(slotPaths) do
 		local slotRoot = requireGuiObject(
@@ -396,15 +354,19 @@ local function resolveEggRevealSlots(mainGui, slotPaths, slotFields)
 		slots[index] = {
 			Root = slotRoot,
 			Icon = requireImageObject(
-				findRequiredDescendant(slotRoot, slotFields.Icon, "Egg reveal slot icon"),
+				resolvePathSpec({ RewardSlot = slotRoot }, slotFieldPathSpecs.Icon, "Egg reveal slot icon"),
 				"Egg reveal slot icon"
 			),
 			NameText = requireTextObject(
-				findRequiredDescendant(slotRoot, slotFields.NameText, "Egg reveal slot name text"),
+				resolvePathSpec({ RewardSlot = slotRoot }, slotFieldPathSpecs.NameText, "Egg reveal slot name text"),
 				"Egg reveal slot name text"
 			),
 			RarityText = requireTextObject(
-				findRequiredDescendant(slotRoot, slotFields.RarityText, "Egg reveal slot rarity text"),
+				resolvePathSpec(
+					{ RewardSlot = slotRoot },
+					slotFieldPathSpecs.RarityText,
+					"Egg reveal slot rarity text"
+				),
 				"Egg reveal slot rarity text"
 			),
 		}
@@ -418,7 +380,11 @@ function UIRefs.ResolveEggRevealPanel(player)
 	local playerGui = waitForPlayerGui(player)
 	local mainGui = waitForScreenGui(playerGui, config.ScreenGuiName, "Egg reveal ScreenGui")
 	local paths = config.Paths
-	local rewardSlots, rewardSlotCount = resolveEggRevealSlots(mainGui, paths.RewardSlots, config.RewardSlotFields)
+	local rewardSlots, rewardSlotCount = resolveEggRevealSlots(
+		mainGui,
+		paths.RewardSlots,
+		config.RewardSlotFieldPathSpecs
+	)
 
 	return {
 		PanelRoot = requireGuiObject(waitForPath(mainGui, paths.PanelRoot, "Egg reveal PanelRoot"), "Egg reveal PanelRoot"),
@@ -451,7 +417,7 @@ function UIRefs.ResolvePetInventory(player)
 	local paths = config.Paths
 
 	return {
-		CardFields = config.PetCardFields,
+		CardFields = config.PetCardFieldPathSpecs,
 		PetButton = requireGuiObject(waitForPath(hud, paths.PetButton, "PetInventory PetButton"), "PetInventory PetButton"),
 		PanelRoot = requireGuiObject(
 			waitForPath(mainGui, paths.PanelRoot, "PetInventory PanelRoot"),
@@ -512,7 +478,7 @@ function UIRefs.ResolveTravelPanel(player)
 			Key = key,
 			DestinationId = buttonConfig.DestinationId,
 			Button = requireGuiButton(
-				waitForPath(mainGui, buttonConfig.Path, "Travel destination button " .. tostring(key)),
+				waitForPath(mainGui, buttonConfig.PathSpec, "Travel destination button " .. tostring(key)),
 				"Travel destination button " .. tostring(key)
 			),
 		})
@@ -533,15 +499,18 @@ end
 
 function UIRefs.ResolveBarbellDisplay()
 	local config = UIContract.GetConfig("BarbellDisplay")
-	local worldRoot = waitForChild(Workspace, config.WorkspaceRootName, "Workspace root", SCENE_WAIT_SECONDS)
-	local sceneEquipment =
-		waitForChild(worldRoot, config.SceneEquipmentRootName, "Barbell scene equipment", SCENE_WAIT_SECONDS)
+	local sceneEquipment = resolvePathSpec(
+		{ Workspace = Workspace },
+		config.DisplayRootPathSpec,
+		"Barbell display root",
+		SCENE_WAIT_SECONDS
+	)
 	local displayNodes = {}
 
 	for barbellId in pairs(BarbellTheta) do
 		local barbellNode = waitForChild(sceneEquipment, barbellId, "Barbell scene node", SCENE_WAIT_SECONDS)
 		local displayNode = waitForChild(barbellNode, config.DisplayModelName, "Barbell display model", SCENE_WAIT_SECONDS)
-		local fieldPaths = config.FieldPaths
+		local fieldPaths = config.FieldPathSpecs
 		displayNodes[barbellId] = {
 			PowerText = requireTextLabel(
 				waitForPath(displayNode, fieldPaths.PowerText, "Barbell power text"),

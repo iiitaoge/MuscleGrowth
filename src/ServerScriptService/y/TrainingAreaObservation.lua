@@ -31,7 +31,7 @@ local function getAutoAreaTouchParts(areaId)
 
 	for _, instanceConfig in pairs(AutoAreaSceneTheta.Instances or {}) do
 		if type(instanceConfig) == "table" and instanceConfig.AreaId == areaId then
-			local touch = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.TouchPath)
+			local touch = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.TouchPathSpec)
 			if touch and touch:IsA("BasePart") then
 				table.insert(touchParts, touch)
 			end

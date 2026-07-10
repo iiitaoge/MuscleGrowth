@@ -236,7 +236,7 @@ local function warnRaycastMiss(state, label, targetPosition)
 
 	state.LastRaycastWarnTime = now
 	warn(
-		("Push ball track raycast missed for %s stage %s at %s. Check TrackPath and CanQuery."):format(
+		("Push ball track raycast missed for %s stage %s at %s. Check TrackPathSpec and CanQuery."):format(
 			label,
 			tostring(state.StageId),
 			tostring(targetPosition)
@@ -426,7 +426,7 @@ local function cleanupState(player, options)
 	if type(options) == "table" and options.TeleportStageId then
 		local sceneConfig = type(PushBallSceneTheta.Stages) == "table" and PushBallSceneTheta.Stages[options.TeleportStageId] or nil
 		if sceneConfig then
-			teleportPlayerToPath(player, sceneConfig.TeleportPath, "Stage " .. tostring(options.TeleportStageId))
+			teleportPlayerToPath(player, sceneConfig.TeleportPathSpec, "Stage " .. tostring(options.TeleportStageId))
 		else
 			warn("Missing push ball cleanup scene config: " .. tostring(options.TeleportStageId))
 		end
@@ -689,19 +689,19 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Missing player character", stageId)
 	end
 
-	local sourceBall = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.Path, PATH_WAIT_SECONDS)
+	local sourceBall = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.PathSpec, PATH_WAIT_SECONDS)
 	if not sourceBall then
 		return result(false, "Missing push ball source", stageId)
 	end
 
-	local trackRoot = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.TrackPath, PATH_WAIT_SECONDS)
+	local trackRoot = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.TrackPathSpec, PATH_WAIT_SECONDS)
 	if not trackRoot then
-		return result(false, "Missing push ball track: " .. pathToString(sceneConfig.TrackPath), stageId)
+		return result(false, "Missing push ball track: " .. pathToString(sceneConfig.TrackPathSpec), stageId)
 	end
 
-	local wall = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.WallPath, PATH_WAIT_SECONDS)
+	local wall = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.WallPathSpec, PATH_WAIT_SECONDS)
 	if not wall then
-		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPath), stageId)
+		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPathSpec), stageId)
 	end
 
 	if not isPlayerNearSourceBall(root, sourceBall) then

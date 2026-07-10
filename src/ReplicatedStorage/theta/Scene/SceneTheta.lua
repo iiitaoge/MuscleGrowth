@@ -1,16 +1,13 @@
 local SceneTheta = {
-	WorkspaceRootName = "UseScene",
-	SceneEquipmentRootName = "SceneEquipment",
-	SceneEggRootName = "SceneEgg",
-	SceneTrainAreaRootName = "SceneTrainAreas",
-
-	ServerToUseSceneRootName = "ToUseScene",
-	ReplicatedAssetsRootName = "Assets",
-	ClientToUseSceneRootName = "ToUseScene",
-
-	EggSourceFolderName = "Egg",
-	TrainEquipmentSourceFolderName = "TrainEquipment",
-	PetSourceFolderName = "PetToEgg",
+	UseSceneRootPathSpec = { RootKey = "Workspace", Path = { "UseScene" } },
+	ClientTrainEquipmentPathSpec = {
+		RootKey = "ReplicatedStorage",
+		Path = { "Assets", "ToUseScene", "TrainEquipment" },
+	},
+	ClientPetSourcePathSpec = {
+		RootKey = "ReplicatedStorage",
+		Path = { "Assets", "ToUseScene", "PetToEgg" },
+	},
 
 	BarbellDisplayModelName = "DisplayModel",
 	BarbellPromptPartName = "PromptPart",

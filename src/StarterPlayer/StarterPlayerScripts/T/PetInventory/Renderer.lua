@@ -1,7 +1,10 @@
 -- PetInventory/Renderer
 -- 只负责宠物背包 UI 显示、模板克隆和点击层绑定。
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local ButtonMotion = require(script.Parent.Parent.ButtonMotion)
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
 
 local Renderer = {}
 
@@ -19,18 +22,16 @@ local function setVisible(instance, isVisible)
 	instance.Visible = isVisible == true
 end
 
-local function findDescendant(root, childName)
-	local descendant = root:FindFirstChild(childName, true)
-	assert(descendant, "Missing pet card field '" .. childName .. "' under " .. root:GetFullName() .. ".")
-	return descendant
+local function requireCardField(root, pathSpec, context)
+	return InstancePath.RequireSpec({ PetCard = root }, pathSpec, context)
 end
 
 local function setTextObject(textObject, value)
 	textObject.Text = value
 end
 
-local function setPetIcon(root, fieldName, image)
-	local icon = findDescendant(root, fieldName)
+local function setPetIcon(root, pathSpec, image)
+	local icon = requireCardField(root, pathSpec, "Pet card icon")
 	assert(icon:IsA("ImageLabel") or icon:IsA("ImageButton"), "Pet card icon must be an image object.")
 	icon.Image = image or ""
 	icon.Visible = type(image) == "string" and image ~= ""
@@ -41,7 +42,10 @@ local function setPetCard(card, petModel, cardFields)
 	card.Visible = hasPet
 
 	setPetIcon(card, cardFields.Icon, hasPet and petModel.Icon or nil)
-	setTextObject(findDescendant(card, cardFields.MultiplierText), hasPet and petModel.MultiplierText or "")
+	setTextObject(
+		requireCardField(card, cardFields.MultiplierText, "Pet card multiplier text"),
+		hasPet and petModel.MultiplierText or ""
+	)
 end
 
 local function setCardSelected(card, isSelected)

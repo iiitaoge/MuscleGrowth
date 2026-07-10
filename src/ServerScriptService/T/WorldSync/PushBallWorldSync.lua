@@ -64,9 +64,9 @@ local function ensurePrompt(ball)
 end
 
 local function bindBallPrompt(ballInstanceId, ballConfig, onPromptTriggered)
-	debugLog(("Binding %s at %s"):format(tostring(ballInstanceId), InstancePath.Format(ballConfig.Path)))
+	debugLog(("Binding %s at %s"):format(tostring(ballInstanceId), InstancePath.Format(ballConfig.PathSpec)))
 
-	local ball = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.Path, PATH_WAIT_SECONDS)
+	local ball = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.PathSpec, PATH_WAIT_SECONDS)
 	if not ball then
 		warn("Missing push ball source: " .. tostring(ballInstanceId))
 		return

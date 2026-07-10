@@ -30,7 +30,7 @@ local function getStageReward(stageId)
 end
 
 local function renderReturnText(root, stageReturnConfig, returnType, returnConfig)
-	local textPath = returnConfig and returnConfig.TextPath
+	local textPath = returnConfig and returnConfig.TextPathSpec
 	if type(textPath) ~= "table" then
 		return
 	end
@@ -133,7 +133,7 @@ local function bindReturnNode(stageReturnId, stageReturnConfig, root, returnType
 end
 
 local function bindStageReturn(stageReturnId, stageReturnConfig, onPlayerTouched)
-	local root = InstancePath.WaitSpec({ Workspace = Workspace }, stageReturnConfig.RootPath, WORLD_WAIT_SECONDS)
+	local root = InstancePath.WaitSpec({ Workspace = Workspace }, stageReturnConfig.RootPathSpec, WORLD_WAIT_SECONDS)
 	if not root then
 		warn("Trophy stage return root was not found: " .. tostring(stageReturnId))
 		return

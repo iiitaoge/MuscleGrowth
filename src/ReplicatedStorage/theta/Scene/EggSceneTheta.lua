@@ -3,78 +3,70 @@
 
 local SceneTheta = require(script.Parent:WaitForChild("SceneTheta"))
 
-local function sourcePath(path)
-	return { RootKey = "ServerStorage", Path = path }
-end
-
-local function workspacePath(path)
-	return { RootKey = "Workspace", Path = path }
-end
-
 local EggSceneTheta = {
 	Eggs = {
 		Egg1 = {
 			PromptPartName = SceneTheta.EggPromptPartName,
 			InteractionDistance = SceneTheta.EggInteractionDistance,
-			SourcePath = sourcePath({ SceneTheta.ServerToUseSceneRootName, SceneTheta.EggSourceFolderName, "Egg1" }),
+			SourcePathSpec = { RootKey = "ServerStorage", Path = { "ToUseScene", "Egg", "Egg1" } },
 		},
 		Egg2 = {
 			PromptPartName = SceneTheta.EggPromptPartName,
 			InteractionDistance = SceneTheta.EggInteractionDistance,
-			SourcePath = sourcePath({ SceneTheta.ServerToUseSceneRootName, SceneTheta.EggSourceFolderName, "Egg2" }),
+			SourcePathSpec = { RootKey = "ServerStorage", Path = { "ToUseScene", "Egg", "Egg2" } },
 		},
 		PEgg1 = {
 			PromptPartName = SceneTheta.EggPromptPartName,
 			InteractionDistance = SceneTheta.EggInteractionDistance,
-			SourcePath = sourcePath({ SceneTheta.ServerToUseSceneRootName, SceneTheta.EggSourceFolderName, "PEgg1" }),
+			SourcePathSpec = { RootKey = "ServerStorage", Path = { "ToUseScene", "Egg", "PEgg1" } },
 		},
 		PEgg2 = {
 			PromptPartName = SceneTheta.EggPromptPartName,
 			InteractionDistance = SceneTheta.EggInteractionDistance,
-			SourcePath = sourcePath({ SceneTheta.ServerToUseSceneRootName, SceneTheta.EggSourceFolderName, "PEgg2" }),
+			SourcePathSpec = { RootKey = "ServerStorage", Path = { "ToUseScene", "Egg", "PEgg2" } },
 		},
 	},
 
-	-- 在这里填蛋的场景路径。HolderPath 是相对 Workspace 的精确路径。
+	-- 在这里填蛋的场景路径规格。HolderPathSpec 的 Path 相对 Workspace。
 	-- 复制新地图时只新增 Instance，不要复制 EggId 对应的价格/奖池配置。
 	Instances = {
 		UseSceneEgg1 = {
 			EggId = "Egg1",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "Egg1" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "Egg1" } },
 		},
 		UseSceneEgg2 = {
 			EggId = "Egg2",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "Egg2" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "Egg2" } },
 		},
 		UseScenePEgg1 = {
 			EggId = "PEgg1",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "PEgg1" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "PEgg1" } },
 		},
 		UseScenePEgg2 = {
 			EggId = "PEgg2",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "PEgg2" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "PEgg2" } },
 		},
 
 		World2Egg1 = {
 			EggId = "Egg1",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "World2Egg1" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World2Egg1" } },
 		},
 		World2Egg2 = {
 			EggId = "Egg2",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "World2Egg2" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World2Egg2" } },
 		},
 		World2PEgg1 = {
 			EggId = "PEgg1",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "World2PEgg1" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World2PEgg1" } },
 		},
 		World2PEgg2 = {
 			EggId = "PEgg2",
-			HolderPath = workspacePath({ SceneTheta.WorkspaceRootName, SceneTheta.SceneEggRootName, "World2PEgg2" }),
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World2PEgg2" } },
 		},
 		-- 新地图示例：
 		-- World2Egg1 = {
 		-- 	EggId = "Egg1",
-		-- 	HolderPath = workspacePath({ "World2", "SceneEgg", "Egg1" }),
+		-- 	HolderPathSpec = { RootKey = "Workspace", Path = { "World2", "SceneEgg", "Egg1" } },
 		-- },
 	},
 }

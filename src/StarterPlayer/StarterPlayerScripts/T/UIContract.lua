@@ -10,7 +10,6 @@ local FloatingGainTheta = require(theta:WaitForChild("UI"):WaitForChild("Floatin
 local RebirthPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("RebirthPanelTheta"))
 local PetInventoryPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("PetInventoryPanelTheta"))
 local BarbellDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
-local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
 local EggPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggPanelTheta"))
 local EggRevealPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("EggRevealPanelTheta"))
 local TravelPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("TravelPanelTheta"))
@@ -49,25 +48,43 @@ end
 
 local function requirePath(value, context)
 	local source = requireTable(value, context)
-	local path = source
-	if source.Path ~= nil then
-		requireString(source.RootKey, context .. ".RootKey")
-		path = requireTable(source.Path, context .. ".Path")
-	end
+	local rootKey = requireString(source.RootKey, context .. ".RootKey")
+	local path = requireTable(source.Path, context .. ".Path")
 	assert(#path > 0, context .. " must not be empty.")
 
-	for index, childName in ipairs(path) do
-		requireString(childName, context .. "[" .. tostring(index) .. "]")
+	for key in pairs(path) do
+		assert(
+			type(key) == "number" and key % 1 == 0 and key >= 1 and key <= #path,
+			context .. ".Path must be an array of strings."
+		)
 	end
 
-	if source.Path ~= nil then
-		return {
-			RootKey = source.RootKey,
-			Path = cloneValue(path),
-		}
+	for index = 1, #path do
+		local childName = path[index]
+		requireString(childName, context .. ".Path[" .. tostring(index) .. "]")
 	end
 
-	return cloneValue(path)
+	return {
+		RootKey = rootKey,
+		Path = cloneValue(path),
+	}
+end
+
+local function requirePathList(value, context)
+	local source = requireTable(value, context)
+	assert(#source > 0, context .. " must not be empty.")
+	for key in pairs(source) do
+		assert(
+			type(key) == "number" and key % 1 == 0 and key >= 1 and key <= #source,
+			context .. " must be an array of path specifications."
+		)
+	end
+
+	local result = {}
+	for index, pathSpec in ipairs(source) do
+		result[index] = requirePath(pathSpec, context .. "[" .. tostring(index) .. "]")
+	end
+	return result
 end
 
 local function requirePathMap(value, context, keys)
@@ -79,6 +96,14 @@ local function requirePathMap(value, context, keys)
 	end
 
 	return result
+end
+
+local function requirePathRoot(pathSpec, expectedRootKey, context)
+	assert(
+		pathSpec.RootKey == expectedRootKey,
+		("%s.RootKey must be %s."):format(context, expectedRootKey)
+	)
+	return pathSpec
 end
 
 local function requireStringMap(value, context, keys)
@@ -102,33 +127,41 @@ local function requireOptionalBoolean(value, context)
 end
 
 local function validateHUD()
+	local paths = requirePathMap(HUDPanelTheta.Paths, "HUDPanelTheta.Paths", {
+		"StrengthText",
+		"StrengthIconGlow",
+		"TrophiesText",
+		"RebirthMultiplierText",
+		"BarbellMultiplierText",
+		"PetMultiplierText",
+		"ExpBar",
+		"LevelText",
+		"ExpText",
+		"RebirthButton",
+	})
+	for key, pathSpec in pairs(paths) do
+		requirePathRoot(pathSpec, "ScreenGui", "HUDPanelTheta.Paths." .. key)
+	end
+
 	return {
 		ScreenGuiName = requireString(HUDPanelTheta.ScreenGuiName, "HUDPanelTheta.ScreenGuiName"),
-		Paths = requirePathMap(HUDPanelTheta.Paths, "HUDPanelTheta.Paths", {
-			"StrengthText",
-			"StrengthIconGlow",
-			"TrophiesText",
-			"RebirthMultiplierText",
-			"BarbellMultiplierText",
-			"PetMultiplierText",
-			"ExpBar",
-			"LevelText",
-			"ExpText",
-			"RebirthButton",
-		}),
+		Paths = paths,
 	}
 end
 
 local function validateFloatingGain()
-	local templates = requireStringMap(FloatingGainTheta.Templates, "FloatingGainTheta.Templates", {
+	local paths = requirePathMap(FloatingGainTheta.Paths, "FloatingGainTheta.Paths", {
 		"StrengthGain",
 		"TrophyGain",
 	})
 	local animation = requireTable(FloatingGainTheta.Animation, "FloatingGainTheta.Animation")
+	for key, pathSpec in pairs(paths) do
+		requirePathRoot(pathSpec, "ScreenGui", "FloatingGainTheta.Paths." .. key)
+	end
 
 	return {
 		ScreenGuiName = requireString(FloatingGainTheta.ScreenGuiName, "FloatingGainTheta.ScreenGuiName"),
-		Templates = templates,
+		Paths = paths,
 		Animation = {
 			OffsetScaleY = requireNumber(animation.OffsetScaleY, "FloatingGainTheta.Animation.OffsetScaleY"),
 			Duration = requireNumber(animation.Duration, "FloatingGainTheta.Animation.Duration"),
@@ -154,8 +187,6 @@ local function validateRebirthRenderBinding(binding, index)
 	)
 	assert(
 		operation == "SetText"
-			or operation == "SetDescendantTexts"
-			or operation == "SetTextSequenceByMatch"
 			or operation == "SetTextTargets"
 			or operation == "SetSizeXScale",
 		context .. ".Operation is not supported: " .. operation
@@ -169,44 +200,19 @@ local function validateRebirthRenderBinding(binding, index)
 		Optional = requireOptionalBoolean(binding.Optional, context .. ".Optional"),
 	}
 
-	if binding.Ref ~= nil then
-		result.Ref = requireString(binding.Ref, context .. ".Ref")
-	end
 	if binding.Path ~= nil then
 		result.Path = requirePath(binding.Path, context .. ".Path")
 	end
-	if binding.RootPath ~= nil then
-		result.RootPath = requirePath(binding.RootPath, context .. ".RootPath")
-	end
 	if binding.TargetPaths ~= nil then
-		local targetPaths = requireTable(binding.TargetPaths, context .. ".TargetPaths")
-		assert(#targetPaths > 0, context .. ".TargetPaths must not be empty.")
-		result.TargetPaths = {}
-		for targetIndex, targetPath in ipairs(targetPaths) do
-			result.TargetPaths[targetIndex] = requirePath(
-				targetPath,
-				context .. ".TargetPaths[" .. tostring(targetIndex) .. "]"
-			)
-		end
-	end
-
-	if operation == "SetTextSequenceByMatch" then
-		local match = requireTable(binding.Match, context .. ".Match")
-		local matchType = requireString(match.MatchType, context .. ".Match.MatchType")
-		assert(matchType == "Pattern" or matchType == "Contains", context .. ".Match.MatchType is not supported.")
-
-		result.Match = {
-			MatchType = matchType,
-		}
-		if matchType == "Pattern" then
-			result.Match.Pattern = requireString(match.Pattern, context .. ".Match.Pattern")
-		else
-			result.Match.Contains = requireString(match.Contains, context .. ".Match.Contains")
-		end
+		result.TargetPaths = requirePathList(binding.TargetPaths, context .. ".TargetPaths")
 	end
 
 	if operation == "SetTextTargets" then
 		assert(result.TargetPaths and #result.TargetPaths > 0, context .. ".TargetPaths is required for SetTextTargets.")
+		assert(result.Path == nil, context .. ".Path is not allowed for SetTextTargets.")
+	else
+		assert(result.Path ~= nil, context .. ".Path is required for " .. operation .. ".")
+		assert(result.TargetPaths == nil, context .. ".TargetPaths is only allowed for SetTextTargets.")
 	end
 
 	return result
@@ -220,8 +226,29 @@ local function validateRebirthPanel()
 
 	local paths = requirePathMap(RebirthPanelTheta.Paths, "RebirthPanelTheta.Paths", {
 		"PanelRoot",
+		"CloseButton",
+		"RequestButton",
+		"TitleText",
+		"TipText",
+		"LevelProgressFill",
+		"LevelProgressText",
+		"RequestButtonText",
 	})
+	paths.RebirthCountTexts = requirePathList(RebirthPanelTheta.Paths.RebirthCountTexts, "RebirthPanelTheta.Paths.RebirthCountTexts")
+	paths.PowerTexts = requirePathList(RebirthPanelTheta.Paths.PowerTexts, "RebirthPanelTheta.Paths.PowerTexts")
+	paths.MaxLevelTexts = requirePathList(RebirthPanelTheta.Paths.MaxLevelTexts, "RebirthPanelTheta.Paths.MaxLevelTexts")
 	assert(paths.PanelRoot.RootKey == "ScreenGui", "RebirthPanelTheta.Paths.PanelRoot.RootKey must be ScreenGui.")
+	for _, key in ipairs({ "CloseButton", "RequestButton", "TitleText", "TipText", "LevelProgressFill", "LevelProgressText", "RequestButtonText" }) do
+		assert(paths[key].RootKey == "PanelRoot", "RebirthPanelTheta.Paths." .. key .. ".RootKey must be PanelRoot.")
+	end
+	for _, key in ipairs({ "RebirthCountTexts", "PowerTexts", "MaxLevelTexts" }) do
+		for index, pathSpec in ipairs(paths[key]) do
+			assert(
+				pathSpec.RootKey == "PanelRoot",
+				("RebirthPanelTheta.Paths.%s[%d].RootKey must be PanelRoot."):format(key, index)
+			)
+		end
+	end
 
 	for _, binding in ipairs(renderBindings) do
 		if binding.Path then
@@ -230,10 +257,10 @@ local function validateRebirthPanel()
 				"Rebirth render binding " .. binding.Key .. ".Path.RootKey must be PanelRoot."
 			)
 		end
-		if binding.RootPath then
+		for targetIndex, targetPath in ipairs(binding.TargetPaths or {}) do
 			assert(
-				binding.RootPath.RootKey == "PanelRoot",
-				"Rebirth render binding " .. binding.Key .. ".RootPath.RootKey must be PanelRoot."
+				targetPath.RootKey == "PanelRoot",
+				("Rebirth render binding %s.TargetPaths[%d].RootKey must be PanelRoot."):format(binding.Key, targetIndex)
 			)
 		end
 	end
@@ -241,13 +268,6 @@ local function validateRebirthPanel()
 	return {
 		ScreenGuiName = requireString(RebirthPanelTheta.ScreenGuiName, "RebirthPanelTheta.ScreenGuiName"),
 		Paths = paths,
-		Nodes = requireStringMap(RebirthPanelTheta.Nodes, "RebirthPanelTheta.Nodes", {
-			"CloseButtonName",
-			"ActionButtonName",
-			"TitleTextName",
-			"TipTextName",
-			"FallbackTipTextName",
-		}),
 		RenderBindings = renderBindings,
 	}
 end
@@ -272,21 +292,35 @@ local function validateEggPanel()
 		"TripleRollButton",
 		"AutoRollButton",
 	})
+	for key, pathSpec in pairs(clonedPaths) do
+		requirePathRoot(pathSpec, "ScreenGui", "EggPanelTheta.Paths." .. key)
+	end
+	for index, pathSpec in ipairs(clonedRewardSlots) do
+		requirePathRoot(pathSpec, "ScreenGui", "EggPanelTheta.Paths.RewardSlots[" .. tostring(index) .. "]")
+	end
 	clonedPaths.RewardSlots = clonedRewardSlots
+	local rewardSlotFieldPathSpecs = requirePathMap(
+		EggPanelTheta.RewardSlotFieldPathSpecs,
+		"EggPanelTheta.RewardSlotFieldPathSpecs",
+		{ "Icon", "ChanceText", "MultiplierText" }
+	)
+	for key, pathSpec in pairs(rewardSlotFieldPathSpecs) do
+		requirePathRoot(pathSpec, "RewardSlot", "EggPanelTheta.RewardSlotFieldPathSpecs." .. key)
+	end
+	local resultTemplateFieldPathSpecs = requirePathMap(
+		EggPanelTheta.ResultTemplateFieldPathSpecs,
+		"EggPanelTheta.ResultTemplateFieldPathSpecs",
+		{ "Icon", "NameText", "RarityText" }
+	)
+	for key, pathSpec in pairs(resultTemplateFieldPathSpecs) do
+		requirePathRoot(pathSpec, "ResultTemplate", "EggPanelTheta.ResultTemplateFieldPathSpecs." .. key)
+	end
 
 	return {
 		ScreenGuiName = requireString(EggPanelTheta.ScreenGuiName, "EggPanelTheta.ScreenGuiName"),
 		Paths = clonedPaths,
-		RewardSlotFields = requireStringMap(EggPanelTheta.RewardSlotFields, "EggPanelTheta.RewardSlotFields", {
-			"Icon",
-			"ChanceText",
-			"MultiplierText",
-		}),
-		ResultTemplateFields = requireStringMap(EggPanelTheta.ResultTemplateFields, "EggPanelTheta.ResultTemplateFields", {
-			"Icon",
-			"NameText",
-			"RarityText",
-		}),
+		RewardSlotFieldPathSpecs = rewardSlotFieldPathSpecs,
+		ResultTemplateFieldPathSpecs = resultTemplateFieldPathSpecs,
 		RollButtonText = requireStringMap(EggPanelTheta.RollButtonText, "EggPanelTheta.RollButtonText", {
 			"Single",
 			"Triple",
@@ -313,16 +347,26 @@ local function validateEggRevealPanel()
 		"ContinueText",
 		"StopButton",
 	})
+	for key, pathSpec in pairs(clonedPaths) do
+		requirePathRoot(pathSpec, "ScreenGui", "EggRevealPanelTheta.Paths." .. key)
+	end
+	for index, pathSpec in ipairs(clonedRewardSlots) do
+		requirePathRoot(pathSpec, "ScreenGui", "EggRevealPanelTheta.Paths.RewardSlots[" .. tostring(index) .. "]")
+	end
 	clonedPaths.RewardSlots = clonedRewardSlots
+	local rewardSlotFieldPathSpecs = requirePathMap(
+		EggRevealPanelTheta.RewardSlotFieldPathSpecs,
+		"EggRevealPanelTheta.RewardSlotFieldPathSpecs",
+		{ "Icon", "NameText", "RarityText" }
+	)
+	for key, pathSpec in pairs(rewardSlotFieldPathSpecs) do
+		requirePathRoot(pathSpec, "RewardSlot", "EggRevealPanelTheta.RewardSlotFieldPathSpecs." .. key)
+	end
 
 	return {
 		ScreenGuiName = requireString(EggRevealPanelTheta.ScreenGuiName, "EggRevealPanelTheta.ScreenGuiName"),
 		Paths = clonedPaths,
-		RewardSlotFields = requireStringMap(EggRevealPanelTheta.RewardSlotFields, "EggRevealPanelTheta.RewardSlotFields", {
-			"Icon",
-			"NameText",
-			"RarityText",
-		}),
+		RewardSlotFieldPathSpecs = rewardSlotFieldPathSpecs,
 		ContinuePromptText = requireString(
 			EggRevealPanelTheta.ContinuePromptText,
 			"EggRevealPanelTheta.ContinuePromptText"
@@ -331,28 +375,41 @@ local function validateEggRevealPanel()
 end
 
 local function validatePetInventory()
+	local paths = requirePathMap(PetInventoryPanelTheta.Paths, "PetInventoryPanelTheta.Paths", {
+		"PetButton",
+		"PanelRoot",
+		"BackPackRoot",
+		"CloseButton",
+		"OwnedList",
+		"OwnedTemplate",
+		"EquippedList",
+		"EquippedTemplate",
+		"EquippedText",
+		"NoPet",
+		"EquipBestButton",
+		"UnequipAllButton",
+		"DeleteButton",
+	})
+	requirePathRoot(paths.PetButton, "HUDScreenGui", "PetInventoryPanelTheta.Paths.PetButton")
+	for key, pathSpec in pairs(paths) do
+		if key ~= "PetButton" then
+			requirePathRoot(pathSpec, "ScreenGui", "PetInventoryPanelTheta.Paths." .. key)
+		end
+	end
+	local petCardFieldPathSpecs = requirePathMap(
+		PetInventoryPanelTheta.PetCardFieldPathSpecs,
+		"PetInventoryPanelTheta.PetCardFieldPathSpecs",
+		{ "Icon", "MultiplierText" }
+	)
+	for key, pathSpec in pairs(petCardFieldPathSpecs) do
+		requirePathRoot(pathSpec, "PetCard", "PetInventoryPanelTheta.PetCardFieldPathSpecs." .. key)
+	end
+
 	return {
 		HudScreenGuiName = requireString(PetInventoryPanelTheta.HudScreenGuiName, "PetInventoryPanelTheta.HudScreenGuiName"),
 		ScreenGuiName = requireString(PetInventoryPanelTheta.ScreenGuiName, "PetInventoryPanelTheta.ScreenGuiName"),
-		Paths = requirePathMap(PetInventoryPanelTheta.Paths, "PetInventoryPanelTheta.Paths", {
-			"PetButton",
-			"PanelRoot",
-			"BackPackRoot",
-			"CloseButton",
-			"OwnedList",
-			"OwnedTemplate",
-			"EquippedList",
-			"EquippedTemplate",
-			"EquippedText",
-			"NoPet",
-			"EquipBestButton",
-			"UnequipAllButton",
-			"DeleteButton",
-		}),
-		PetCardFields = requireStringMap(PetInventoryPanelTheta.PetCardFields, "PetInventoryPanelTheta.PetCardFields", {
-			"Icon",
-			"MultiplierText",
-		}),
+		Paths = paths,
+		PetCardFieldPathSpecs = petCardFieldPathSpecs,
 		EquippedTextFormat = requireString(PetInventoryPanelTheta.EquippedTextFormat, "PetInventoryPanelTheta.EquippedTextFormat"),
 	}
 end
@@ -367,41 +424,64 @@ local function validateTravelPanel()
 		buttonConfig = requireTable(buttonConfig, context)
 		validatedDestinationButtons[key] = {
 			DestinationId = requireString(buttonConfig.DestinationId, context .. ".DestinationId"),
-			Path = requirePath(buttonConfig.Path, context .. ".Path"),
+			PathSpec = requirePath(buttonConfig.PathSpec, context .. ".PathSpec"),
 		}
+		requirePathRoot(validatedDestinationButtons[key].PathSpec, "ScreenGui", context .. ".PathSpec")
 		hasDestinationButton = true
 	end
 
 	assert(hasDestinationButton, "TravelPanelTheta.DestinationButtons must not be empty.")
 
+	local paths = requirePathMap(TravelPanelTheta.Paths, "TravelPanelTheta.Paths", {
+		"OpenButton",
+		"PanelRoot",
+		"CloseButton",
+	})
+	requirePathRoot(paths.OpenButton, "HUDScreenGui", "TravelPanelTheta.Paths.OpenButton")
+	requirePathRoot(paths.PanelRoot, "ScreenGui", "TravelPanelTheta.Paths.PanelRoot")
+	requirePathRoot(paths.CloseButton, "ScreenGui", "TravelPanelTheta.Paths.CloseButton")
+
 	return {
 		HudScreenGuiName = requireString(TravelPanelTheta.HudScreenGuiName, "TravelPanelTheta.HudScreenGuiName"),
 		ScreenGuiName = requireString(TravelPanelTheta.ScreenGuiName, "TravelPanelTheta.ScreenGuiName"),
-		Paths = requirePathMap(TravelPanelTheta.Paths, "TravelPanelTheta.Paths", {
-			"OpenButton",
-			"PanelRoot",
-			"CloseButton",
-		}),
+		Paths = paths,
 		DestinationButtons = validatedDestinationButtons,
 	}
 end
 
 local function validateBarbellDisplay()
+	local displayRootPathSpec = requirePath(
+		BarbellDisplayTheta.DisplayRootPathSpec,
+		"BarbellDisplayTheta.DisplayRootPathSpec"
+	)
+	local trainSourceRootPathSpec = requirePath(
+		BarbellDisplayTheta.TrainSourceRootPathSpec,
+		"BarbellDisplayTheta.TrainSourceRootPathSpec"
+	)
+	local billboardPathSpec = requirePath(
+		BarbellDisplayTheta.BillboardGuiPathSpec,
+		"BarbellDisplayTheta.BillboardGuiPathSpec"
+	)
+	local fieldPathSpecs = requirePathMap(BarbellDisplayTheta.FieldPathSpecs, "BarbellDisplayTheta.FieldPathSpecs", {
+		"PowerText",
+		"CostText",
+		"Locked",
+		"Equip",
+		"Equipped",
+	})
+	requirePathRoot(displayRootPathSpec, "Workspace", "BarbellDisplayTheta.DisplayRootPathSpec")
+	requirePathRoot(trainSourceRootPathSpec, "ServerStorage", "BarbellDisplayTheta.TrainSourceRootPathSpec")
+	requirePathRoot(billboardPathSpec, "DisplayModel", "BarbellDisplayTheta.BillboardGuiPathSpec")
+	for key, pathSpec in pairs(fieldPathSpecs) do
+		requirePathRoot(pathSpec, "DisplayModel", "BarbellDisplayTheta.FieldPathSpecs." .. key)
+	end
+
 	return {
-		WorkspaceRootName = requireString(SceneTheta.WorkspaceRootName, "SceneTheta.WorkspaceRootName"),
-		SceneEquipmentRootName = requireString(
-			BarbellDisplayTheta.SceneEquipmentRootName,
-			"BarbellDisplayTheta.SceneEquipmentRootName"
-		),
 		DisplayModelName = requireString(BarbellDisplayTheta.DisplayModelName, "BarbellDisplayTheta.DisplayModelName"),
-		BillboardGuiPath = requirePath(BarbellDisplayTheta.BillboardGuiPath, "BarbellDisplayTheta.BillboardGuiPath"),
-		FieldPaths = requirePathMap(BarbellDisplayTheta.FieldPaths, "BarbellDisplayTheta.FieldPaths", {
-			"PowerText",
-			"CostText",
-			"Locked",
-			"Equip",
-			"Equipped",
-		}),
+		DisplayRootPathSpec = displayRootPathSpec,
+		TrainSourceRootPathSpec = trainSourceRootPathSpec,
+		BillboardGuiPathSpec = billboardPathSpec,
+		FieldPathSpecs = fieldPathSpecs,
 	}
 end
 

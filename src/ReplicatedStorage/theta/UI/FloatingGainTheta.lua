@@ -5,11 +5,11 @@ local FloatingGainTheta = {
 	-- 飘字模板所在 ScreenGui 名。
 	ScreenGuiName = "HUD",
 
-	Templates = {
-		-- 训练力量增长飘字模板名。
-		StrengthGain = "+1",
-		-- 奖杯增长飘字模板名。
-		TrophyGain = "+1trophy",
+	Paths = {
+		-- 训练力量增长飘字模板路径。
+		StrengthGain = { RootKey = "ScreenGui", Path = { "+1" } },
+		-- 奖杯增长飘字模板路径。
+		TrophyGain = { RootKey = "ScreenGui", Path = { "+1trophy" } },
 	},
 
 	Animation = {

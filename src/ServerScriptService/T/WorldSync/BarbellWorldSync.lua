@@ -106,17 +106,16 @@ local function getRotationOffsetCFrame(rotationDegrees)
 end
 
 local function getParentPath(path)
-	path = InstancePath.Components(path)
-	if not path then
-		return nil
-	end
-
+	local components = InstancePath.Components(path)
 	local parentPath = {}
-	for index = 1, #path - 1 do
-		parentPath[index] = path[index]
+	for index = 1, #components - 1 do
+		parentPath[index] = components[index]
 	end
 
-	return parentPath
+	return {
+		RootKey = path.RootKey,
+		Path = parentPath,
+	}
 end
 
 local function ensurePath(root, path)
@@ -165,7 +164,7 @@ local function cloneDisplayBillboard(oldDisplay, nextDisplay)
 		return
 	end
 
-	local billboardPath = BarbellDisplayTheta.BillboardGuiPath
+	local billboardPath = BarbellDisplayTheta.BillboardGuiPathSpec
 	local oldBillboard = InstancePath.FindSpec({ DisplayModel = oldDisplay }, billboardPath)
 	if not oldBillboard then
 		error("Barbell display billboard was not found under " .. oldDisplay:GetFullName() .. ".", 2)
@@ -193,7 +192,7 @@ local function renderDisplayBillboard(displayNode, barbellId)
 		return
 	end
 
-	local fieldPaths = BarbellDisplayTheta.FieldPaths
+	local fieldPaths = BarbellDisplayTheta.FieldPathSpecs
 	local powerText = requireTextLabelByPath(displayNode, fieldPaths.PowerText, "Barbell power text")
 	local trophiesText = requireTextLabelByPath(displayNode, fieldPaths.CostText, "Barbell cost text")
 

@@ -22,7 +22,7 @@ function TravelDestinationWorldSync.TeleportPlayer(player, destinationId)
 
 	local destinationPart = InstancePath.RequireSpec(
 		{ Workspace = Workspace },
-		config.Path,
+		config.PathSpec,
 		"Travel destination " .. tostring(destinationId)
 	)
 	assert(destinationPart:IsA("BasePart"), "Travel destination must be a BasePart: " .. destinationPart:GetFullName())

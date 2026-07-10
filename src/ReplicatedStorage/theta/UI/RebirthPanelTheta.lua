@@ -1,113 +1,130 @@
 -- RebirthPanelTheta
--- 重生面板的 UI 路径和语义节点合同。
+-- 重生面板的严格 UI 路径合同。路径根节点由调用者映射为真实 Instance。
 
-local function screenGuiPath(path)
-	return { RootKey = "ScreenGui", Path = path }
-end
-
-local function panelPath(path)
-	return { RootKey = "PanelRoot", Path = path }
-end
+local Paths = {
+	PanelRoot = {
+		RootKey = "ScreenGui",
+		Path = { "Rebirth" },
+	},
+	CloseButton = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Title", "Close" },
+	},
+	RequestButton = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Buttons", "Rebirth" },
+	},
+	TitleText = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Title", "TextLabel" },
+	},
+	TipText = {
+		RootKey = "PanelRoot",
+		Path = { "Tip", "Value" },
+	},
+	RebirthCountTexts = {
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "1Left", "1" },
+		},
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "3Right", "1" },
+		},
+	},
+	PowerTexts = {
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "1Left", "2", "Title" },
+		},
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "3Right", "2", "Title" },
+		},
+	},
+	MaxLevelTexts = {
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "1Left", "3", "Title" },
+		},
+		{
+			RootKey = "PanelRoot",
+			Path = { "Main", "Main", "3Right", "3", "Title" },
+		},
+	},
+	LevelProgressFill = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Bar", "Bar", "Bar" },
+	},
+	LevelProgressText = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Bar", "Bar", "Title" },
+	},
+	RequestButtonText = {
+		RootKey = "PanelRoot",
+		Path = { "Main", "Buttons", "Rebirth", "Text" },
+	},
+}
 
 local RebirthPanelTheta = {
-	-- 重生面板所在 ScreenGui 名。
 	ScreenGuiName = "Main",
-
-	Paths = {
-		-- 重生面板根节点。
-		PanelRoot = screenGuiPath({ "Rebirth" }),
-	},
-
-	Nodes = {
-		-- 关闭按钮名。
-		CloseButtonName = "Close",
-		-- 重生请求按钮名。
-		ActionButtonName = "Rebirth",
-		-- 标题文本名。
-		TitleTextName = "Title",
-		-- 提示文本名。
-		TipTextName = "Tip",
-		-- 提示文本兜底节点名。
-		FallbackTipTextName = "TextLabel",
-	},
-
+	Paths = Paths,
 	RenderBindings = {
-		-- 面板标题文本。
 		{
 			Key = "TitleText",
 			ModelKey = "TitleText",
 			Operation = "SetText",
-			TargetType = "GuiObject",
-			Ref = "TitleText",
+			TargetType = "TextObject",
+			Path = Paths.TitleText,
 		},
-		-- 面板提示文本。
 		{
 			Key = "TipText",
 			ModelKey = "TipText",
 			Operation = "SetText",
-			TargetType = "GuiObject",
-			Ref = "TipText",
+			TargetType = "TextObject",
+			Path = Paths.TipText,
 		},
-		-- 当前和下一重生次数文本。
 		{
 			Key = "RebirthCountTexts",
 			ModelKey = "RebirthTexts",
-			Operation = "SetTextSequenceByMatch",
-			TargetType = "GuiObject",
-			RootPath = panelPath({ "Main" }),
-			Match = {
-				MatchType = "Pattern",
-				Pattern = "^%{%d+%}$",
-			},
+			Operation = "SetTextTargets",
+			TargetType = "TextObject",
+			TargetPaths = Paths.RebirthCountTexts,
 		},
-		-- 当前和下一力量倍率文本。
 		{
 			Key = "PowerTexts",
 			ModelKey = "PowerTexts",
-			Operation = "SetTextSequenceByMatch",
-			TargetType = "GuiObject",
-			RootPath = panelPath({ "Main" }),
-			Match = {
-				MatchType = "Contains",
-				Contains = "Power",
-			},
+			Operation = "SetTextTargets",
+			TargetType = "TextObject",
+			TargetPaths = Paths.PowerTexts,
 		},
-		-- 当前和下一最大等级文本。
 		{
 			Key = "MaxLevelTexts",
 			ModelKey = "MaxLevelTexts",
-			Operation = "SetTextSequenceByMatch",
-			TargetType = "GuiObject",
-			RootPath = panelPath({ "Main" }),
-			Match = {
-				MatchType = "Contains",
-				Contains = "Max Level",
-			},
+			Operation = "SetTextTargets",
+			TargetType = "TextObject",
+			TargetPaths = Paths.MaxLevelTexts,
 		},
-		-- 当前等级进度条填充。
 		{
 			Key = "LevelProgressFill",
 			ModelKey = "LevelProgressRatio",
 			Operation = "SetSizeXScale",
 			TargetType = "GuiObject",
-			Path = panelPath({ "Main", "Bar", "Bar", "Bar" }),
+			Path = Paths.LevelProgressFill,
 		},
-		-- 当前等级进度文本。
 		{
 			Key = "LevelProgressText",
 			ModelKey = "LevelProgressText",
 			Operation = "SetText",
 			TargetType = "TextObject",
-			Path = panelPath({ "Main", "Bar", "Bar", "Title" }),
-			Optional = true,
+			Path = Paths.LevelProgressText,
 		},
-		-- 重生请求按钮文本。
 		{
 			Key = "RequestButtonText",
 			ModelKey = "RequestText",
-			Operation = "SetDescendantTexts",
-			TargetType = "GuiObject",
-			Ref = "RequestButton",
+			Operation = "SetText",
+			TargetType = "TextObject",
+			Path = Paths.RequestButtonText,
 		},
 	},
 }

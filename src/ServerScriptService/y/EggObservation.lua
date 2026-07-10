@@ -50,7 +50,7 @@ local function getEggConfig(eggId)
 end
 
 local function getEggInteractionNode(instanceConfig, eggConfig)
-	local holder = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.HolderPath)
+	local holder = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.HolderPathSpec)
 	if not holder then
 		return nil
 	end

@@ -1,31 +1,23 @@
 -- 奖杯领奖台配置。奖励数值来自 StageTheta，当前文件只描述场景路径和倍率。
 
-local function workspacePath(path)
-	return { RootKey = "Workspace", Path = path }
-end
-
-local function returnNodePath(path)
-	return { RootKey = "ReturnNode", Path = path }
-end
-
 local function buildStageReturn(stageId)
 	local trophyId = "TR" .. tostring(stageId)
 
 	return {
 		StageId = stageId,
-		RootPath = workspacePath({ "TRTele", trophyId }),
+		RootPathSpec = { RootKey = "Workspace", Path = { "TRTele", trophyId } },
 		TravelDestinationId = "World2",
 
 		FreeReturn = {
 			Name = "FreeReturn",
 			RewardMultiplier = 1,
-			TextPath = returnNodePath({ "Main", "Win", "BillboardGui", "Frame", "TextLabel" }),
+			TextPathSpec = { RootKey = "ReturnNode", Path = { "Main", "Win", "BillboardGui", "Frame", "TextLabel" } },
 		},
 
 		VIPReturn = {
 			Name = "VIPReturn",
 			RewardMultiplier = 2,
-			TextPath = returnNodePath({ "Main", "Win", "BillboardGui", "Frame", "TextLabel" }),
+			TextPathSpec = { RootKey = "ReturnNode", Path = { "Main", "Win", "BillboardGui", "Frame", "TextLabel" } },
 		},
 	}
 end
