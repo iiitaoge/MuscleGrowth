@@ -57,8 +57,7 @@ function PlayerVisualStateSync.SetTrainingActive(player, isTraining)
 	end
 end
 
--- 发布自定义属性
--- 发布自定义属性
+-- 发布推球状态和当前源球实例 ID。
 function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall, ballInstanceId)
 	if not player then
 		return
@@ -66,16 +65,17 @@ function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall, ballInst
 
 	local active = isPushingBall == true
 
-	-- 设置是否正在推球
-	player:SetAttribute(ATTRIBUTES.IsPushingBall, active)
-
 	if active then
-		-- 设置当前正在推动的球 ID
+		assert(
+			type(ballInstanceId) == "string" and ballInstanceId ~= "",
+			"Active push ball instance id must be a non-empty string."
+		)
 		player:SetAttribute(ATTRIBUTES.ActivePushBallInstanceId, ballInstanceId)
 	else
-		-- 停止推球时清空球 ID
 		player:SetAttribute(ATTRIBUTES.ActivePushBallInstanceId, "")
 	end
+
+	player:SetAttribute(ATTRIBUTES.IsPushingBall, active)
 end
 
 function PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)

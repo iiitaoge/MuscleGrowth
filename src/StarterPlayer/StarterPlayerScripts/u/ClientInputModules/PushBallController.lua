@@ -10,8 +10,7 @@ local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"
 local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("PushBallSceneTheta"))
 
 local T = ReplicatedStorage:WaitForChild("T")
-
-local IntancePath = require(T:WaitForChild("InstancePath"))
+local InstancePath = require(T:WaitForChild("InstancePath"))
 
 local PushBallController = {}
 
@@ -32,6 +31,76 @@ function PushBallController.Init(player, remoteClient, movementController)
 	local lastSentInput = 0
 	local controls = nil
 	local connections = {}
+
+	-- 球隐藏相关
+	local hiddenBallInstanceId = nil
+	local hiddenSourceBall = nil
+	local hiddenParts = {}
+	local hiddenPrompts = {}
+
+	-- 恢复被隐藏的球
+	local function restoreSourceBall()
+		for part, originalModifier in pairs(hiddenParts) do
+			if part.Parent then
+				part.LocalTransparencyModifier = originalModifier
+			end
+		end
+		for prompt, originalEnabled in pairs(hiddenPrompts) do
+			if prompt.Parent then
+				prompt.Enabled = originalEnabled
+			end
+		end
+
+		table.clear(hiddenParts)
+		table.clear(hiddenPrompts)
+		hiddenBallInstanceId = nil
+		hiddenSourceBall = nil
+	end
+
+	-- 只在当前客户端隐藏源球；运动中的服务端克隆球不受影响。
+	local function hideSourceBall(ballInstanceId, sourceBall)
+		assert(type(ballInstanceId) == "string" and ballInstanceId ~= "", "Push ball source id must be a non-empty string.")
+		assert(sourceBall and sourceBall:IsA("Model"), "Push ball source must be a Model.")
+
+		if hiddenBallInstanceId == ballInstanceId and hiddenSourceBall == sourceBall then
+			return
+		end
+
+		local sourceParts = {}
+		local sourcePrompts = {}
+		for _, descendant in ipairs(sourceBall:GetDescendants()) do
+			if descendant:IsA("BasePart") then
+				table.insert(sourceParts, descendant)
+			elseif descendant:IsA("ProximityPrompt") then
+				table.insert(sourcePrompts, descendant)
+			end
+		end
+
+		assert(#sourceParts > 0, "Push ball source must contain at least one BasePart: " .. sourceBall:GetFullName())
+
+		restoreSourceBall()
+		for _, part in ipairs(sourceParts) do
+			hiddenParts[part] = part.LocalTransparencyModifier
+			part.LocalTransparencyModifier = 1
+		end
+		for _, prompt in ipairs(sourcePrompts) do
+			hiddenPrompts[prompt] = prompt.Enabled
+			prompt.Enabled = false
+		end
+
+		hiddenBallInstanceId = ballInstanceId
+		hiddenSourceBall = sourceBall
+	end
+
+	local function resolveSourceBall(ballInstanceId)
+		local balls = PushBallSceneTheta.Balls
+		local ballConfig = type(balls) == "table" and balls[ballInstanceId] or nil
+		assert(type(ballConfig) == "table", "Missing push ball config: " .. tostring(ballInstanceId))
+
+		local sourceBall = InstancePath.Find(Workspace, ballConfig.Path)
+		assert(sourceBall, "Missing push ball source: " .. tostring(ballInstanceId))
+		return sourceBall
+	end
 
 	local function getControls()
 		if controls then
@@ -86,7 +155,6 @@ function PushBallController.Init(player, remoteClient, movementController)
 		remoteClient.Fire("PushBallLateralInput", nextInput)
 	end
 
-	
 	local function enterLocalMode()
 		if isActive then
 			return
@@ -102,6 +170,8 @@ function PushBallController.Init(player, remoteClient, movementController)
 	end
 
 	local function exitLocalMode()
+		restoreSourceBall()
+
 		if not isActive then
 			return
 		end
@@ -115,12 +185,14 @@ function PushBallController.Init(player, remoteClient, movementController)
 	end
 
 	-- 处理推球
-	local function syncLocalModeFromAttribute()
-		local ballid = player:GetAttribute(ATTRIBUTES.ActivePushBallInstanceId)
+	local function syncLocalModeFromAttributes()
+		local isPushingBall = player:GetAttribute(ATTRIBUTES.IsPushingBall) == true
+		local ballInstanceId = player:GetAttribute(ATTRIBUTES.ActivePushBallInstanceId)
+		local hasValidBallId = type(ballInstanceId) == "string" and ballInstanceId ~= ""
 
-		if player:GetAttribute(ATTRIBUTES.IsPushingBall) == true and type(ballid) == "string" and ballid ~="" then
-			print("球ID：", player:GetAttribute(ATTRIBUTES.ActivePushBallInstanceId))
-			print("Workspace里面的对象：", IntancePath.Find(Workspace, PushBallSceneTheta.Balls[ballid].Path))
+		if isPushingBall and hasValidBallId then
+			local sourceBall = resolveSourceBall(ballInstanceId)
+			hideSourceBall(ballInstanceId, sourceBall)
 			enterLocalMode()
 		else
 			exitLocalMode()
@@ -168,8 +240,11 @@ function PushBallController.Init(player, remoteClient, movementController)
 	end
 
 	local function bind()
-		table.insert(connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(syncLocalModeFromAttribute))	--绑定推球状态
-		table.insert(connections,player:GetAttributeChangedSignal(ATTRIBUTES.ActivePushBallInstanceId):Connect(syncLocalModeFromAttribute))	-- 绑定球ID
+		table.insert(connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(syncLocalModeFromAttributes))
+		table.insert(
+			connections,
+			player:GetAttributeChangedSignal(ATTRIBUTES.ActivePushBallInstanceId):Connect(syncLocalModeFromAttributes)
+		)
 		table.insert(connections, UserInputService.InputBegan:Connect(handleInputBegan))
 		table.insert(connections, UserInputService.InputEnded:Connect(handleInputEnded))
 		table.insert(connections, player.CharacterAdded:Connect(function(character)
@@ -181,7 +256,7 @@ function PushBallController.Init(player, remoteClient, movementController)
 			bindCharacter(player.Character)
 		end
 
-		syncLocalModeFromAttribute()
+		syncLocalModeFromAttributes()
 	end
 
 	return {
