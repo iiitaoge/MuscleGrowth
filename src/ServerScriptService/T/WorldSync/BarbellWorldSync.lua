@@ -1,5 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
 local BarbellDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("BarbellDisplayTheta"))
@@ -103,20 +105,12 @@ local function getRotationOffsetCFrame(rotationDegrees)
 	)
 end
 
-local function findPath(root, path)
-	local current = root
-	for _, childName in ipairs(path) do
-		if not current then
-			return nil
-		end
-
-		current = current:FindFirstChild(childName)
+local function getParentPath(path)
+	path = InstancePath.Components(path)
+	if not path then
+		return nil
 	end
 
-	return current
-end
-
-local function getParentPath(path)
 	local parentPath = {}
 	for index = 1, #path - 1 do
 		parentPath[index] = path[index]
@@ -126,6 +120,11 @@ local function getParentPath(path)
 end
 
 local function ensurePath(root, path)
+	path = InstancePath.Components(path)
+	if not path then
+		return nil
+	end
+
 	local current = root
 	for _, childName in ipairs(path) do
 		local child = current:FindFirstChild(childName)
@@ -142,7 +141,7 @@ local function ensurePath(root, path)
 end
 
 local function requireTextLabelByPath(root, path, context)
-	local label = findPath(root, path)
+	local label = InstancePath.FindSpec({ DisplayModel = root }, path)
 	if not label then
 		error(context .. " was not found under " .. root:GetFullName() .. ".", 2)
 	end
@@ -167,13 +166,14 @@ local function cloneDisplayBillboard(oldDisplay, nextDisplay)
 	end
 
 	local billboardPath = BarbellDisplayTheta.BillboardGuiPath
-	local oldBillboard = findPath(oldDisplay, billboardPath)
+	local oldBillboard = InstancePath.FindSpec({ DisplayModel = oldDisplay }, billboardPath)
 	if not oldBillboard then
 		error("Barbell display billboard was not found under " .. oldDisplay:GetFullName() .. ".", 2)
 	end
 	assert(oldBillboard:IsA("BillboardGui"), "Barbell display billboard must be a BillboardGui.")
 
 	local parent = ensurePath(nextDisplay, getParentPath(billboardPath))
+	assert(parent, "Barbell display billboard parent path is invalid.")
 	local existingBillboard = parent:FindFirstChild(oldBillboard.Name)
 	if existingBillboard then
 		existingBillboard:Destroy()

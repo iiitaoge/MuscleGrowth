@@ -4,6 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
 local ButtonMotion = require(script.Parent.ButtonMotion)
@@ -27,24 +29,24 @@ local function waitForChild(parent, childName, context, timeout)
 end
 
 local function waitForPath(root, path, context, timeout)
-	local current = root
-	for _, childName in ipairs(path) do
-		current = waitForChild(current, childName, context, timeout)
+	local current = InstancePath.Wait(root, path, timeout or NODE_WAIT_SECONDS)
+	if not current then
+		error(
+			(context or "Path")
+				.. " was not found under "
+				.. root:GetFullName()
+				.. " ("
+				.. InstancePath.Format(path)
+				.. ").",
+			2
+		)
 	end
 
 	return current
 end
 
 local function findPath(root, path)
-	local current = root
-	for _, childName in ipairs(path) do
-		current = current and current:FindFirstChild(childName)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
+	return InstancePath.Find(root, path)
 end
 
 local function findRequiredDescendant(root, childName, context)
@@ -194,6 +196,23 @@ local function resolveRequiredPath(root, path, context)
 	return waitForPath(root, path, context)
 end
 
+local function validateRebirthTargetType(target, targetType, context)
+	if not target then
+		return
+	end
+
+	if targetType == "TextObject" then
+		assert(
+			target:IsA("TextLabel") or target:IsA("TextButton") or target:IsA("TextBox"),
+			context .. " must be a text object."
+		)
+	elseif targetType == "GuiButton" then
+		assert(target:IsA("GuiButton"), context .. " must be a GuiButton.")
+	else
+		assert(target:IsA("GuiObject"), context .. " must be a GuiObject.")
+	end
+end
+
 local function resolveRebirthBindingTarget(refs, binding)
 	if binding.Ref then
 		local target = refs[binding.Ref]
@@ -222,10 +241,37 @@ local function resolveRebirthRenderBindings(refs, bindings)
 	local resolvedBindings = {}
 	for index, binding in ipairs(bindings) do
 		local target = resolveRebirthBindingTarget(refs, binding)
-		if target or binding.Optional == true then
+		local targets = nil
+		if binding.TargetPaths then
+			targets = {}
+			for targetIndex, targetPath in ipairs(binding.TargetPaths) do
+				local targetInstance
+				if binding.Optional == true then
+					targetInstance = resolveOptionalPath(refs.PanelRoot, targetPath)
+				else
+					targetInstance = resolveRequiredPath(
+						refs.PanelRoot,
+						targetPath,
+						"Rebirth render binding " .. binding.Key .. " target " .. tostring(targetIndex)
+					)
+				end
+				targets[targetIndex] = targetInstance
+			end
+		end
+
+		if target or targets or binding.Optional == true then
+			validateRebirthTargetType(target, binding.TargetType, "Rebirth render binding " .. binding.Key)
+			for targetIndex, targetInstance in ipairs(targets or {}) do
+				validateRebirthTargetType(
+					targetInstance,
+					binding.TargetType,
+					"Rebirth render binding " .. binding.Key .. " target " .. tostring(targetIndex)
+				)
+			end
 			resolvedBindings[index] = {
 				Config = binding,
 				Target = target,
+				Targets = targets,
 			}
 		else
 			error("Missing Rebirth render binding target: " .. binding.Key, 2)

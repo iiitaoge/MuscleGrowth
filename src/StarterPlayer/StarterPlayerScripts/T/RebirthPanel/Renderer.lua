@@ -33,6 +33,14 @@ local function setDescendantTexts(root, value)
 	end
 end
 
+local function setTextTargets(targets, values)
+	for index, target in ipairs(targets or {}) do
+		if isTextObject(target) then
+			target.Text = values[index] or values[#values] or target.Text
+		end
+	end
+end
+
 local function normalizeSequenceValues(values)
 	if type(values) == "table" then
 		return values
@@ -65,6 +73,8 @@ local function applyRenderBinding(bindingEntry, model)
 		setText(target, value or "")
 	elseif binding.Operation == "SetDescendantTexts" then
 		setDescendantTexts(target, value or "")
+	elseif binding.Operation == "SetTextTargets" then
+		setTextTargets(bindingEntry.Targets, normalizeSequenceValues(value))
 	elseif binding.Operation == "SetTextSequenceByMatch" then
 		setTextSequenceByPredicate(target, function(text)
 			return textMatches(binding.Match, text)

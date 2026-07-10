@@ -1,13 +1,21 @@
 -- RebirthPanelTheta
 -- 重生面板的 UI 路径和语义节点合同。
 
+local function screenGuiPath(path)
+	return { RootKey = "ScreenGui", Path = path }
+end
+
+local function panelPath(path)
+	return { RootKey = "PanelRoot", Path = path }
+end
+
 local RebirthPanelTheta = {
 	-- 重生面板所在 ScreenGui 名。
 	ScreenGuiName = "Main",
 
 	Paths = {
 		-- 重生面板根节点。
-		PanelRoot = { "Rebirth" },
+		PanelRoot = screenGuiPath({ "Rebirth" }),
 	},
 
 	Nodes = {
@@ -29,6 +37,7 @@ local RebirthPanelTheta = {
 			Key = "TitleText",
 			ModelKey = "TitleText",
 			Operation = "SetText",
+			TargetType = "GuiObject",
 			Ref = "TitleText",
 		},
 		-- 面板提示文本。
@@ -36,6 +45,7 @@ local RebirthPanelTheta = {
 			Key = "TipText",
 			ModelKey = "TipText",
 			Operation = "SetText",
+			TargetType = "GuiObject",
 			Ref = "TipText",
 		},
 		-- 当前和下一重生次数文本。
@@ -43,7 +53,8 @@ local RebirthPanelTheta = {
 			Key = "RebirthCountTexts",
 			ModelKey = "RebirthTexts",
 			Operation = "SetTextSequenceByMatch",
-			RootPath = { "Main" },
+			TargetType = "GuiObject",
+			RootPath = panelPath({ "Main" }),
 			Match = {
 				MatchType = "Pattern",
 				Pattern = "^%{%d+%}$",
@@ -54,7 +65,8 @@ local RebirthPanelTheta = {
 			Key = "PowerTexts",
 			ModelKey = "PowerTexts",
 			Operation = "SetTextSequenceByMatch",
-			RootPath = { "Main" },
+			TargetType = "GuiObject",
+			RootPath = panelPath({ "Main" }),
 			Match = {
 				MatchType = "Contains",
 				Contains = "Power",
@@ -65,7 +77,8 @@ local RebirthPanelTheta = {
 			Key = "MaxLevelTexts",
 			ModelKey = "MaxLevelTexts",
 			Operation = "SetTextSequenceByMatch",
-			RootPath = { "Main" },
+			TargetType = "GuiObject",
+			RootPath = panelPath({ "Main" }),
 			Match = {
 				MatchType = "Contains",
 				Contains = "Max Level",
@@ -76,14 +89,16 @@ local RebirthPanelTheta = {
 			Key = "LevelProgressFill",
 			ModelKey = "LevelProgressRatio",
 			Operation = "SetSizeXScale",
-			Path = { "Main", "Bar", "Bar", "Bar" },
+			TargetType = "GuiObject",
+			Path = panelPath({ "Main", "Bar", "Bar", "Bar" }),
 		},
 		-- 当前等级进度文本。
 		{
 			Key = "LevelProgressText",
 			ModelKey = "LevelProgressText",
 			Operation = "SetText",
-			Path = { "Main", "Bar", "Bar","Title" },
+			TargetType = "TextObject",
+			Path = panelPath({ "Main", "Bar", "Bar", "Title" }),
 			Optional = true,
 		},
 		-- 重生请求按钮文本。
@@ -91,6 +106,7 @@ local RebirthPanelTheta = {
 			Key = "RequestButtonText",
 			ModelKey = "RequestText",
 			Operation = "SetDescendantTexts",
+			TargetType = "GuiObject",
 			Ref = "RequestButton",
 		},
 	},

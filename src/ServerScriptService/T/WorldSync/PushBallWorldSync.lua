@@ -1,6 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local PushBallTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PushBallTheta"))
 local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("PushBallSceneTheta"))
@@ -14,27 +16,6 @@ local function debugLog(message)
 	if PushBallTheta.DebugPushBall == true then
 		print("[PushBallWorldSync] " .. message)
 	end
-end
-
-local function waitForPath(root, path, timeoutSeconds)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current:WaitForChild(childName, timeoutSeconds or PATH_WAIT_SECONDS)
-		if not current then
-			debugLog(("Missing path child '%s'"):format(tostring(childName)))
-			return nil
-		end
-	end
-
-	return current
 end
 
 local function getFirstBasePart(instance)
@@ -83,9 +64,9 @@ local function ensurePrompt(ball)
 end
 
 local function bindBallPrompt(ballInstanceId, ballConfig, onPromptTriggered)
-	debugLog(("Binding %s at %s"):format(tostring(ballInstanceId), table.concat(ballConfig.Path or {}, "/")))
+	debugLog(("Binding %s at %s"):format(tostring(ballInstanceId), InstancePath.Format(ballConfig.Path)))
 
-	local ball = waitForPath(Workspace, ballConfig.Path, PATH_WAIT_SECONDS)
+	local ball = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.Path, PATH_WAIT_SECONDS)
 	if not ball then
 		warn("Missing push ball source: " .. tostring(ballInstanceId))
 		return

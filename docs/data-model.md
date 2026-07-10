@@ -125,3 +125,23 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 - 客户端 Remote 只能触发状态转移，不能直接写 `S_p` 或 `S_r`。
 - 自动区倍率必须来自服务端验证过、且玩家已解锁的当前区域。
 - 如果多个自动区声明先后到达，最后一个服务端验证成功的区域成为 `CurrentAutoAreaId`。
+
+## 统一路径合同
+
+所有需要按固定层级查找 Instance 的配置都使用路径规格，而不是把根节点名称混进路径：
+
+```lua
+{
+	RootKey = "Workspace",
+	Path = { "World2", "LeveLs", "L1" },
+}
+```
+
+`RootKey` 是语义根名称，由调用者映射为实际 Instance；`Path` 只包含从该根开始的直接子节点名称。共享解析器位于 `ReplicatedStorage/T/InstancePath`：
+
+- `Find(root, pathSpec)` 立即逐层查找，缺失返回 `nil`。
+- `Wait(root, pathSpec, timeout)` 在总超时时间内逐层等待。
+- `Require(root, pathSpec, context)` 缺失时抛出包含 RootKey、完整 Path 和上下文的错误。
+- `Format`、`Components` 只用于日志或需要创建父节点的特殊流程。
+
+递归名称查找、`FindFirstChildWhichIsA`、Prompt 类型查询和动态生成父节点不是固定路径解析，仍保持在各自的业务模块中；它们不能替代直接路径合同。

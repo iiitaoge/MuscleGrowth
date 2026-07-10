@@ -2,6 +2,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
 local TrophyTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("TrophyTheta"))
@@ -12,46 +14,6 @@ local WORLD_WAIT_SECONDS = 10
 
 local boundReturnKeys = {}
 local bindingStarted = false
-
-local function waitForPath(root, path, timeoutSeconds)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current:WaitForChild(childName, timeoutSeconds or WORLD_WAIT_SECONDS)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
-end
-
-local function findPath(root, path)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current:FindFirstChild(childName)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
-end
 
 local function formatNumber(value)
 	local numberValue = tonumber(value) or 0
@@ -73,7 +35,7 @@ local function renderReturnText(root, stageReturnConfig, returnType, returnConfi
 		return
 	end
 
-	local label = findPath(root, textPath)
+	local label = InstancePath.FindSpec({ ReturnNode = root }, textPath)
 	if not label then
 		warn(("Missing trophy return text: %s %s"):format(tostring(stageReturnConfig.StageId), tostring(returnType)))
 		return
@@ -143,9 +105,14 @@ local function bindReturnNode(stageReturnId, stageReturnConfig, root, returnType
 		return
 	end
 
-	renderReturnText(root, stageReturnConfig, returnType, returnConfig)
-
 	local returnNode = getReturnNode(root, returnConfig)
+	if not returnNode then
+		warn(("Trophy return %s was not found. Touch reward is disabled."):format(boundKey))
+		return
+	end
+
+	renderReturnText(returnNode, stageReturnConfig, returnType, returnConfig)
+
 	local touchParts = getTouchParts(returnNode)
 	if #touchParts == 0 then
 		warn(("Trophy return %s was not found. Touch reward is disabled."):format(boundKey))
@@ -166,7 +133,7 @@ local function bindReturnNode(stageReturnId, stageReturnConfig, root, returnType
 end
 
 local function bindStageReturn(stageReturnId, stageReturnConfig, onPlayerTouched)
-	local root = waitForPath(Workspace, stageReturnConfig.RootPath, WORLD_WAIT_SECONDS)
+	local root = InstancePath.WaitSpec({ Workspace = Workspace }, stageReturnConfig.RootPath, WORLD_WAIT_SECONDS)
 	if not root then
 		warn("Trophy stage return root was not found: " .. tostring(stageReturnId))
 		return

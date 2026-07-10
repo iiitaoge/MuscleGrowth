@@ -48,11 +48,23 @@ local function requireTable(value, context)
 end
 
 local function requirePath(value, context)
-	local path = requireTable(value, context)
+	local source = requireTable(value, context)
+	local path = source
+	if source.Path ~= nil then
+		requireString(source.RootKey, context .. ".RootKey")
+		path = requireTable(source.Path, context .. ".Path")
+	end
 	assert(#path > 0, context .. " must not be empty.")
 
 	for index, childName in ipairs(path) do
 		requireString(childName, context .. "[" .. tostring(index) .. "]")
+	end
+
+	if source.Path ~= nil then
+		return {
+			RootKey = source.RootKey,
+			Path = cloneValue(path),
+		}
 	end
 
 	return cloneValue(path)
@@ -129,10 +141,16 @@ local function validateRebirthRenderBinding(binding, index)
 	requireTable(binding, context)
 
 	local operation = requireString(binding.Operation, context .. ".Operation")
+	local targetType = requireString(binding.TargetType, context .. ".TargetType")
+	assert(
+		targetType == "GuiObject" or targetType == "TextObject" or targetType == "GuiButton",
+		context .. ".TargetType is not supported: " .. targetType
+	)
 	assert(
 		operation == "SetText"
 			or operation == "SetDescendantTexts"
 			or operation == "SetTextSequenceByMatch"
+			or operation == "SetTextTargets"
 			or operation == "SetSizeXScale",
 		context .. ".Operation is not supported: " .. operation
 	)
@@ -141,6 +159,7 @@ local function validateRebirthRenderBinding(binding, index)
 		Key = requireString(binding.Key, context .. ".Key"),
 		ModelKey = requireString(binding.ModelKey, context .. ".ModelKey"),
 		Operation = operation,
+		TargetType = targetType,
 		Optional = requireOptionalBoolean(binding.Optional, context .. ".Optional"),
 	}
 
@@ -152,6 +171,17 @@ local function validateRebirthRenderBinding(binding, index)
 	end
 	if binding.RootPath ~= nil then
 		result.RootPath = requirePath(binding.RootPath, context .. ".RootPath")
+	end
+	if binding.TargetPaths ~= nil then
+		local targetPaths = requireTable(binding.TargetPaths, context .. ".TargetPaths")
+		assert(#targetPaths > 0, context .. ".TargetPaths must not be empty.")
+		result.TargetPaths = {}
+		for targetIndex, targetPath in ipairs(targetPaths) do
+			result.TargetPaths[targetIndex] = requirePath(
+				targetPath,
+				context .. ".TargetPaths[" .. tostring(targetIndex) .. "]"
+			)
+		end
 	end
 
 	if operation == "SetTextSequenceByMatch" then
@@ -169,6 +199,10 @@ local function validateRebirthRenderBinding(binding, index)
 		end
 	end
 
+	if operation == "SetTextTargets" then
+		assert(result.TargetPaths and #result.TargetPaths > 0, context .. ".TargetPaths is required for SetTextTargets.")
+	end
+
 	return result
 end
 
@@ -178,11 +212,29 @@ local function validateRebirthPanel()
 		renderBindings[index] = validateRebirthRenderBinding(binding, index)
 	end
 
+	local paths = requirePathMap(RebirthPanelTheta.Paths, "RebirthPanelTheta.Paths", {
+		"PanelRoot",
+	})
+	assert(paths.PanelRoot.RootKey == "ScreenGui", "RebirthPanelTheta.Paths.PanelRoot.RootKey must be ScreenGui.")
+
+	for _, binding in ipairs(renderBindings) do
+		if binding.Path then
+			assert(
+				binding.Path.RootKey == "PanelRoot",
+				"Rebirth render binding " .. binding.Key .. ".Path.RootKey must be PanelRoot."
+			)
+		end
+		if binding.RootPath then
+			assert(
+				binding.RootPath.RootKey == "PanelRoot",
+				"Rebirth render binding " .. binding.Key .. ".RootPath.RootKey must be PanelRoot."
+			)
+		end
+	end
+
 	return {
 		ScreenGuiName = requireString(RebirthPanelTheta.ScreenGuiName, "RebirthPanelTheta.ScreenGuiName"),
-		Paths = requirePathMap(RebirthPanelTheta.Paths, "RebirthPanelTheta.Paths", {
-			"PanelRoot",
-		}),
+		Paths = paths,
 		Nodes = requireStringMap(RebirthPanelTheta.Nodes, "RebirthPanelTheta.Nodes", {
 			"CloseButtonName",
 			"ActionButtonName",

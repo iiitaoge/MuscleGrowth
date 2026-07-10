@@ -97,7 +97,7 @@ function PushBallController.Init(player, remoteClient, movementController)
 		local ballConfig = type(balls) == "table" and balls[ballInstanceId] or nil
 		assert(type(ballConfig) == "table", "Missing push ball config: " .. tostring(ballInstanceId))
 
-		local sourceBall = InstancePath.Find(Workspace, ballConfig.Path)
+		local sourceBall = InstancePath.FindSpec({ Workspace = Workspace }, ballConfig.Path)
 		assert(sourceBall, "Missing push ball source: " .. tostring(ballInstanceId))
 		return sourceBall
 	end

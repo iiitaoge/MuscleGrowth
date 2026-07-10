@@ -2,6 +2,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 
 local EggDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("EggDisplayTheta"))
@@ -14,29 +16,6 @@ local EggWorldSync = {}
 
 local WORLD_WAIT_SECONDS = 10
 local PROMPT_BOUND_ATTRIBUTE = "MuscleGrowthEggPromptConfigured"
-
-local function waitForPath(root, path, context)
-	if not root or type(path) ~= "table" then
-		warn(context .. " path is invalid.")
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			warn(context .. " path contains an invalid child name.")
-			return nil
-		end
-
-		current = current:WaitForChild(childName, WORLD_WAIT_SECONDS)
-		if not current then
-			warn(context .. " missing child: " .. childName)
-			return nil
-		end
-	end
-
-	return current
-end
 
 local function disableScripts(instance)
 	if instance:IsA("BaseScript") then
@@ -140,8 +119,15 @@ local function refreshEggInstance(instanceId, instanceConfig)
 		return false
 	end
 
-	local source = waitForPath(ServerStorage, eggConfig.SourcePath, "Egg source " .. tostring(eggId))
-	local holder = waitForPath(Workspace, instanceConfig.HolderPath, "Egg holder " .. tostring(instanceId))
+	local roots = { ServerStorage = ServerStorage, Workspace = Workspace }
+	local source = InstancePath.WaitSpec(roots, eggConfig.SourcePath, WORLD_WAIT_SECONDS)
+	local holder = InstancePath.WaitSpec(roots, instanceConfig.HolderPath, WORLD_WAIT_SECONDS)
+	if not source then
+		warn("Egg source missing: " .. tostring(eggId) .. " at " .. InstancePath.Format(eggConfig.SourcePath))
+	end
+	if not holder then
+		warn("Egg holder missing: " .. tostring(instanceId) .. " at " .. InstancePath.Format(instanceConfig.HolderPath))
+	end
 	if not source or not holder then
 		return false
 	end

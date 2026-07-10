@@ -2,6 +2,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local PushBallTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PushBallTheta"))
 local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
@@ -26,7 +28,7 @@ local runtimeStates = {}
 local heartbeatConnection = nil
 
 local function pathToString(path)
-	return type(path) == "table" and table.concat(path, "/") or tostring(path)
+	return InstancePath.Format(path)
 end
 
 local function result(success, message, stageId)
@@ -93,46 +95,6 @@ local function getStageLateral(forward)
 	end
 
 	return getLateralDirection(forward)
-end
-
-local function findPath(root, path)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current and current:FindFirstChild(childName)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
-end
-
-local function waitForPath(root, path)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current:WaitForChild(childName, PATH_WAIT_SECONDS)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
 end
 
 local function getFirstBasePart(instance)
@@ -383,7 +345,7 @@ local function teleportPlayerToPath(player, path, label)
 		return false
 	end
 
-	local destination = waitForPath(Workspace, path)
+	local destination = InstancePath.WaitSpec({ Workspace = Workspace }, path, PATH_WAIT_SECONDS)
 	if not destination or not destination:IsA("BasePart") then
 		warn("Invalid push ball teleport path: " .. tostring(label))
 		return false
@@ -727,17 +689,17 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Missing player character", stageId)
 	end
 
-	local sourceBall = waitForPath(Workspace, ballConfig.Path)
+	local sourceBall = InstancePath.WaitSpec({ Workspace = Workspace }, ballConfig.Path, PATH_WAIT_SECONDS)
 	if not sourceBall then
 		return result(false, "Missing push ball source", stageId)
 	end
 
-	local trackRoot = waitForPath(Workspace, sceneConfig.TrackPath)
+	local trackRoot = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.TrackPath, PATH_WAIT_SECONDS)
 	if not trackRoot then
 		return result(false, "Missing push ball track: " .. pathToString(sceneConfig.TrackPath), stageId)
 	end
 
-	local wall = waitForPath(Workspace, sceneConfig.WallPath)
+	local wall = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.WallPath, PATH_WAIT_SECONDS)
 	if not wall then
 		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPath), stageId)
 	end

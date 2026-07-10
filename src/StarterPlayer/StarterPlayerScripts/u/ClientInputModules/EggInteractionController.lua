@@ -4,6 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local EggSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("EggSceneTheta"))
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
@@ -13,53 +15,13 @@ local BIND_WAIT_SECONDS = 30
 local PROMPT_RETRY_INTERVAL_SECONDS = 0.1
 
 function EggInteractionController.Init(sceneQuery, eggPanelView, snapshotController)
-	local function waitForPath(root, path, timeout)
-		if not root or type(path) ~= "table" then
-			return nil
-		end
-
-		local current = root
-		for _, childName in ipairs(path) do
-			if type(childName) ~= "string" or childName == "" then
-				return nil
-			end
-
-			current = current:WaitForChild(childName, timeout or 10)
-			if not current then
-				return nil
-			end
-		end
-
-		return current
-	end
-
-	local function findPath(root, path)
-		if not root or type(path) ~= "table" then
-			return nil
-		end
-
-		local current = root
-		for _, childName in ipairs(path) do
-			if type(childName) ~= "string" or childName == "" then
-				return nil
-			end
-
-			current = current and current:FindFirstChild(childName)
-			if not current then
-				return nil
-			end
-		end
-
-		return current
-	end
-
 	local function getEggConfig(eggId)
 		local eggs = EggSceneTheta.Eggs
 		return type(eggs) == "table" and eggs[eggId] or nil
 	end
 
 	local function getEggInteractionNode(instanceConfig, eggConfig)
-		local holder = findPath(Workspace, instanceConfig.HolderPath)
+		local holder = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.HolderPath)
 		if not holder then
 			return nil
 		end
@@ -128,7 +90,7 @@ function EggInteractionController.Init(sceneQuery, eggPanelView, snapshotControl
 			return
 		end
 
-		local holder = waitForPath(Workspace, instanceConfig.HolderPath, BIND_WAIT_SECONDS)
+		local holder = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.HolderPath, BIND_WAIT_SECONDS)
 		if not holder then
 			warn("Missing egg holder: " .. tostring(instanceId))
 			return

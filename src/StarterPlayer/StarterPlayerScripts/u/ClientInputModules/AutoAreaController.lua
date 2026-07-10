@@ -4,6 +4,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local theta = ReplicatedStorage:WaitForChild("theta")
 local AutoAreaTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("AutoAreaTheta"))
 local AutoAreaSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("AutoAreaSceneTheta"))
@@ -13,26 +15,6 @@ local BIND_WAIT_SECONDS = 30
 
 function AutoAreaController.Init(remoteClient, sceneQuery)
 	local currentAutoAreaId = nil
-
-	local function waitForPath(root, path, timeout)
-		if not root or type(path) ~= "table" then
-			return nil
-		end
-
-		local current = root
-		for _, childName in ipairs(path) do
-			if type(childName) ~= "string" or childName == "" then
-				return nil
-			end
-
-			current = current:WaitForChild(childName, timeout or 10)
-			if not current then
-				return nil
-			end
-		end
-
-		return current
-	end
 
 	-- 重置本地自动区状态，并通知服务端离开旧区域。
 	local function reset()
@@ -55,7 +37,7 @@ function AutoAreaController.Init(remoteClient, sceneQuery)
 			return
 		end
 
-		local touch = waitForPath(Workspace, instanceConfig.TouchPath, BIND_WAIT_SECONDS)
+		local touch = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.TouchPath, BIND_WAIT_SECONDS)
 		if not touch or not touch:IsA("BasePart") then
 			warn("Missing auto area Touch part: " .. tostring(instanceId))
 			return

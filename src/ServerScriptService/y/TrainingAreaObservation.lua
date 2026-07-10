@@ -1,6 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+
 local AutoAreaTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("AutoAreaTheta"))
 local AutoAreaSceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("AutoAreaSceneTheta"))
 
@@ -24,32 +26,12 @@ local function getCharacterRoot(player)
 	return nil
 end
 
-local function findPath(root, path)
-	if not root or type(path) ~= "table" then
-		return nil
-	end
-
-	local current = root
-	for _, childName in ipairs(path) do
-		if type(childName) ~= "string" or childName == "" then
-			return nil
-		end
-
-		current = current and current:FindFirstChild(childName)
-		if not current then
-			return nil
-		end
-	end
-
-	return current
-end
-
 local function getAutoAreaTouchParts(areaId)
 	local touchParts = {}
 
 	for _, instanceConfig in pairs(AutoAreaSceneTheta.Instances or {}) do
 		if type(instanceConfig) == "table" and instanceConfig.AreaId == areaId then
-			local touch = findPath(Workspace, instanceConfig.TouchPath)
+			local touch = InstancePath.FindSpec({ Workspace = Workspace }, instanceConfig.TouchPath)
 			if touch and touch:IsA("BasePart") then
 				table.insert(touchParts, touch)
 			end
