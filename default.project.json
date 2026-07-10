@@ -5,7 +5,10 @@
     "ReplicatedStorage": {
       "theta": {
         "$path": "src/ReplicatedStorage/theta"
-      }
+      },
+      "T":{
+        "$path": "src/ReplicatedStorage/T"
+      } 
     },
     "ServerScriptService": {
       "Debug": {

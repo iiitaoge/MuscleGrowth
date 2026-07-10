@@ -3,9 +3,15 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local SceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("SceneTheta"))
+local PushBallSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("PushBallSceneTheta"))
+
+local T = ReplicatedStorage:WaitForChild("T")
+
+local IntancePath = require(T:WaitForChild("InstancePath"))
 
 local PushBallController = {}
 
@@ -80,6 +86,7 @@ function PushBallController.Init(player, remoteClient, movementController)
 		remoteClient.Fire("PushBallLateralInput", nextInput)
 	end
 
+	
 	local function enterLocalMode()
 		if isActive then
 			return
@@ -107,8 +114,13 @@ function PushBallController.Init(player, remoteClient, movementController)
 		movementController.SetSuspended(false)
 	end
 
+	-- 处理推球
 	local function syncLocalModeFromAttribute()
-		if player:GetAttribute(ATTRIBUTES.IsPushingBall) == true then
+		local ballid = player:GetAttribute(ATTRIBUTES.ActivePushBallInstanceId)
+
+		if player:GetAttribute(ATTRIBUTES.IsPushingBall) == true and type(ballid) == "string" and ballid ~="" then
+			print("球ID：", player:GetAttribute(ATTRIBUTES.ActivePushBallInstanceId))
+			print("Workspace里面的对象：", IntancePath.Find(Workspace, PushBallSceneTheta.Balls[ballid].Path))
 			enterLocalMode()
 		else
 			exitLocalMode()
@@ -156,7 +168,8 @@ function PushBallController.Init(player, remoteClient, movementController)
 	end
 
 	local function bind()
-		table.insert(connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(syncLocalModeFromAttribute))
+		table.insert(connections, player:GetAttributeChangedSignal(ATTRIBUTES.IsPushingBall):Connect(syncLocalModeFromAttribute))	--绑定推球状态
+		table.insert(connections,player:GetAttributeChangedSignal(ATTRIBUTES.ActivePushBallInstanceId):Connect(syncLocalModeFromAttribute))	-- 绑定球ID
 		table.insert(connections, UserInputService.InputBegan:Connect(handleInputBegan))
 		table.insert(connections, UserInputService.InputEnded:Connect(handleInputEnded))
 		table.insert(connections, player.CharacterAdded:Connect(function(character)
