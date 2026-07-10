@@ -121,6 +121,7 @@ local function resolveCurrentAutoArea(player, progressState, runtimeState)
 	end
 
 	if not isAutoAreaUnlocked(progressState, areaConfig) then
+		clearCurrentAutoArea(runtimeState)
 		return nil, nil
 	end
 
@@ -427,6 +428,18 @@ end
 -- 进入自动区域
 function TrainingTransition.EnterAutoAreaClaim(player, areaId)
 	if not TrainingAreaObservation.IsValidAreaId(areaId) then
+		return false
+	end
+
+	local areaConfig = AutoAreaTheta[areaId]
+	local progressState = PlayerProgressState.Get(player)
+	if not isAutoAreaUnlocked(progressState, areaConfig) then
+		local runtimeState = getRuntimeOrInit(player)
+		if runtimeState.CurrentAutoAreaId == areaId then
+			clearCurrentAutoArea(runtimeState)
+			setRuntimeState(player, runtimeState)
+			TrainingTransition.RefreshGrowth(player)
+		end
 		return false
 	end
 
