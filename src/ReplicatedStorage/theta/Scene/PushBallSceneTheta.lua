@@ -46,6 +46,46 @@ local PushBallSceneTheta = {
 			StageId = 10,
 			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball10" } },
 		},
+		Ball11 = {
+			StageId = 11,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball11" } },
+		},
+		Ball12 = {
+			StageId = 12,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball12" } },
+		},
+		Ball13 = {
+			StageId = 13,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball13" } },
+		},
+		Ball14 = {
+			StageId = 14,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball14" } },
+		},
+		Ball15 = {
+			StageId = 15,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball15" } },
+		},
+		Ball16 = {
+			StageId = 16,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball16" } },
+		},
+		Ball17 = {
+			StageId = 17,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball17" } },
+		},
+		Ball18 = {
+			StageId = 18,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball18" } },
+		},
+		Ball19 = {
+			StageId = 19,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball19" } },
+		},
+		Ball20 = {
+			StageId = 20,
+			PathSpec = { RootKey = "Workspace", Path = { "Ballmod", "Ball20" } },
+		},
 	},
 
 	Stages = {
@@ -108,6 +148,66 @@ local PushBallSceneTheta = {
 			TrackPathSpec = { RootKey = "Workspace", Path = { "World2", "LeveLs", "L10" } },
 			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA10" } },
 			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR10", "Teleport" } },
+		},
+		[11] = {
+			StageId = 11,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L11" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA11" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR11", "Teleport" } },
+		},
+		[12] = {
+			StageId = 12,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L12" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA12" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR12", "Teleport" } },
+		},
+		[13] = {
+			StageId = 13,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L13" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA13" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR13", "Teleport" } },
+		},
+		[14] = {
+			StageId = 14,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L14" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA14" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR14", "Teleport" } },
+		},
+		[15] = {
+			StageId = 15,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L15" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA15" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR15", "Teleport" } },
+		},
+		[16] = {
+			StageId = 16,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L16" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA16" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR16", "Teleport" } },
+		},
+		[17] = {
+			StageId = 17,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L17" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA17" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR17", "Teleport" } },
+		},
+		[18] = {
+			StageId = 18,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L18" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA18" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR18", "Teleport" } },
+		},
+		[19] = {
+			StageId = 19,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L19" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA19" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR19", "Teleport" } },
+		},
+		[20] = {
+			StageId = 20,
+			TrackPathSpec = { RootKey = "Workspace", Path = { "World3", "LeveLs", "L20" } },
+			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA20" } },
+			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR20", "Teleport" } },
 		},
 	},
 }

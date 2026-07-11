@@ -76,6 +76,38 @@ local AutoAreaSceneTheta = {
 			AreaId = "R8",
 			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World2R8", "Touch" } },
 		},
+		World3R1 = {
+			AreaId = "R1",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R1", "Touch" } },
+		},
+		World3R2 = {
+			AreaId = "R2",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R2", "Touch" } },
+		},
+		World3R3 = {
+			AreaId = "R3",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R3", "Touch" } },
+		},
+		World3R4 = {
+			AreaId = "R4",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R4", "Touch" } },
+		},
+		World3R5 = {
+			AreaId = "R5",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R5", "Touch" } },
+		},
+		World3R6 = {
+			AreaId = "R6",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R6", "Touch" } },
+		},
+		World3R7 = {
+			AreaId = "R7",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R7", "Touch" } },
+		},
+		World3R8 = {
+			AreaId = "R8",
+			TouchPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneTrainAreas", "World3R8", "Touch" } },
+		},
 	},
 }
 

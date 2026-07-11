@@ -63,6 +63,22 @@ local EggSceneTheta = {
 			EggId = "PEgg2",
 			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World2PEgg2" } },
 		},
+		World3Egg1 = {
+			EggId = "Egg1",
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World3Egg1" } },
+		},
+		World3Egg2 = {
+			EggId = "Egg2",
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World3Egg2" } },
+		},
+		World3PEgg1 = {
+			EggId = "PEgg1",
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World3PEgg1" } },
+		},
+		World3PEgg2 = {
+			EggId = "PEgg2",
+			HolderPathSpec = { RootKey = "Workspace", Path = { "UseScene", "SceneEgg", "World3PEgg2" } },
+		},
 		-- 新地图示例：
 		-- World2Egg1 = {
 		-- 	EggId = "Egg1",
