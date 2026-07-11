@@ -43,15 +43,18 @@ end
 local function applyRenderBinding(bindingEntry, model)
 	local binding = bindingEntry.Config
 	local target = bindingEntry.Target
-	if not target and binding.Operation ~= "SetTextTargets" then
+	local value = model[binding.ModelKey]
+	if binding.Operation == "SetTextTargets" then
+		setTextTargets(bindingEntry.Targets, normalizeSequenceValues(value))
 		return
 	end
 
-	local value = model[binding.ModelKey]
+	if not target then
+		return
+	end
+
 	if binding.Operation == "SetText" then
 		setText(target, value or "")
-	elseif binding.Operation == "SetTextTargets" then
-		setTextTargets(bindingEntry.Targets, normalizeSequenceValues(value))
 	elseif binding.Operation == "SetSizeXScale" then
 		setSizeXScale(target, value)
 	end

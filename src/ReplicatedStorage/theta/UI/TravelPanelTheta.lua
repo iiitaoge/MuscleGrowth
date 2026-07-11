@@ -19,6 +19,10 @@ local TravelPanelTheta = {
 			DestinationId = "World2",
 			PathSpec = { RootKey = "ScreenGui", Path = { "Teleport", "Info", "Info", "List", "World2", "Button", "Teleport" } },
 		},
+		World3 = {	--传送世界三
+			DestinationId = "World3",
+			PathSpec = { RootKey = "ScreenGui", Path = { "Teleport", "Info", "Info", "List", "World2", "Button", "Teleport" } },
+		},
 	},
 }
 
