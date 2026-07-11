@@ -4,7 +4,7 @@ local BarbellTheta = {
 	T1 = {
 		DisplayName = "T1",
 		RequiredTrophies = 0,
-		Multiplier = 1000000,	-- 测试用
+		Multiplier = 20,	-- 测试用
 	},
 	T2 = {
 		DisplayName = "T2",
