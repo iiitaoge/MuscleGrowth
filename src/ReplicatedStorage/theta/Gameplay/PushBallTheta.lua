@@ -16,8 +16,19 @@ local PushBallTheta = {
 	TrackRaycastDepth = 160,
 	InteractionDistance = 14,
 	TeleportOffsetY = 5,
-	FirstStageId = 1,
-	LastStageId = 20,
+	-- 每条赛道拥有独立的一轮关卡进度；关卡编号在全局保持唯一。
+	Tracks = {
+		World2 = {
+			FirstStageId = 1,
+			LastStageId = 10,
+			TravelDestinationId = "World2",
+		},
+		World3 = {
+			FirstStageId = 11,
+			LastStageId = 20,
+			TravelDestinationId = "World3",
+		},
+	},
 	PromptActionText = "Push",
 	PromptObjectText = "Ball",
 	DebugPushBall = false,

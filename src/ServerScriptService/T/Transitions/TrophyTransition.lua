@@ -81,12 +81,32 @@ local function onStageReturnTouched(player, stageReturnId, stageReturnConfig, re
 
 	local stageId = math.floor(tonumber(resolvedStageReturnConfig.StageId) or 0)
 	local rewardMultiplier = math.max(0, tonumber(returnConfig and returnConfig.RewardMultiplier) or 1)
+	local rewardWasClaimable = stageId > 0 and PushBallTransition.ConsumeClaimableStageReward(player, stageId)
+	warn(
+		("[TrophyTouch] player=%s return=%s type=%s stage=%s claimable=%s multiplier=%s"):format(
+			player.Name,
+			tostring(stageReturnId),
+			tostring(returnType),
+			tostring(stageId),
+			tostring(rewardWasClaimable),
+			tostring(rewardMultiplier)
+		)
+	)
 
-	if stageId > 0 and PushBallTransition.ConsumeClaimableStageReward(player, stageId) then
+	if rewardWasClaimable then
 		local rewardTrophies = getStageReward(stageId) * rewardMultiplier
+		local rewardAdded = false
 		if rewardTrophies > 0 then
-			TrophyTransition.AddTrophies(player, rewardTrophies)
+			rewardAdded = TrophyTransition.AddTrophies(player, rewardTrophies)
 		end
+		warn(
+			("[TrophyReward] player=%s stage=%s amount=%s added=%s"):format(
+				player.Name,
+				tostring(stageId),
+				tostring(rewardTrophies),
+				tostring(rewardAdded)
+			)
+		)
 	end
 
 	PushBallTransition.ResetRuntimeState(player)

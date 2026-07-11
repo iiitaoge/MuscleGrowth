@@ -10,11 +10,18 @@ local TransitionResult = require(script.Parent.TransitionResult)
 local TravelTransition = {}
 
 local INVALID_DESTINATION_MESSAGE = "Invalid travel destination"
+local travelRevisionByPlayer = setmetatable({}, {
+	__mode = "k",
+})
 
 local function isValidDestinationId(destinationId)
 	return type(destinationId) == "string"
 		and type(TravelDestinationTheta.Destinations) == "table"
 		and type(TravelDestinationTheta.Destinations[destinationId]) == "table"
+end
+
+local function getTravelRevision(player)
+	return math.max(0, math.floor(tonumber(travelRevisionByPlayer[player]) or 0))
 end
 
 function TravelTransition.Request(player, destinationId)
@@ -24,6 +31,7 @@ function TravelTransition.Request(player, destinationId)
 		})
 	end
 
+	local previousDestinationId = player:GetAttribute("CurrentDestinationId")
 	local ok, err = pcall(TravelDestinationWorldSync.TeleportPlayer, player, destinationId)
 	if not ok then
 		return TransitionResult.New(false, tostring(err), {
@@ -31,9 +39,17 @@ function TravelTransition.Request(player, destinationId)
 		})
 	end
 
+	if previousDestinationId ~= destinationId then
+		travelRevisionByPlayer[player] = getTravelRevision(player) + 1
+	end
+
 	return TransitionResult.New(true, "Travel succeeded", {
 		DestinationId = destinationId,
 	})
+end
+
+function TravelTransition.GetRevision(player)
+	return getTravelRevision(player)
 end
 
 return TravelTransition

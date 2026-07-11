@@ -268,11 +268,47 @@ local function normalizeCompletedStage(value)
 	return math.max(0, math.floor(tonumber(value) or 0))
 end
 
-local function getRuntimeState(player)
+local function getTrackInfoForStage(stageId)
+	if type(PushBallTheta.Tracks) ~= "table" then
+		return nil
+	end
+
+	local matchedTrackInfo = nil
+	for trackId, trackConfig in pairs(PushBallTheta.Tracks) do
+		if type(trackId) == "string" and type(trackConfig) == "table" then
+			local firstStageId = math.max(1, math.floor(tonumber(trackConfig.FirstStageId) or 1))
+			local lastStageId = math.max(
+				firstStageId,
+				math.floor(tonumber(trackConfig.LastStageId) or firstStageId)
+			)
+			if stageId >= firstStageId and stageId <= lastStageId then
+				if matchedTrackInfo then
+					return nil
+				end
+
+				matchedTrackInfo = {
+					TrackId = trackId,
+					FirstStageId = firstStageId,
+					LastStageId = lastStageId,
+					TravelDestinationId = type(trackConfig.TravelDestinationId) == "string"
+						and trackConfig.TravelDestinationId
+						or trackId,
+				}
+			end
+		end
+	end
+
+	return matchedTrackInfo
+end
+
+local function getRuntimeState(player, trackInfo)
+	local travelRevision = TravelTransition.GetRevision(player)
 	local state = runtimeStates[player]
-	if not state then
+	if not state or state.TrackId ~= trackInfo.TrackId or state.TravelRevision ~= travelRevision then
 		state = {
-			CompletedStage = 0,
+			TrackId = trackInfo.TrackId,
+			CompletedStage = trackInfo.FirstStageId - 1,
+			TravelRevision = travelRevision,
 			ClaimableStageRewards = {},
 		}
 		runtimeStates[player] = state
@@ -285,17 +321,16 @@ local function getRuntimeState(player)
 	return state
 end
 
-local function getNextStageId(player)
-	local firstStageId = math.max(1, math.floor(tonumber(PushBallTheta.FirstStageId) or 1))
-	local lastStageId = math.max(firstStageId, math.floor(tonumber(PushBallTheta.LastStageId) or firstStageId))
-	local completedStage = normalizeCompletedStage(getRuntimeState(player).CompletedStage)
-	local nextStageId = math.max(firstStageId, completedStage + 1)
+local function getNextStageId(player, trackInfo)
+	local runtimeState = getRuntimeState(player, trackInfo)
+	local completedStage = normalizeCompletedStage(runtimeState.CompletedStage)
+	local nextStageId = math.max(trackInfo.FirstStageId, completedStage + 1)
 
-	if nextStageId > lastStageId then
-		return nil
+	if nextStageId > trackInfo.LastStageId then
+		return nil, runtimeState
 	end
 
-	return nextStageId
+	return nextStageId, runtimeState
 end
 
 local function getStageConfig(stageId)
@@ -448,14 +483,18 @@ local function cleanupState(player, options)
 
 end
 
-local function markStageCompleted(player, stageId)
-	local runtimeState = getRuntimeState(player)
-	runtimeState.CompletedStage = math.max(normalizeCompletedStage(runtimeState.CompletedStage), stageId)
-end
+local function markStageCompleted(player, state)
+	local runtimeState = runtimeStates[player]
+	if not runtimeState
+		or runtimeState.TrackId ~= state.TrackId
+		or runtimeState.TravelRevision ~= state.TravelRevision
+	then
+		return false
+	end
 
-local function markStageRewardClaimable(player, stageId)
-	local runtimeState = getRuntimeState(player)
-	runtimeState.ClaimableStageRewards[stageId] = true
+	runtimeState.CompletedStage = math.max(normalizeCompletedStage(runtimeState.CompletedStage), state.StageId)
+	runtimeState.ClaimableStageRewards[state.StageId] = true
+	return true
 end
 
 local function handleStageReached(player, state)
@@ -469,17 +508,30 @@ local function handleStageReached(player, state)
 	local progressState = PlayerProgressState.Get(player)
 	local strength = tonumber(progressState and progressState.Strength) or 0
 	local requiredStrength = tonumber(gameplayConfig.RecommendedStrength) or math.huge
+	warn(
+		("[PushBallResult] player=%s track=%s stage=%s strength=%s required=%s passed=%s"):format(
+			player.Name,
+			tostring(state.TrackId),
+			tostring(stageId),
+			tostring(strength),
+			tostring(requiredStrength),
+			tostring(strength >= requiredStrength)
+		)
+	)
 
 	if strength >= requiredStrength then
-		markStageCompleted(player, stageId)
-		markStageRewardClaimable(player, stageId)
+		if not markStageCompleted(player, state) then
+			cleanupState(player)
+			return
+		end
+
 		cleanupState(player, {
 			TeleportStageId = stageId,
 		})
 	else
-		if stageId <= 1 then
+		if stageId == state.FirstStageId then
 			cleanupState(player, {
-				TravelDestinationId = "World2",
+				TravelDestinationId = state.TravelDestinationId,
 			})
 		else
 			cleanupState(player, {
@@ -522,6 +574,12 @@ local function isLogicalBallTouchingFinishWall(state, logicalBallPosition)
 end
 
 local function updateState(player, state, dt)
+	if state.TravelRevision ~= TravelTransition.GetRevision(player) then
+		runtimeStates[player] = nil
+		cleanupState(player)
+		return
+	end
+
 	local character, humanoid, root = getCharacterParts(player)
 	if character ~= state.Character or humanoid ~= state.Humanoid or root ~= state.RootPart then
 		cleanupState(player)
@@ -591,7 +649,19 @@ local function ensureHeartbeat()
 	heartbeatConnection = RunService.Heartbeat:Connect(updateAll)
 end
 
-local function createState(player, stageId, ballInstanceId, sourceBall, trackRoot, wall, root, humanoid, character)
+local function createState(
+	player,
+	stageId,
+	trackInfo,
+	travelRevision,
+	ballInstanceId,
+	sourceBall,
+	trackRoot,
+	wall,
+	root,
+	humanoid,
+	character
+)
 	local sourcePivot = getPivot(sourceBall)
 	if not sourcePivot then
 		return nil
@@ -642,6 +712,10 @@ local function createState(player, stageId, ballInstanceId, sourceBall, trackRoo
 		TrackRoot = trackRoot,
 		TrackRaycastParams = trackRaycastParams,
 		StageId = stageId,
+		TrackId = trackInfo.TrackId,
+		FirstStageId = trackInfo.FirstStageId,
+		TravelDestinationId = trackInfo.TravelDestinationId,
+		TravelRevision = travelRevision,
 		FinishWallParts = finishWallParts,
 		Progress = 0,
 		LateralOffset = 0,
@@ -664,17 +738,22 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Missing player progress")
 	end
 
-	local stageId = getNextStageId(player)
-	if not stageId then
-		return result(false, "All push ball stages completed")
-	end
-
 	local ballConfig = getBallConfig(ballInstanceId)
 	if not ballConfig then
-		return result(false, "Invalid push ball", stageId)
+		return result(false, "Invalid push ball")
 	end
 
 	local ballStageId = math.floor(tonumber(ballConfig.StageId) or 0)
+	local trackInfo = getTrackInfoForStage(ballStageId)
+	if not trackInfo then
+		return result(false, "Missing or overlapping push ball track config", ballStageId)
+	end
+
+	local stageId, runtimeState = getNextStageId(player, trackInfo)
+	if not stageId then
+		return result(false, "All push ball stages completed", ballStageId)
+	end
+
 	if ballStageId ~= stageId then
 		return result(false, "Push ball does not match current stage", stageId)
 	end
@@ -711,6 +790,8 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 	local state = createState(
 		player,
 		stageId,
+		trackInfo,
+		runtimeState.TravelRevision,
 		ballInstanceId,
 		sourceBall,
 		trackRoot,
@@ -764,6 +845,11 @@ function PushBallTransition.ConsumeClaimableStageReward(player, stageId)
 	end
 
 	local runtimeState = runtimeStates[player]
+	if runtimeState and runtimeState.TravelRevision ~= TravelTransition.GetRevision(player) then
+		runtimeStates[player] = nil
+		return false
+	end
+
 	local claimableRewards = runtimeState and runtimeState.ClaimableStageRewards
 	if type(claimableRewards) ~= "table" or claimableRewards[normalizedStageId] ~= true then
 		return false
