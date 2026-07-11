@@ -48,8 +48,8 @@ function DataAdapter.BuildModel(data)
 		TitleText = "Rebirth " .. formatMultiplier(currentMultiplier),
 		TipText = tipText,
 		RebirthTexts = {
-			"{" .. formatNumber(currentRebirthCount) .. "}",
-			"{" .. formatNumber(nextRebirthCount) .. "}",
+			formatNumber(currentRebirthCount),
+			formatNumber(nextRebirthCount),
 		},
 		PowerTexts = {
 			formatMultiplier(currentMultiplier) .. " Power",
@@ -61,7 +61,7 @@ function DataAdapter.BuildModel(data)
 		},
 		LevelProgressRatio = getProgressRatio(currentLevel, currentMaxLevel),
 		LevelProgressText = "Lv." .. formatNumber(currentLevel) .. "/" .. formatNumber(currentMaxLevel),
-		RequestText = "Rebirth " .. formatMultiplier(nextMultiplier),
+		RequestText = "Rebirth ",
 	}
 end
 
