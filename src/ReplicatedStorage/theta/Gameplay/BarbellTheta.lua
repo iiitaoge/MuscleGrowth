@@ -66,6 +66,51 @@ local BarbellTheta = {
 		RequiredTrophies = 1500000,
 		Multiplier = 12500,
 	},
+	T14 = {
+		DisplayName = "T14",
+		RequiredTrophies = 40000,
+		Multiplier = 5000000,
+	},
+	T15 = {
+		DisplayName = "T15",
+		RequiredTrophies = 85000,
+		Multiplier = 9200000,
+	},
+	T16 = {
+		DisplayName = "T16",
+		RequiredTrophies = 150000,
+		Multiplier = 15600000,
+	},
+	T17 = {
+		DisplayName = "T17",
+		RequiredTrophies = 300000,
+		Multiplier = 28000000,
+	},
+	T18 = {
+		DisplayName = "T18",
+		RequiredTrophies = 500000,
+		Multiplier = 50000000,
+	},
+	T19 = {
+		DisplayName = "T19",
+		RequiredTrophies = 1000000,
+		Multiplier = 95000000,
+	},
+	T20 = {
+		DisplayName = "T20",
+		RequiredTrophies = 1800000,
+		Multiplier = 200000000,
+	},
+	T21 = {
+		DisplayName = "T21",
+		RequiredTrophies = 3500000,
+		Multiplier = 750000000,
+	},
+	T22 = {
+		DisplayName = "T22",
+		RequiredTrophies = 6000000,
+		Multiplier = 2500000000,
+	},
 }
 
 return BarbellTheta
