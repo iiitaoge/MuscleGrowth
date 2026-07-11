@@ -36,6 +36,7 @@ function PushBallController.Init(player, remoteClient, movementController)
 	local hiddenBallInstanceId = nil
 	local hiddenSourceBall = nil
 	local hiddenParts = {}
+	local hiddenTextures = {}
 	local hiddenPrompts = {}
 
 	-- 恢复被隐藏的球
@@ -45,6 +46,11 @@ function PushBallController.Init(player, remoteClient, movementController)
 				part.LocalTransparencyModifier = originalModifier
 			end
 		end
+		for texture, originalTransparency in pairs(hiddenTextures) do
+			if texture.Parent then
+				texture.Transparency = originalTransparency
+			end
+		end
 		for prompt, originalEnabled in pairs(hiddenPrompts) do
 			if prompt.Parent then
 				prompt.Enabled = originalEnabled
@@ -52,6 +58,7 @@ function PushBallController.Init(player, remoteClient, movementController)
 		end
 
 		table.clear(hiddenParts)
+		table.clear(hiddenTextures)
 		table.clear(hiddenPrompts)
 		hiddenBallInstanceId = nil
 		hiddenSourceBall = nil
@@ -67,10 +74,13 @@ function PushBallController.Init(player, remoteClient, movementController)
 		end
 
 		local sourceParts = {}
+		local sourceTextures = {}
 		local sourcePrompts = {}
 		for _, descendant in ipairs(sourceBall:GetDescendants()) do
 			if descendant:IsA("BasePart") then
 				table.insert(sourceParts, descendant)
+			elseif descendant:IsA("Texture") or descendant:IsA("Decal") then
+				table.insert(sourceTextures, descendant)
 			elseif descendant:IsA("ProximityPrompt") then
 				table.insert(sourcePrompts, descendant)
 			end
@@ -82,6 +92,10 @@ function PushBallController.Init(player, remoteClient, movementController)
 		for _, part in ipairs(sourceParts) do
 			hiddenParts[part] = part.LocalTransparencyModifier
 			part.LocalTransparencyModifier = 1
+		end
+		for _, texture in ipairs(sourceTextures) do
+			hiddenTextures[texture] = texture.Transparency
+			texture.Transparency = 1
 		end
 		for _, prompt in ipairs(sourcePrompts) do
 			hiddenPrompts[prompt] = prompt.Enabled
