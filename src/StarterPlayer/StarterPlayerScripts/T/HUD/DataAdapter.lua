@@ -22,6 +22,12 @@ local function getProgressRatio(value, maxValue)
 	return math.clamp(value / maxValue, 0, 1)
 end
 
+-- 重生按钮显示整数百分比；向下取整避免尚未满级时提前显示 100%。
+local function formatRebirthProgress(currentLevel, maxLevel)
+	local ratio = getProgressRatio(currentLevel, maxLevel)
+	return tostring(math.floor(ratio * 100)) .. "%"
+end
+
 -- 根据玩家快照生成 HUD 显示模型。
 function DataAdapter.BuildModel(data)
 	return {
@@ -33,6 +39,7 @@ function DataAdapter.BuildModel(data)
 		ExpRatio = getProgressRatio(data.Exp, data.MaxExp),
 		LevelText = "Level " .. formatNumber(data.Level),
 		ExpText = formatNumber(data.Exp) .. "/" .. formatNumber(data.MaxExp),
+		RebirthProgressText = formatRebirthProgress(data.Level, data.MaxLevel),
 	}
 end
 

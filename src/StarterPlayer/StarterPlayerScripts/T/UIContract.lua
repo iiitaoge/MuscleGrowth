@@ -138,6 +138,7 @@ local function validateHUD()
 		"LevelText",
 		"ExpText",
 		"RebirthButton",
+		"RebirthProgressText",
 	})
 	for key, pathSpec in pairs(paths) do
 		requirePathRoot(pathSpec, "ScreenGui", "HUDPanelTheta.Paths." .. key)

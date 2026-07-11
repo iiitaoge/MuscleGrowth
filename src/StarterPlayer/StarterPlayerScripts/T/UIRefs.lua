@@ -123,6 +123,10 @@ function UIRefs.ResolveHUD(player)
 			waitForPath(hud, paths.RebirthButton, "HUD RebirthButton"),
 			"HUD RebirthButton"
 		),
+		RebirthProgressText = requireTextObject(
+			waitForPath(hud, paths.RebirthProgressText, "HUD RebirthProgressText"),
+			"HUD RebirthProgressText"
+		),
 	}
 end
 

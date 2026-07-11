@@ -26,6 +26,8 @@ local HUDPanelTheta = {
 		ExpText = { RootKey = "ScreenGui", Path = { "Bottom", "Progress", "Progress" } },
 		-- 重生入口按钮。
 		RebirthButton = { RootKey = "ScreenGui", Path = { "LeftButtons", "Button", "Rebirth" } },
+		-- 左侧重生入口当前进度文本。
+		RebirthProgressText = { RootKey = "ScreenGui", Path = { "LeftButtons", "Button", "Rebirth", "robux", "Title" } },
 	},
 }
 

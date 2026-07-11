@@ -22,6 +22,7 @@ function Renderer.Render(refs, model)
 	setProgressFill(refs.ExpBar, model.ExpRatio)
 	setText(refs.LevelText, model.LevelText)
 	setText(refs.ExpText, model.ExpText)
+	setText(refs.RebirthProgressText, model.RebirthProgressText)
 end
 
 function Renderer.GetRebirthButton(refs)
