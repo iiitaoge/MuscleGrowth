@@ -1,6 +1,12 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CharacterMorphTheta = require(
+	ReplicatedStorage:WaitForChild("theta"):WaitForChild("Gameplay"):WaitForChild("CharacterMorphTheta")
+)
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
+local CharacterMorphTransition = require(script.Parent.Parent.T.Transitions.CharacterMorphTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
 local PetDeleteTransition = require(script.Parent.Parent.T.Transitions.Pet.PetDeleteTransition)
 local PetEquipTransition = require(script.Parent.Parent.T.Transitions.Pet.PetEquipTransition)
@@ -35,6 +41,7 @@ EggWorldSync.InitWorld()
 
 local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
+	CharacterMorphTransition.InitPlayer(player)
 end
 
 RemoteBinder.BindEvents(REMOTE_EVENT_MIN_INTERVALS, {
@@ -59,7 +66,18 @@ RemoteBinder.BindFunctions({
 	GetData = PlayerSnapshotBuilder.GetPlayerSnapshot,
 	RequestRebirth = function(player)
 		local result = RebirthTransition.Request(player)
-		TrainingTransition.RefreshGrowth(player)
+		if result.Success then
+			PushBallTransition.RequestStop(player)
+			TrainingTransition.ResetActivity(player)
+			CharacterMorphTransition.Refresh(player, true)
+
+			local travelResult = TravelTransition.Request(player, CharacterMorphTheta.RebirthDestinationId)
+			if travelResult.Success == false and travelResult.Message then
+				warn(travelResult.Message)
+			end
+		else
+			TrainingTransition.RefreshGrowth(player)
+		end
 
 		return result
 	end,
@@ -79,6 +97,7 @@ Players.PlayerRemoving:Connect(function(player)
 	RemoteBinder.RemovePlayer(player)
 	PushBallTransition.RemovePlayer(player)
 	TrophyTransition.RemovePlayer(player)
+	CharacterMorphTransition.RemovePlayer(player)
 	PlayerLifecycleTransition.Remove(player)
 end)
 

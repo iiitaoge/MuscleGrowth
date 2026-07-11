@@ -9,6 +9,7 @@ local TrainingAreaObservation = require(script.Parent.Parent.Parent.y.TrainingAr
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
 local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
+local CharacterMorphTransition = require(script.Parent.CharacterMorphTransition)
 
 local TrainingTransition = {}
 
@@ -226,6 +227,7 @@ local function getGrowthDecision(player)
 end
 
 local function applyTrainingGains(player, progressState, strengthGain, expGain)
+	local previousLevel = LevelRules.CalculateLevel(progressState.Exp, progressState.RebirthCount)
 	local nextProgressState = table.clone(progressState)
 
 	nextProgressState.Strength = math.max(0, nextProgressState.Strength + (strengthGain or 0))
@@ -235,6 +237,10 @@ local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	)
 
 	PlayerProgressState.Set(player, nextProgressState)
+	local nextLevel = LevelRules.CalculateLevel(nextProgressState.Exp, nextProgressState.RebirthCount)
+	if nextLevel ~= previousLevel then
+		CharacterMorphTransition.Refresh(player, false)
+	end
 end
 
 local function isCurrentGrowthLoop(runtimeState, loopToken)
@@ -365,6 +371,17 @@ end
 -- 设置增长状态为false
 function TrainingTransition.StopGrowth(player)
 	stopGrowthLoop(player)
+end
+
+-- 重生或角色重置时仅清空训练活动，保留抽宠等共用运行时冷却字段。
+function TrainingTransition.ResetActivity(player)
+	local runtimeState = getRuntimeOrInit(player)
+	runtimeState.MoveRequested = false
+	runtimeState.IsMoving = false
+	runtimeState.CurrentAutoAreaId = nil
+	MovementObservation.Reset(runtimeState)
+	clearGrowthLoopState(runtimeState)
+	setRuntimeState(player, runtimeState)
 end
 
 -- 初始化玩家运行时状态
