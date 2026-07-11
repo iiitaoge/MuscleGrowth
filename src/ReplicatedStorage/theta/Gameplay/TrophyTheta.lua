@@ -17,7 +17,7 @@ local function buildStageReturn(stageId)
 		VIPReturn = {
 			Name = "VIPReturn",
 			RewardMultiplier = 2,
-			TextPathSpec = { RootKey = "ReturnNode", Path = { "Main", "Win", "BillboardGui", "Frame", "TextLabel" } },
+			TextPathSpec = { RootKey = "ReturnNode", Path = { "Main", "Win vip", "BillboardGui", "WIN", "TextLabel" } },
 		},
 	}
 end
