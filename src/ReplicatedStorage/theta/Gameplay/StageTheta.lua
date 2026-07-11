@@ -55,7 +55,7 @@ local StageTheta = {
 		},
 		[11] = {
 			StageId = 11,
-			RecommendedStrength = 4500000,
+			RecommendedStrength = 450000000,
 			RewardTrophies = 105000,
 		},
 		[12] = {
