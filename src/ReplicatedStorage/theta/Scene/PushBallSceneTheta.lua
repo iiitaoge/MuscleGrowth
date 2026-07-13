@@ -91,6 +91,8 @@ local PushBallSceneTheta = {
 	Stages = {
 		[1] = {
 			StageId = 1,
+			-- Base 下存在多个同名 Part；允许整个 Base，避免路径只解析到第一个同名子物体。
+			StartSurfacePathSpec = { RootKey = "Workspace", Path = { "World2", "Base" } },
 			TrackPathSpec = { RootKey = "Workspace", Path = { "World2", "LeveLs", "L1" } },
 			WallPathSpec = { RootKey = "Workspace", Path = { "Hint", "LA1" } },
 			TeleportPathSpec = { RootKey = "Workspace", Path = { "TRTele", "TR1", "Teleport" } },

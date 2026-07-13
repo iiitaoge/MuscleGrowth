@@ -206,16 +206,35 @@ local function prepareBallClone(instance)
 	end
 end
 
-local function buildTrackRaycastParams(trackRoot)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { trackRoot }
-	params.IgnoreWater = true
-	return params
+local function isAllowedTrackInstance(instance, trackSurfaces)
+	if not instance then
+		return false
+	end
+
+	for _, surface in ipairs(trackSurfaces) do
+		if instance == surface or instance:IsDescendantOf(surface) then
+			return true
+		end
+	end
+
+	return false
 end
 
-local function raycastTrackPosition(raycastParams, targetPosition)
-	if not raycastParams or typeof(targetPosition) ~= "Vector3" then
+local function buildTrackRaycastQuery(trackSurfaces, exclusions)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = exclusions
+	params.IgnoreWater = true
+
+	return {
+		AllowedSurfaces = trackSurfaces,
+		Exclusions = exclusions,
+		Params = params,
+	}
+end
+
+local function raycastExactTrackPosition(raycastQuery, targetPosition)
+	if not raycastQuery or typeof(targetPosition) ~= "Vector3" then
 		return nil
 	end
 
@@ -223,9 +242,111 @@ local function raycastTrackPosition(raycastParams, targetPosition)
 	local depth = math.max(0, tonumber(PushBallTheta.TrackRaycastDepth) or 160)
 	local origin = targetPosition + UP_VECTOR * height
 	local direction = UP_VECTOR * -(height + depth)
-	local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
+	local raycastResult = Workspace:Raycast(origin, direction, raycastQuery.Params)
+	if not raycastResult
+		or not isAllowedTrackInstance(raycastResult.Instance, raycastQuery.AllowedSurfaces)
+	then
+		return nil
+	end
 
-	return raycastResult and raycastResult.Position or nil
+	return raycastResult.Position
+end
+
+local function raycastTrackPosition(raycastQuery, targetPosition, probeDirection)
+	local exactPosition = raycastExactTrackPosition(raycastQuery, targetPosition)
+	if exactPosition then
+		return exactPosition
+	end
+
+	local probeDistance = math.max(0, tonumber(PushBallTheta.TrackGroundProbeDistance) or 0)
+	local horizontalDirection = getHorizontalDirection(probeDirection, nil)
+	if probeDistance <= 0 or not horizontalDirection then
+		return nil
+	end
+
+	for _, scale in ipairs({ 0.25, -0.25, 0.5, -0.5, 1, -1 }) do
+		local sampledPosition = raycastExactTrackPosition(
+			raycastQuery,
+			targetPosition + horizontalDirection * (probeDistance * scale)
+		)
+		if sampledPosition then
+			-- 探测点只提供地面高度；逻辑位置仍保持目标 X/Z，避免视觉横向跳变。
+			return Vector3.new(targetPosition.X, sampledPosition.Y, targetPosition.Z)
+		end
+	end
+
+	return nil
+end
+
+local function describeRaycastSurface(surface)
+	if not surface then
+		return "nil"
+	end
+
+	if surface:IsA("BasePart") then
+		return ("%s<%s CanQuery=%s CanCollide=%s CollisionGroup=%s>"):format(
+			surface:GetFullName(),
+			surface.ClassName,
+			tostring(surface.CanQuery),
+			tostring(surface.CanCollide),
+			tostring(surface.CollisionGroup)
+		)
+	end
+
+	local queryableParts = 0
+	for _, descendant in ipairs(surface:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant.CanQuery then
+			queryableParts += 1
+		end
+	end
+
+	return ("%s<%s QueryableParts=%s>"):format(
+		surface:GetFullName(),
+		surface.ClassName,
+		tostring(queryableParts)
+	)
+end
+
+local function raycastWorldGround(targetPosition, exclusions)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = exclusions
+	params.IgnoreWater = true
+
+	local height = math.max(0, tonumber(PushBallTheta.TrackRaycastHeight) or 80)
+	local depth = math.max(0, tonumber(PushBallTheta.TrackRaycastDepth) or 160)
+	return Workspace:Raycast(
+		targetPosition + UP_VECTOR * height,
+		UP_VECTOR * -(height + depth),
+		params
+	)
+end
+
+local function describeUnfilteredGround(targetPosition, exclusions)
+	local result = raycastWorldGround(targetPosition, exclusions)
+
+	return result and describeRaycastSurface(result.Instance) or "nil"
+end
+
+local function addStartSurfaceFromWorldHit(trackSurfaces, worldHit)
+	local hitInstance = worldHit and worldHit.Instance or nil
+	if not hitInstance or isAllowedTrackInstance(hitInstance, trackSurfaces) then
+		return false
+	end
+
+	local surfaceRoot = hitInstance.Parent
+	if not surfaceRoot or surfaceRoot == Workspace then
+		surfaceRoot = hitInstance
+	end
+
+	for _, surface in ipairs(trackSurfaces) do
+		if surface == surfaceRoot then
+			return false
+		end
+	end
+
+	table.insert(trackSurfaces, surfaceRoot)
+	return true
 end
 
 local function warnRaycastMiss(state, label, targetPosition)
@@ -235,23 +356,27 @@ local function warnRaycastMiss(state, label, targetPosition)
 	end
 
 	state.LastRaycastWarnTime = now
+	local allowedDescriptions = {}
+	for _, surface in ipairs(state.TrackRaycastQuery.AllowedSurfaces) do
+		table.insert(allowedDescriptions, describeRaycastSurface(surface))
+	end
+
 	warn(
-		("Push ball track raycast missed for %s stage %s at %s. Check TrackPathSpec and CanQuery."):format(
+		("Push ball track raycast missed for %s stage %s at %s worldHit=%s allowed=[%s]. Check track coverage and CanQuery."):format(
 			label,
 			tostring(state.StageId),
-			tostring(targetPosition)
+			tostring(targetPosition),
+			describeUnfilteredGround(targetPosition, state.TrackRaycastQuery.Exclusions),
+			table.concat(allowedDescriptions, "; ")
 		)
 	)
 end
 
-local function getGroundedPosition(state, targetPosition, offsetY, label, fallbackPosition)
-	local groundPosition = raycastTrackPosition(state.TrackRaycastParams, targetPosition)
-	if groundPosition then
-		return groundPosition + UP_VECTOR * offsetY
-	end
-
-	warnRaycastMiss(state, label, targetPosition)
-	return fallbackPosition
+local function getPlayerTargetPosition(logicalBallPosition, forward, lateral)
+	return logicalBallPosition
+		- forward * (tonumber(PushBallTheta.PlayerBehindBallDistance) or 5)
+		+ forward * (tonumber(PushBallTheta.PlayerForwardOffset) or 0)
+		+ lateral * (tonumber(PushBallTheta.PlayerLateralOffset) or 0)
 end
 
 local function isPlayerNearSourceBall(root, sourceBall)
@@ -590,49 +715,61 @@ local function updateState(player, state, dt)
 	local lateralSpeed = math.max(0, tonumber(PushBallTheta.LateralSpeed) or 0)
 	local laneHalfWidth = math.max(0, tonumber(PushBallTheta.LaneHalfWidth) or 0)
 	local ballRadius = math.max(0.1, tonumber(PushBallTheta.BallRadius) or 3)
-	local ballGroundOffsetY = tonumber(PushBallTheta.BallGroundOffsetY) or 0
+	local ballGroundOffsetY = state.BallGroundOffsetY
 
-	state.Progress += pushSpeed * dt
-	state.LateralOffset = math.clamp(state.LateralOffset + state.LateralInput * lateralSpeed * dt, -laneHalfWidth, laneHalfWidth)
+	local nextProgress = state.Progress + pushSpeed * dt
+	local nextLateralOffset = math.clamp(
+		state.LateralOffset + state.LateralInput * lateralSpeed * dt,
+		-laneHalfWidth,
+		laneHalfWidth
+	)
 
 	local logicalBallPosition = state.OriginPosition
-		+ state.Forward * state.Progress
-		+ state.Lateral * state.LateralOffset
-	state.LogicalBallPosition = logicalBallPosition
+		+ state.Forward * nextProgress
+		+ state.Lateral * nextLateralOffset
 
 	if isLogicalBallTouchingFinishWall(state, logicalBallPosition) then
 		handleStageReached(player, state)
 		return
 	end
 
-	local ballPosition = getGroundedPosition(
-		state,
-		logicalBallPosition,
-		ballRadius + ballGroundOffsetY,
-		"ball",
-		state.BallPosition
-	)
+	local ballGroundPosition = raycastTrackPosition(state.TrackRaycastQuery, logicalBallPosition, state.Forward)
+	if not ballGroundPosition then
+		warnRaycastMiss(state, "ball", logicalBallPosition)
+		return
+	end
+
+	local nextStartElapsed = state.StartElapsed + dt
+	local startAlignmentDuration = math.max(0, tonumber(PushBallTheta.StartAlignmentDuration) or 0)
+	local alignmentAlpha = startAlignmentDuration > 0
+		and math.clamp(nextStartElapsed / startAlignmentDuration, 0, 1)
+		or 1
+
+	local desiredPlayerPosition = getPlayerTargetPosition(logicalBallPosition, state.Forward, state.Lateral)
+	local targetPlayerPosition = state.StartPlayerPosition:Lerp(desiredPlayerPosition, alignmentAlpha)
+	local playerGroundPosition = raycastTrackPosition(state.TrackRaycastQuery, targetPlayerPosition, state.Forward)
+	if not playerGroundPosition then
+		warnRaycastMiss(state, "player", targetPlayerPosition)
+		return
+	end
+
+	local ballPosition = ballGroundPosition + UP_VECTOR * (ballRadius + ballGroundOffsetY)
+	local playerPosition = playerGroundPosition + UP_VECTOR * state.PlayerGroundOffsetY
+
+	state.Progress = nextProgress
+	state.LateralOffset = nextLateralOffset
+	state.LogicalBallPosition = logicalBallPosition
 	state.BallPosition = ballPosition
+	state.PlayerPosition = playerPosition
+	state.StartElapsed = nextStartElapsed
 
 	local rollAngle = -state.Progress / ballRadius
 	local ballCFrame = CFrame.new(ballPosition) * CFrame.fromAxisAngle(state.Lateral, rollAngle) * state.BallBaseRotation
 	pivotTo(state.Ball, ballCFrame)
 
-	local playerForwardOffset = tonumber(PushBallTheta.PlayerForwardOffset) or 0
-	local playerLateralOffset = tonumber(PushBallTheta.PlayerLateralOffset) or 0
-	local targetPlayerPosition = logicalBallPosition
-		- state.Forward * (tonumber(PushBallTheta.PlayerBehindBallDistance) or 5)
-		+ state.Forward * playerForwardOffset
-		+ state.Lateral * playerLateralOffset
-	local playerPosition = getGroundedPosition(
-		state,
-		targetPlayerPosition,
-		state.PlayerGroundOffsetY,
-		"player",
-		state.PlayerPosition or (ballPosition - state.Forward * (tonumber(PushBallTheta.PlayerBehindBallDistance) or 5))
-	)
-	state.PlayerPosition = playerPosition
-	character:PivotTo(CFrame.lookAt(playerPosition, playerPosition + state.Forward))
+	local startFacingCFrame = CFrame.new(playerPosition) * state.StartPlayerRotation
+	local pushFacingCFrame = CFrame.lookAt(playerPosition, playerPosition + state.Forward)
+	character:PivotTo(startFacingCFrame:Lerp(pushFacingCFrame, alignmentAlpha))
 end
 
 local function updateAll(dt)
@@ -657,6 +794,7 @@ local function createState(
 	ballInstanceId,
 	sourceBall,
 	trackRoot,
+	trackSurfaces,
 	wall,
 	root,
 	humanoid,
@@ -672,13 +810,10 @@ local function createState(
 		return nil
 	end
 
-	local trackRaycastParams = buildTrackRaycastParams(trackRoot)
+	local exclusions = { sourceBall, character }
+	local trackRaycastQuery = buildTrackRaycastQuery(trackSurfaces, exclusions)
 	local forward = getStageForward(sourcePivot, wallPivot)
 	local lateral = getStageLateral(forward)
-	local ballClone = sourceBall:Clone()
-	ballClone.Name = "PushBall_" .. tostring(player.UserId) .. "_" .. ballInstanceId
-	prepareBallClone(ballClone)
-	ballClone.Parent = getBallFolder()
 
 	local ballBaseRotation = sourcePivot - sourcePivot.Position
 	local originPosition = sourcePivot.Position
@@ -688,13 +823,65 @@ local function createState(
 		return nil
 	end
 
+	local initialBallGround = raycastTrackPosition(trackRaycastQuery, originPosition, forward)
+	local initialPlayerTarget = getPlayerTargetPosition(originPosition, forward, lateral)
+	local initialPlayerGround = raycastTrackPosition(trackRaycastQuery, initialPlayerTarget, forward)
+	local currentPlayerGround = raycastTrackPosition(trackRaycastQuery, root.Position, forward)
+	if not initialBallGround or not initialPlayerGround or not currentPlayerGround then
+		local addedStartSurface = false
+		for _, targetPosition in ipairs({ originPosition, initialPlayerTarget, root.Position }) do
+			if addStartSurfaceFromWorldHit(
+				trackSurfaces,
+				raycastWorldGround(targetPosition, exclusions)
+			) then
+				addedStartSurface = true
+			end
+		end
+
+		if addedStartSurface then
+			trackRaycastQuery = buildTrackRaycastQuery(trackSurfaces, exclusions)
+			initialBallGround = raycastTrackPosition(trackRaycastQuery, originPosition, forward)
+			initialPlayerGround = raycastTrackPosition(trackRaycastQuery, initialPlayerTarget, forward)
+			currentPlayerGround = raycastTrackPosition(trackRaycastQuery, root.Position, forward)
+		end
+	end
+
+	if not initialBallGround or not initialPlayerGround or not currentPlayerGround then
+		local surfaceDescriptions = {}
+		for _, surface in ipairs(trackSurfaces) do
+			table.insert(surfaceDescriptions, describeRaycastSurface(surface))
+		end
+
+		warn(
+			("Push ball start surface missing for %s stage %s (ball=%s playerTarget=%s currentPlayer=%s) allowed=[%s] worldHits=[ball=%s playerTarget=%s currentPlayer=%s]."):format(
+				player.Name,
+				tostring(stageId),
+				tostring(initialBallGround ~= nil),
+				tostring(initialPlayerGround ~= nil),
+				tostring(currentPlayerGround ~= nil),
+				table.concat(surfaceDescriptions, "; "),
+				describeUnfilteredGround(originPosition, exclusions),
+				describeUnfilteredGround(initialPlayerTarget, exclusions),
+				describeUnfilteredGround(root.Position, exclusions)
+			)
+		)
+		return nil
+	end
+
 	local ballGroundOffsetY = tonumber(PushBallTheta.BallGroundOffsetY) or 0
-	local initialBallGround = raycastTrackPosition(trackRaycastParams, originPosition)
-	local initialBallPosition = initialBallGround and initialBallGround + UP_VECTOR * (ballRadius + ballGroundOffsetY)
-		or originPosition
+	if PushBallTheta.PreserveSourceBallHeight == true then
+		ballGroundOffsetY = originPosition.Y - initialBallGround.Y - ballRadius
+	end
+
+	local initialBallPosition = initialBallGround + UP_VECTOR * (ballRadius + ballGroundOffsetY)
 	local configuredPlayerGroundOffsetY = tonumber(PushBallTheta.PlayerGroundOffsetY)
-	local playerGround = raycastTrackPosition(trackRaycastParams, root.Position)
-	local playerGroundOffsetY = configuredPlayerGroundOffsetY or (playerGround and root.Position.Y - playerGround.Y) or 3
+	local playerGroundOffsetY = configuredPlayerGroundOffsetY or (root.Position.Y - currentPlayerGround.Y)
+
+	local ballClone = sourceBall:Clone()
+	ballClone.Name = "PushBall_" .. tostring(player.UserId) .. "_" .. ballInstanceId
+	prepareBallClone(ballClone)
+	pivotTo(ballClone, CFrame.new(initialBallPosition) * ballBaseRotation)
+	ballClone.Parent = getBallFolder()
 
 	return {
 		Player = player,
@@ -704,13 +891,14 @@ local function createState(
 		RootPart = root,
 		Ball = ballClone,
 		BallBaseRotation = ballBaseRotation,
+		BallGroundOffsetY = ballGroundOffsetY,
 		BallPosition = initialBallPosition,
 		PlayerPosition = root.Position,
 		OriginPosition = originPosition,
 		Forward = forward,
 		Lateral = lateral,
 		TrackRoot = trackRoot,
-		TrackRaycastParams = trackRaycastParams,
+		TrackRaycastQuery = trackRaycastQuery,
 		StageId = stageId,
 		TrackId = trackInfo.TrackId,
 		FirstStageId = trackInfo.FirstStageId,
@@ -720,6 +908,9 @@ local function createState(
 		Progress = 0,
 		LateralOffset = 0,
 		LateralInput = 0,
+		StartElapsed = 0,
+		StartPlayerPosition = root.Position,
+		StartPlayerRotation = root.CFrame - root.Position,
 		PlayerGroundOffsetY = playerGroundOffsetY,
 		OriginalWalkSpeed = humanoid.WalkSpeed,
 		OriginalJumpPower = humanoid.JumpPower,
@@ -778,6 +969,24 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Missing push ball track: " .. pathToString(sceneConfig.TrackPathSpec), stageId)
 	end
 
+	local trackSurfaces = { trackRoot }
+	if type(sceneConfig.StartSurfacePathSpec) == "table" then
+		local startSurface = InstancePath.WaitSpec(
+			{ Workspace = Workspace },
+			sceneConfig.StartSurfacePathSpec,
+			PATH_WAIT_SECONDS
+		)
+		if not startSurface then
+			return result(
+				false,
+				"Missing push ball start surface: " .. pathToString(sceneConfig.StartSurfacePathSpec),
+				stageId
+			)
+		end
+
+		table.insert(trackSurfaces, startSurface)
+	end
+
 	local wall = InstancePath.WaitSpec({ Workspace = Workspace }, sceneConfig.WallPathSpec, PATH_WAIT_SECONDS)
 	if not wall then
 		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPathSpec), stageId)
@@ -795,6 +1004,7 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		ballInstanceId,
 		sourceBall,
 		trackRoot,
+		trackSurfaces,
 		wall,
 		root,
 		humanoid,

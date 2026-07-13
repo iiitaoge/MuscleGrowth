@@ -41,9 +41,12 @@ function PushBallController.Init(player, remoteClient, movementController)
 
 	-- 恢复被隐藏的球
 	local function restoreSourceBall()
-		for part, originalModifier in pairs(hiddenParts) do
+		for part, originalState in pairs(hiddenParts) do
 			if part.Parent then
-				part.LocalTransparencyModifier = originalModifier
+				part.LocalTransparencyModifier = originalState.LocalTransparencyModifier
+				part.CanCollide = originalState.CanCollide
+				part.CanTouch = originalState.CanTouch
+				part.CanQuery = originalState.CanQuery
 			end
 		end
 		for texture, originalTransparency in pairs(hiddenTextures) do
@@ -90,8 +93,16 @@ function PushBallController.Init(player, remoteClient, movementController)
 
 		restoreSourceBall()
 		for _, part in ipairs(sourceParts) do
-			hiddenParts[part] = part.LocalTransparencyModifier
+			hiddenParts[part] = {
+				LocalTransparencyModifier = part.LocalTransparencyModifier,
+				CanCollide = part.CanCollide,
+				CanTouch = part.CanTouch,
+				CanQuery = part.CanQuery,
+			}
 			part.LocalTransparencyModifier = 1
+			part.CanCollide = false
+			part.CanTouch = false
+			part.CanQuery = false
 		end
 		for _, texture in ipairs(sourceTextures) do
 			hiddenTextures[texture] = texture.Transparency
