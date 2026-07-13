@@ -2,6 +2,7 @@
 -- 客户端抽蛋动作层，负责按钮请求、自动抽循环和结果展示。
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetSystemTheta"))
@@ -12,6 +13,47 @@ local PetRollController = {}
 function PetRollController.Init(snapshotController, eggPanelView, eggInteractionController, eggRevealView)
 	local isRequestingPetRoll = false
 	local isAutoRolling = false
+
+	local function getTrophies(snapshot)
+		return snapshot and tonumber(snapshot.Trophies) or nil
+	end
+
+	local function recordRequestResult(eggId, rollCount, trophiesBefore, result)
+		if not RunService:IsStudio() then
+			return
+		end
+
+		if eggRevealView and eggRevealView.RecordDiagnostic then
+			eggRevealView.RecordDiagnostic("pet-roll-result:" .. tostring(result and result.Success))
+		end
+
+		local revealState = eggRevealView
+			and eggRevealView.GetDebugState
+			and eggRevealView.GetDebugState()
+			or {}
+		local trophiesAfter = result and result.Data and getTrophies(result.Data) or nil
+		print(("[PetRollTest] egg=%s count=%s trophiesBefore=%s success=%s message=%s trophiesAfter=%s reveals=%s busy=%s waiting=%s panel=%s continueVisible=%s continueText=%s"):format(
+			tostring(eggId),
+			tostring(rollCount),
+			tostring(trophiesBefore),
+			tostring(result and result.Success),
+			tostring(result and result.Message),
+			tostring(trophiesAfter),
+			tostring(revealState.RevealStartCount),
+			tostring(revealState.IsBusy),
+			tostring(revealState.IsWaitingForContinue),
+			tostring(revealState.PanelOpen),
+			tostring(revealState.ContinueTextVisible),
+			tostring(revealState.ContinueText)
+		))
+
+		if result
+			and result.Success == false
+			and (revealState.IsBusy or revealState.ContinueTextVisible)
+		then
+			warn("[PetRollTest] anomaly=failed-request-left-reveal-visible")
+		end
+	end
 
 	local function isRevealBusy()
 		return eggRevealView and eggRevealView.IsBusy and eggRevealView.IsBusy()
@@ -24,8 +66,11 @@ function PetRollController.Init(snapshotController, eggPanelView, eggInteraction
 		end
 
 		isRequestingPetRoll = true
+		local latestSnapshot = snapshotController.GetLatestData()
+		local trophiesBefore = getTrophies(latestSnapshot)
 		local result = snapshotController.InvokeAction("RequestPetRoll", eggId, rollCount)
 		isRequestingPetRoll = false
+		recordRequestResult(eggId, rollCount, trophiesBefore, result)
 
 		if not result then
 			return nil

@@ -134,6 +134,17 @@ function Renderer.SetOpen(refs, isOpen)
 	end
 end
 
+function Renderer.GetDebugState(refs)
+	return {
+		PanelOpen = refs.PanelRoot.Visible == true,
+		ContinueButtonVisible = refs.ContinueButton.Visible == true,
+		ContinueButtonActive = refs.ContinueButton.Active == true,
+		ContinueTextVisible = refs.ContinueText.Visible == true,
+		ContinueText = refs.ContinueText.Text,
+		StopButtonVisible = refs.StopButton.Visible == true,
+	}
+end
+
 function Renderer.SetStopVisible(refs, isVisible)
 	setVisible(refs.StopButton, isVisible == true)
 end
