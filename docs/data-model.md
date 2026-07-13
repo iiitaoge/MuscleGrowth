@@ -110,7 +110,9 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 - 宠物背包客户端拆成四层：`PetInventoryPanelTheta` 管语义路径合同，`T/PetInventory/DataAdapter` 把快照转成宠物卡显示模型，`T/PetInventory/Renderer` 只负责克隆模板和填字段，`T/PetInventory/Controller` 只负责入口、关闭、装备、卸下、删除等事件编排。
 - 背包入口是 `HUD/LeftButtons/Button/Pet`，背包面板事实根是 `Main/NewPet`，背包内容根是 `Main/NewPet/BackPack`。
 - 已拥有宠物列表克隆 `BackPackPet` 模板，已装备宠物列表克隆 `EquippedPet` 模板；两类卡片都只要求 `Icon` 和 `MultiplierText`。
-- 装备宠物不会从背包列表移除；背包宠物点击只切换“选中用于删除”，不会直接装备。
+- 装备宠物不会从背包列表移除；普通模式点击背包宠物会装备到第一个空槽，点击已装备宠物卡会卸下对应槽位。
+- 背包宠物按倍率从高到低显示，同倍率按宠物实例 id 升序保持稳定顺序。
+- 删除使用独立的客户端模式：先点击删除进入选择状态，再选择未装备宠物并确认；已装备宠物必须先卸下，服务端也会拒绝直接删除已装备宠物。
 - `EquippedText` 只显示当前装备数量和上限，例如 `Equipped ( 2/3 Pets)`；`NoPet` 表示背包为空。
 
 ## 其他客户端 UI 四层

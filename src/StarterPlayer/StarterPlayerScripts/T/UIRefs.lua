@@ -452,6 +452,8 @@ function UIRefs.ResolvePetInventory(player)
 			"PetInventory EquippedText"
 		),
 		NoPet = requireGuiObject(waitForPath(mainGui, paths.NoPet, "PetInventory NoPet"), "PetInventory NoPet"),
+		TipRoot = requireGuiObject(waitForPath(mainGui, paths.TipRoot, "PetInventory TipRoot"), "PetInventory TipRoot"),
+		TipText = requireTextObject(waitForPath(mainGui, paths.TipText, "PetInventory TipText"), "PetInventory TipText"),
 		EquipBestButton = requireGuiObject(
 			waitForPath(mainGui, paths.EquipBestButton, "PetInventory EquipBestButton"),
 			"PetInventory EquipBestButton"
@@ -464,6 +466,24 @@ function UIRefs.ResolvePetInventory(player)
 			waitForPath(mainGui, paths.DeleteButton, "PetInventory DeleteButton"),
 			"PetInventory DeleteButton"
 		),
+		DeleteModeRoot = requireGuiObject(
+			waitForPath(mainGui, paths.DeleteModeRoot, "PetInventory DeleteModeRoot"),
+			"PetInventory DeleteModeRoot"
+		),
+		SelectAllButton = requireGuiObject(
+			waitForPath(mainGui, paths.SelectAllButton, "PetInventory SelectAllButton"),
+			"PetInventory SelectAllButton"
+		),
+		CancelDeleteButton = requireGuiObject(
+			waitForPath(mainGui, paths.CancelDeleteButton, "PetInventory CancelDeleteButton"),
+			"PetInventory CancelDeleteButton"
+		),
+		ConfirmDeleteButton = requireGuiObject(
+			waitForPath(mainGui, paths.ConfirmDeleteButton, "PetInventory ConfirmDeleteButton"),
+			"PetInventory ConfirmDeleteButton"
+		),
+		Messages = config.Messages,
+		TemporaryTipSeconds = config.TemporaryTipSeconds,
 	}
 end
 

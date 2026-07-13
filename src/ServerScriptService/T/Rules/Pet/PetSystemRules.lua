@@ -25,4 +25,8 @@ function PetSystemRules.GetRollCooldownSeconds()
 	return math.max(0, tonumber(PetSystemTheta.RollCooldownSeconds) or 0)
 end
 
+function PetSystemRules.GetMaxDeletePetsPerRequest()
+	return math.max(1, math.floor(tonumber(PetSystemTheta.MaxDeletePetsPerRequest) or 50))
+end
+
 return PetSystemRules

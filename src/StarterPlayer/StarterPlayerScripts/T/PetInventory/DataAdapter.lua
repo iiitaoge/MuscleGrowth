@@ -10,6 +10,26 @@ local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}
 
+local function compareInstanceIds(leftInstanceId, rightInstanceId)
+	local leftNumber = tonumber(leftInstanceId)
+	local rightNumber = tonumber(rightInstanceId)
+	if leftNumber and rightNumber and leftNumber ~= rightNumber then
+		return leftNumber < rightNumber
+	end
+
+	return tostring(leftInstanceId) < tostring(rightInstanceId)
+end
+
+local function comparePetsByMultiplier(left, right)
+	local leftMultiplier = tonumber(left.Multiplier) or 0
+	local rightMultiplier = tonumber(right.Multiplier) or 0
+	if leftMultiplier ~= rightMultiplier then
+		return leftMultiplier > rightMultiplier
+	end
+
+	return compareInstanceIds(left.InstanceId, right.InstanceId)
+end
+
 -- 将倍率数值格式化成宠物卡文本。
 local function formatMultiplier(value)
 	return "x" .. NumberFormatter.Format(value, 1)
@@ -33,8 +53,14 @@ end
 -- 生成背包宠物卡显示模型列表。
 function DataAdapter.BuildOwnedPetModels(petSnapshots, selectedPetInstanceIds)
 	local models = {}
+	local sortedSnapshots = {}
 
-	for index, petSnapshot in ipairs(petSnapshots) do
+	for _, petSnapshot in ipairs(petSnapshots) do
+		table.insert(sortedSnapshots, petSnapshot)
+	end
+	table.sort(sortedSnapshots, comparePetsByMultiplier)
+
+	for index, petSnapshot in ipairs(sortedSnapshots) do
 		local instanceId = petSnapshot.InstanceId
 		table.insert(models, {
 			Name = "Pet_" .. instanceId,
@@ -48,6 +74,23 @@ function DataAdapter.BuildOwnedPetModels(petSnapshots, selectedPetInstanceIds)
 	end
 
 	return models
+end
+
+-- 根据装备快照生成已装备实例 id 集合。
+function DataAdapter.BuildEquippedInstanceIdSet(equippedSnapshots)
+	local equippedInstanceIds = {} :: {[string]: boolean}
+	local emptyPetSlot = PetSystemTheta.EmptyPetSlot == nil and 0 or PetSystemTheta.EmptyPetSlot
+
+	for _, petSnapshot in ipairs(equippedSnapshots) do
+		local instanceId = petSnapshot.InstanceId
+		if petSnapshot.PetTypeId ~= nil
+			and instanceId ~= nil
+			and tostring(instanceId) ~= tostring(emptyPetSlot) then
+			equippedInstanceIds[tostring(instanceId)] = true
+		end
+	end
+
+	return equippedInstanceIds
 end
 
 -- 生成已装备宠物卡显示模型列表。
@@ -95,12 +138,14 @@ end
 -- 将选中集合转换成稳定排序的实例 id 列表。
 function DataAdapter.BuildSelectedInstanceIdList(selectedPetInstanceIds)
 	local instanceIds = {}
-	for instanceId in pairs(selectedPetInstanceIds) do
-		table.insert(instanceIds, instanceId)
+	for instanceId, isSelected in pairs(selectedPetInstanceIds) do
+		if isSelected == true then
+			table.insert(instanceIds, instanceId)
+		end
 	end
 
 	table.sort(instanceIds, function(left, right)
-		return left < right
+		return compareInstanceIds(left, right)
 	end)
 
 	return instanceIds

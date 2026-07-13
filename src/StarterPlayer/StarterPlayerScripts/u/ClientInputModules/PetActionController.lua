@@ -11,6 +11,19 @@ local PetActionController = {}
 -- 初始化宠物动作控制器。
 function PetActionController.Init(snapshotController, petInventoryView)
 	local isOpeningInventory = false
+	local maxEquippedPets = math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
+	local maxDeletePetsPerRequest = math.max(
+		1,
+		math.floor(tonumber(PetSystemTheta.MaxDeletePetsPerRequest) or 50)
+	)
+	local emptyPetSlot = PetSystemTheta.EmptyPetSlot == nil and 0 or PetSystemTheta.EmptyPetSlot
+
+	local function refreshInventoryFromLatestData()
+		local latestData = snapshotController.GetLatestData()
+		if latestData then
+			petInventoryView.Refresh(latestData)
+		end
+	end
 
 	-- 按倍率和实例 id 排序宠物快照。
 	local function comparePetsByMultiplier(left, right)
@@ -42,7 +55,6 @@ function PetActionController.Init(snapshotController, petInventoryView)
 
 	-- 装备当前背包中倍率最高的宠物。
 	local function equipBest()
-		local maxEquippedPets = math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
 		local ownedPets = getOwnedPetsByBestMultiplier()
 		local latestPetResult = nil
 
@@ -65,7 +77,6 @@ function PetActionController.Init(snapshotController, petInventoryView)
 
 	-- 卸下所有装备槽。
 	local function unequipAll()
-		local maxEquippedPets = math.max(1, math.floor(tonumber(PetSystemTheta.MaxEquippedPets) or 3))
 		local latestPetResult = nil
 
 		for slotIndex = 1, maxEquippedPets do
@@ -77,24 +88,84 @@ function PetActionController.Init(snapshotController, petInventoryView)
 		end
 	end
 
-	-- 删除给定宠物实例列表。
+	-- 删除给定宠物实例列表；超过服务端单次上限时按稳定顺序分批提交。
 	local function deletePets(petInstanceIds)
-		-- 确保类型为 表 确保表长度 > 0
 		if type(petInstanceIds) ~= "table" or #petInstanceIds <= 0 then
-			warn("No pets to delete")
-			return
+			return {
+				Success = false,
+				Message = "No pets to delete",
+			}
 		end
 
-		local result = snapshotController.InvokeAction("RequestPetDelete", petInstanceIds)
-		if result and result.Data then
-			petInventoryView.Refresh(result.Data)
+		local latestResult = nil
+		for firstIndex = 1, #petInstanceIds, maxDeletePetsPerRequest do
+			local batch = {}
+			local lastIndex = math.min(firstIndex + maxDeletePetsPerRequest - 1, #petInstanceIds)
+			for index = firstIndex, lastIndex do
+				table.insert(batch, petInstanceIds[index])
+			end
+
+			local result = snapshotController.InvokeAction("RequestPetDelete", batch)
+			latestResult = result or latestResult
+			if not result or result.Success ~= true then
+				refreshInventoryFromLatestData()
+				return result
+			end
 		end
 
-		return result
+		refreshInventoryFromLatestData()
+		return latestResult
 	end
 
-	-- 装备单只宠物并刷新背包。
-	local function equipPet(petInstanceId, slotIndex)
+	-- 根据最新快照寻找第一空槽，并识别已经装备的实例。
+	local function findFirstEmptySlot(petInstanceId)
+		local latestData = snapshotController.GetLatestData()
+		local equippedSnapshots = latestData and latestData.EquippedPetSnapshots
+		local occupiedSlots = {}
+		local normalizedInstanceId = tostring(petInstanceId)
+
+		if type(equippedSnapshots) == "table" then
+			for _, petSnapshot in ipairs(equippedSnapshots) do
+				local slotIndex = math.floor(tonumber(petSnapshot.SlotIndex) or 0)
+				local equippedInstanceId = petSnapshot.InstanceId
+				local hasPet = petSnapshot.PetTypeId ~= nil
+					and equippedInstanceId ~= nil
+					and tostring(equippedInstanceId) ~= tostring(emptyPetSlot)
+
+				if hasPet and tostring(equippedInstanceId) == normalizedInstanceId then
+					return nil, true
+				end
+				if hasPet and slotIndex >= 1 and slotIndex <= maxEquippedPets then
+					occupiedSlots[slotIndex] = true
+				end
+			end
+		end
+
+		for slotIndex = 1, maxEquippedPets do
+			if not occupiedSlots[slotIndex] then
+				return slotIndex, false
+			end
+		end
+
+		return nil, false
+	end
+
+	-- 装备单只宠物并刷新背包；槽位由客户端快照中的第一个空槽决定。
+	local function equipPet(petInstanceId)
+		local slotIndex, isAlreadyEquipped = findFirstEmptySlot(petInstanceId)
+		if isAlreadyEquipped then
+			return {
+				Success = false,
+				ClientReason = "AlreadyEquipped",
+			}
+		end
+		if not slotIndex then
+			return {
+				Success = false,
+				ClientReason = "NoEmptySlot",
+			}
+		end
+
 		local result = snapshotController.InvokeAction("RequestPetEquip", petInstanceId, slotIndex)
 		if result and result.Data then
 			petInventoryView.Refresh(result.Data)

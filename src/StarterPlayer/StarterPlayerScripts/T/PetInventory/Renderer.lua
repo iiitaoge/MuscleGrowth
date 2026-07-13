@@ -162,4 +162,14 @@ function Renderer.SetNoPetVisible(refs, isVisible)
 	setVisible(refs.NoPet, isVisible == true)
 end
 
+function Renderer.SetDeleteMode(refs, isDeleteMode)
+	setVisible(refs.DeleteButton, isDeleteMode ~= true)
+	setVisible(refs.DeleteModeRoot, isDeleteMode == true)
+end
+
+function Renderer.SetTip(refs, isVisible, text)
+	setTextObject(refs.TipText, isVisible and tostring(text or "") or "")
+	setVisible(refs.TipRoot, isVisible == true)
+end
+
 return Renderer

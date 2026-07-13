@@ -29,12 +29,20 @@ local PetInventoryPanelTheta = {
 		EquippedText = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "Info", "PetEquipList", "EquippedText" } },
 		-- 背包为空提示。
 		NoPet = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "Info", "NoPet" } },
+		-- 背包操作提示根节点及文本。
+		TipRoot = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Tip" } },
+		TipText = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Tip", "Value" } },
 		-- 装备最佳宠物动作入口。
 		EquipBestButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "EquipBest" } },
 		-- 全部卸下动作入口。
 		UnequipAllButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "UnEquipAll" } },
 		-- 删除选中宠物动作入口。
 		DeleteButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "Delete" } },
+		-- 删除模式按钮组及其动作入口。
+		DeleteModeRoot = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "Deletes" } },
+		SelectAllButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "Deletes", "Delete_Select" } },
+		CancelDeleteButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "Deletes", "Delete_Cancel" } },
+		ConfirmDeleteButton = { RootKey = "ScreenGui", Path = { "NewPet", "BackPack", "Main", "BottomButton", "Deletes", "Delete_ok" } },
 	},
 
 	-- 宠物卡内部固定字段路径。背包卡和装备卡共用。
@@ -45,6 +53,16 @@ local PetInventoryPanelTheta = {
 
 	-- 装备数量文本格式。
 	EquippedTextFormat = "Equipped ( %s/%s Pets)",
+
+	Messages = {
+		DeletePrompt = "Select Pets to Delete!",
+		SlotFull = "Pet slots are full!",
+		AlreadyEquipped = "Pet is already equipped.",
+		DeleteEquippedBlocked = "Unequip this pet before deleting.",
+		EmptyDeleteSelection = "Select at least one pet.",
+		DeleteFailed = "Unable to delete pets.",
+	},
+	TemporaryTipSeconds = 1.5,
 }
 
 return PetInventoryPanelTheta

@@ -8,7 +8,6 @@ local PlayerVisualStateSync = require(script.Parent.Parent.Parent.WorldSync.Play
 local PetDeleteTransition = {}
 
 local INVALID_REQUEST_MESSAGE = "Invalid request"
-local MAX_DELETE_COUNT = 50
 
 local function appendInstanceId(instanceIds, seenInstanceIds, value)
 	if PetSystemRules.IsEmptyPetSlot(value) then
@@ -27,11 +26,12 @@ end
 local function normalizeInstanceIds(petInstanceIds)
 	local instanceIds = {}
 	local seenInstanceIds = {}
+	local maxDeleteCount = PetSystemRules.GetMaxDeletePetsPerRequest()
 
 	if type(petInstanceIds) == "table" then
 		for _, value in ipairs(petInstanceIds) do
 			appendInstanceId(instanceIds, seenInstanceIds, value)
-			if #instanceIds >= MAX_DELETE_COUNT then
+			if #instanceIds >= maxDeleteCount then
 				return instanceIds
 			end
 		end
@@ -39,7 +39,7 @@ local function normalizeInstanceIds(petInstanceIds)
 		if #instanceIds == 0 then
 			for _, value in pairs(petInstanceIds) do
 				appendInstanceId(instanceIds, seenInstanceIds, value)
-				if #instanceIds >= MAX_DELETE_COUNT then
+				if #instanceIds >= maxDeleteCount then
 					return instanceIds
 				end
 			end
@@ -51,13 +51,15 @@ local function normalizeInstanceIds(petInstanceIds)
 	return instanceIds
 end
 
-local function clearEquippedDeletedPets(progressState, deletedInstanceIds)
-	for slotIndex, slotValue in ipairs(progressState.EquippedPetInstanceIds) do
-		local slotInstanceId = tostring(slotValue)
-		if deletedInstanceIds[slotInstanceId] then
-			progressState.EquippedPetInstanceIds[slotIndex] = PetSystemRules.GetEmptyPetSlot()
+local function buildEquippedInstanceIdSet(progressState)
+	local equippedInstanceIds = {}
+	for _, slotValue in ipairs(progressState.EquippedPetInstanceIds) do
+		if not PetSystemRules.IsEmptyPetSlot(slotValue) then
+			equippedInstanceIds[tostring(slotValue)] = true
 		end
 	end
+
+	return equippedInstanceIds
 end
 
 -- 服务侧删除宠物
@@ -81,13 +83,18 @@ function PetDeleteTransition.RequestDelete(player, petInstanceIds)
 		end
 	end
 
+	-- 已装备宠物必须先卸下；整批拒绝，避免部分删除。
+	local equippedInstanceIds = buildEquippedInstanceIdSet(progressState)
+	for _, instanceId in ipairs(normalizedInstanceIds) do
+		if equippedInstanceIds[instanceId] then
+			return TransitionResult.FailureWithSnapshot(player, "Unequip pets before deleting")
+		end
+	end
+
 	-- 需要删除的ID标为true
-	local deletedInstanceIds = {}
 	for _, instanceId in ipairs(normalizedInstanceIds) do
 		progressState.OwnedPets[instanceId] = nil
-		deletedInstanceIds[instanceId] = true
 	end
-	clearEquippedDeletedPets(progressState, deletedInstanceIds)
 
 	PlayerProgressState.Set(player, progressState)
 	PlayerVisualStateSync.Refresh(player)

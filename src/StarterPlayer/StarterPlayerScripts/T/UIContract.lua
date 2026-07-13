@@ -390,9 +390,15 @@ local function validatePetInventory()
 		"EquippedTemplate",
 		"EquippedText",
 		"NoPet",
+		"TipRoot",
+		"TipText",
 		"EquipBestButton",
 		"UnequipAllButton",
 		"DeleteButton",
+		"DeleteModeRoot",
+		"SelectAllButton",
+		"CancelDeleteButton",
+		"ConfirmDeleteButton",
 	})
 	requirePathRoot(paths.PetButton, "HUDScreenGui", "PetInventoryPanelTheta.Paths.PetButton")
 	for key, pathSpec in pairs(paths) do
@@ -409,12 +415,27 @@ local function validatePetInventory()
 		requirePathRoot(pathSpec, "PetCard", "PetInventoryPanelTheta.PetCardFieldPathSpecs." .. key)
 	end
 
+	local temporaryTipSeconds = requireNumber(
+		PetInventoryPanelTheta.TemporaryTipSeconds,
+		"PetInventoryPanelTheta.TemporaryTipSeconds"
+	)
+	assert(temporaryTipSeconds >= 0, "PetInventoryPanelTheta.TemporaryTipSeconds must be non-negative.")
+
 	return {
 		HudScreenGuiName = requireString(PetInventoryPanelTheta.HudScreenGuiName, "PetInventoryPanelTheta.HudScreenGuiName"),
 		ScreenGuiName = requireString(PetInventoryPanelTheta.ScreenGuiName, "PetInventoryPanelTheta.ScreenGuiName"),
 		Paths = paths,
 		PetCardFieldPathSpecs = petCardFieldPathSpecs,
 		EquippedTextFormat = requireString(PetInventoryPanelTheta.EquippedTextFormat, "PetInventoryPanelTheta.EquippedTextFormat"),
+		Messages = requireStringMap(PetInventoryPanelTheta.Messages, "PetInventoryPanelTheta.Messages", {
+			"DeletePrompt",
+			"SlotFull",
+			"AlreadyEquipped",
+			"DeleteEquippedBlocked",
+			"EmptyDeleteSelection",
+			"DeleteFailed",
+		}),
+		TemporaryTipSeconds = temporaryTipSeconds,
 	}
 end
 
