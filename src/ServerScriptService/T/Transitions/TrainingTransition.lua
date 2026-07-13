@@ -9,7 +9,6 @@ local TrainingAreaObservation = require(script.Parent.Parent.Parent.y.TrainingAr
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
 local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
-local CharacterMorphTransition = require(script.Parent.CharacterMorphTransition)
 
 local TrainingTransition = {}
 
@@ -227,7 +226,6 @@ local function getGrowthDecision(player)
 end
 
 local function applyTrainingGains(player, progressState, strengthGain, expGain)
-	local previousLevel = LevelRules.CalculateLevel(progressState.Exp, progressState.RebirthCount)
 	local nextProgressState = table.clone(progressState)
 
 	nextProgressState.Strength = math.max(0, nextProgressState.Strength + (strengthGain or 0))
@@ -237,10 +235,6 @@ local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	)
 
 	PlayerProgressState.Set(player, nextProgressState)
-	local nextLevel = LevelRules.CalculateLevel(nextProgressState.Exp, nextProgressState.RebirthCount)
-	if nextLevel ~= previousLevel then
-		CharacterMorphTransition.Refresh(player, false)
-	end
 end
 
 local function isCurrentGrowthLoop(runtimeState, loopToken)
