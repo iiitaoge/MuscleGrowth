@@ -25,6 +25,7 @@ local SceneTheta = {
 
 	Attributes = {
 		-- 这里只是定义 Attribute 的名字
+		DataLoaded = "MuscleGrowthDataLoaded",
 		CurrentBarbellId = "MG_CurrentBarbellId",
 		IsTraining = "MG_IsTraining",
 		IsPushingBall = "MG_IsPushingBall",

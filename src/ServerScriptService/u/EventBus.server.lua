@@ -1,8 +1,12 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local CharacterBodyVisualTransition = require(script.Parent.Parent.T.Transitions.CharacterBodyVisualTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
+local PlayerPersistenceTransition = require(script.Parent.Parent.T.Transitions.PlayerPersistenceTransition)
 local PetDeleteTransition = require(script.Parent.Parent.T.Transitions.Pet.PetDeleteTransition)
 local PetEquipTransition = require(script.Parent.Parent.T.Transitions.Pet.PetEquipTransition)
 local PetRollTransition = require(script.Parent.Parent.T.Transitions.Pet.PetRollTransition)
@@ -25,6 +29,10 @@ local REMOTE_EVENT_MIN_INTERVALS = {
 }
 
 local REBIRTH_DESTINATION_ID = "World1"
+local DATA_LOADED_ATTRIBUTE = SceneTheta.Attributes.DataLoaded
+
+local initializingPlayers = setmetatable({}, { __mode = "k" })
+local removingPlayers = setmetatable({}, { __mode = "k" })
 
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
@@ -37,9 +45,71 @@ end)
 EggWorldSync.InitWorld()
 
 local function initPlayer(player)
-	PlayerLifecycleTransition.Init(player)
+	if initializingPlayers[player] or removingPlayers[player] then
+		return
+	end
+
+	initializingPlayers[player] = true
+	player:SetAttribute(DATA_LOADED_ATTRIBUTE, false)
+
+	local loadSucceeded, stateOrReason = PlayerPersistenceTransition.LoadPlayer(player)
+	if not loadSucceeded then
+		initializingPlayers[player] = nil
+		if player.Parent == Players then
+			if stateOrReason == "SessionLocked" then
+				player:Kick("玩家数据仍在另一台服务器中使用，请稍后重试。")
+			else
+				warn(("[PlayerPersistence] failed to load player %s: %s"):format(
+					player.Name,
+					tostring(stateOrReason)
+				))
+				player:Kick("玩家数据加载失败，请稍后重试。")
+			end
+		end
+		return
+	end
+
+	PlayerLifecycleTransition.Init(player, stateOrReason)
+	if player.Parent ~= Players then
+		TrainingTransition.RemoveRuntime(player)
+		PlayerPersistenceTransition.SavePlayer(player, true)
+		PlayerLifecycleTransition.Remove(player)
+		initializingPlayers[player] = nil
+		return
+	end
+
 	CharacterBodyVisualTransition.InitPlayer(player)
+	player:SetAttribute(DATA_LOADED_ATTRIBUTE, true)
+	initializingPlayers[player] = nil
 end
+
+local function removePlayer(player)
+	if removingPlayers[player] then
+		return
+	end
+
+	removingPlayers[player] = true
+	player:SetAttribute(DATA_LOADED_ATTRIBUTE, false)
+
+	RemoteBinder.RemovePlayer(player)
+	PushBallTransition.RemovePlayer(player)
+	TrophyTransition.RemovePlayer(player)
+	CharacterBodyVisualTransition.RemovePlayer(player)
+	TrainingTransition.RemoveRuntime(player)
+
+	local saveSucceeded, saveReason = PlayerPersistenceTransition.SavePlayer(player, true)
+	if not saveSucceeded and saveReason ~= "NotLoaded" then
+		warn(("[PlayerPersistence] failed to save departing player %s: %s"):format(
+			player.Name,
+			tostring(saveReason)
+		))
+	end
+
+	PlayerLifecycleTransition.Remove(player)
+	initializingPlayers[player] = nil
+end
+
+PlayerPersistenceTransition.StartAutosave()
 
 RemoteBinder.BindEvents(REMOTE_EVENT_MIN_INTERVALS, {
 	MoveStart = function(player)
@@ -89,14 +159,18 @@ RemoteBinder.BindFunctions({
 
 Players.PlayerAdded:Connect(initPlayer)
 
-Players.PlayerRemoving:Connect(function(player)
-	RemoteBinder.RemovePlayer(player)
-	PushBallTransition.RemovePlayer(player)
-	TrophyTransition.RemovePlayer(player)
-	CharacterBodyVisualTransition.RemovePlayer(player)
-	PlayerLifecycleTransition.Remove(player)
-end)
+Players.PlayerRemoving:Connect(removePlayer)
 
 for _, player in ipairs(Players:GetPlayers()) do
 	initPlayer(player)
 end
+
+game:BindToClose(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		player:SetAttribute(DATA_LOADED_ATTRIBUTE, false)
+		PushBallTransition.RemovePlayer(player)
+		TrainingTransition.RemoveRuntime(player)
+	end
+
+	PlayerPersistenceTransition.Shutdown()
+end)

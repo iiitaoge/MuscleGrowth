@@ -2,8 +2,16 @@
 -- 客户端输入启动器，只负责组装 UI、Remote、场景输入和动作控制器。
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
+local dataLoadedAttribute = SceneTheta.Attributes.DataLoaded
+
+while player:GetAttribute(dataLoadedAttribute) ~= true do
+	player:GetAttributeChangedSignal(dataLoadedAttribute):Wait()
+end
+
 local modules = script.Parent:WaitForChild("ClientInputModules")
 
 local BarbellDisplayController = require(script.Parent.Parent.T.BarbellDisplay.Controller)

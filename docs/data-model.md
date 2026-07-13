@@ -10,7 +10,7 @@
 
 ## 映射关系
 
-- `S_p` 玩家进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
+- `S_p` 玩家持久进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
 - `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`NextGrowthAt`、`GrowthLoopToken`、`LastPetRollTime`。
 - `theta` 规则参数：自动区、杠铃、宠物、宠物蛋拆分配置、宠物背包 UI 合同、宠物系统、重生、等级经验、初始状态、Remote 协议。
 - `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求。
@@ -22,12 +22,24 @@
 
 - `S/PlayerProgressState.lua` 拥有 `S_p`，只提供 `Init(player, state)`、`Remove`、`Get`、`Set`。
 - `S/TrainingRuntimeState.lua` 拥有 `S_r`，只提供 `Init(player, state)`、`Remove`、`Get`、`Set`。
+- `T/Rules/PlayerProgressRules.lua` 创建并清洗 `S_p`；只允许明确列出的长期字段进入存档。
+- `T/Transitions/PlayerPersistenceTransition.lua` 使用 DataStore SchemaVersion 1 加载、保存并租用玩家会话。
 - `S` 不读取 `theta`，不认识字段业务含义，不负责状态是否合法；它只隔离保存和复制状态。
 - `theta/*.lua` 只保存参数表，不保存玩家状态，不访问 Workspace，不执行业务转移。
 - `y/*.lua` 把不可信声明或 Workspace 查询转成服务端观测结果，不写状态。
 - `u/*.lua` 只接输入并调用 `T`，不能直接写 `S`。
 - `T/*.lua` 是唯一能根据 `S`、`u`、`y`、`theta` 产生 `S'` 和 `O` 的层。
 - `T` 可以创建临时局部值，但长期事实只能写回 `S`，规则参数只能来自 `theta`，观测事实只能来自 `y`。
+
+## 持久化边界
+
+- `S_p` 使用 `MuscleGrowth_PlayerProgress_v1` 持久化；Studio 使用独立的 `_Studio` DataStore。
+- Studio 新测试可以接管 `_Studio` 存储中的旧测试租约；正式服不能绕过未过期的其他服务器租约。
+- 每条记录包含 `SchemaVersion`、`State`、`Session` 和 `UpdatedAt`。当前 `SchemaVersion = 1`。
+- 加载成功并取得服务器会话租约后，玩家属性 `MuscleGrowthDataLoaded` 才会变为 `true`。
+- 加载失败、存档损坏、版本不兼容或会话仍被其他服务器持有时，不能创建默认状态覆盖原记录。
+- `S_r`、推球过程、移动状态、抽宠冷却和客户端 UI 状态不持久化。
+- 服务端每 60 秒自动保存；正常离开和关服时保存并释放会话租约。
 
 ## 功能链路模板
 
