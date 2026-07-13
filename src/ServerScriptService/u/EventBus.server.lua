@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
+local CharacterBodyVisualTransition = require(script.Parent.Parent.T.Transitions.CharacterBodyVisualTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
 local PetDeleteTransition = require(script.Parent.Parent.T.Transitions.Pet.PetDeleteTransition)
 local PetEquipTransition = require(script.Parent.Parent.T.Transitions.Pet.PetEquipTransition)
@@ -37,6 +38,7 @@ EggWorldSync.InitWorld()
 
 local function initPlayer(player)
 	PlayerLifecycleTransition.Init(player)
+	CharacterBodyVisualTransition.InitPlayer(player)
 end
 
 RemoteBinder.BindEvents(REMOTE_EVENT_MIN_INTERVALS, {
@@ -91,6 +93,7 @@ Players.PlayerRemoving:Connect(function(player)
 	RemoteBinder.RemovePlayer(player)
 	PushBallTransition.RemovePlayer(player)
 	TrophyTransition.RemovePlayer(player)
+	CharacterBodyVisualTransition.RemovePlayer(player)
 	PlayerLifecycleTransition.Remove(player)
 end)
 

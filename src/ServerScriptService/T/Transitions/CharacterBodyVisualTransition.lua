@@ -1,5 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
+local CharacterBodyVisualRules = require(script.Parent.Parent.Rules.CharacterBodyVisualRules)
+
 local CharacterBodyVisualTransition = {}
 
 local MIN_RIG_INDEX = 1
@@ -8,6 +11,8 @@ local BODY_VISUAL_TIER_ATTRIBUTE = "MuscleGrowthBodyVisualTier"
 local BODY_VISUAL_BASE_SIZE_ATTRIBUTE = "MuscleGrowthBodyVisualBaseSize"
 
 local tierCache = {}
+local playerConnections = {}
+local refreshFailureStates = {}
 
 local function getBodyFolder()
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
@@ -188,6 +193,106 @@ function CharacterBodyVisualTransition.Apply(character, rigIndex, force)
 
 	character:SetAttribute(BODY_VISUAL_TIER_ATTRIBUTE, rigIndex)
 	return true, ("Applied %s nested body visuals"):format(tierData.RigName), #operations
+end
+
+local function clearRefreshFailure(player)
+	refreshFailureStates[player] = nil
+end
+
+local function warnRefreshFailure(player, character, rigIndex, message)
+	local previousFailure = refreshFailureStates[player]
+	if previousFailure
+		and previousFailure.Character == character
+		and previousFailure.RigIndex == rigIndex
+	then
+		return
+	end
+
+	refreshFailureStates[player] = {
+		Character = character,
+		RigIndex = rigIndex,
+	}
+
+	warn(("[CharacterBodyVisual] player=%s rig=Rig%d error=%s"):format(
+		player.Name,
+		rigIndex,
+		tostring(message)
+	))
+end
+
+function CharacterBodyVisualTransition.RefreshPlayer(player, force)
+	local progressState = PlayerProgressState.Get(player)
+	if not progressState then
+		return false, "Player progress state does not exist"
+	end
+
+	local character = player.Character
+	if not character then
+		return false, "Player character does not exist"
+	end
+
+	local rigIndex = CharacterBodyVisualRules.ResolveRigIndex(progressState)
+	local callSucceeded, success, message, appliedCount = pcall(
+		CharacterBodyVisualTransition.Apply,
+		character,
+		rigIndex,
+		force
+	)
+
+	if not callSucceeded then
+		warnRefreshFailure(player, character, rigIndex, success)
+		return false, tostring(success), 0, rigIndex
+	end
+
+	if not success then
+		warnRefreshFailure(player, character, rigIndex, message)
+		return false, message, appliedCount or 0, rigIndex
+	end
+
+	clearRefreshFailure(player)
+	if (appliedCount or 0) > 0 then
+		print(("[CharacterBodyVisual] player=%s rig=Rig%d applied=%d characterPreserved=%s"):format(
+			player.Name,
+			rigIndex,
+			appliedCount,
+			tostring(player.Character == character)
+		))
+	end
+
+	return true, message, appliedCount or 0, rigIndex
+end
+
+local function refreshAddedCharacter(player, character)
+	clearRefreshFailure(player)
+
+	task.defer(function()
+		local humanoid = character:WaitForChild("Humanoid", 5)
+		if humanoid and player.Character == character then
+			CharacterBodyVisualTransition.RefreshPlayer(player, true)
+		end
+	end)
+end
+
+function CharacterBodyVisualTransition.InitPlayer(player)
+	CharacterBodyVisualTransition.RemovePlayer(player)
+
+	playerConnections[player] = player.CharacterAdded:Connect(function(character)
+		refreshAddedCharacter(player, character)
+	end)
+
+	if player.Character then
+		refreshAddedCharacter(player, player.Character)
+	end
+end
+
+function CharacterBodyVisualTransition.RemovePlayer(player)
+	local connection = playerConnections[player]
+	if connection then
+		connection:Disconnect()
+		playerConnections[player] = nil
+	end
+
+	clearRefreshFailure(player)
 end
 
 function CharacterBodyVisualTransition.ClearCache()

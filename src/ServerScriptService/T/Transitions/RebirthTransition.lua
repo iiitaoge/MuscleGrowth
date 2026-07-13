@@ -1,5 +1,6 @@
 local PlayerProgressState = require(script.Parent.Parent.Parent.S.PlayerProgressState)
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
+local CharacterBodyVisualTransition = require(script.Parent.CharacterBodyVisualTransition)
 local TransitionResult = require(script.Parent.TransitionResult)
 
 local RebirthTransition = {}
@@ -22,6 +23,7 @@ function RebirthTransition.TryApply(player)
 	nextProgressState.Exp = 0
 
 	PlayerProgressState.Set(player, nextProgressState)
+	CharacterBodyVisualTransition.RefreshPlayer(player, false)
 
 	return true, "Rebirth succeeded"
 end

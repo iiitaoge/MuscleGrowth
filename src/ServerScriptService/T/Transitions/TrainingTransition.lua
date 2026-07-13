@@ -8,6 +8,7 @@ local MovementObservation = require(script.Parent.Parent.Parent.y.MovementObserv
 local TrainingAreaObservation = require(script.Parent.Parent.Parent.y.TrainingAreaObservation)
 local LevelRules = require(script.Parent.Parent.Rules.LevelRules)
 local TrainingGainRules = require(script.Parent.Parent.Rules.TrainingGainRules)
+local CharacterBodyVisualTransition = require(script.Parent.CharacterBodyVisualTransition)
 local PlayerVisualStateSync = require(script.Parent.Parent.WorldSync.PlayerVisualStateSync)
 
 local TrainingTransition = {}
@@ -235,6 +236,7 @@ local function applyTrainingGains(player, progressState, strengthGain, expGain)
 	)
 
 	PlayerProgressState.Set(player, nextProgressState)
+	CharacterBodyVisualTransition.RefreshPlayer(player, false)
 end
 
 local function isCurrentGrowthLoop(runtimeState, loopToken)
