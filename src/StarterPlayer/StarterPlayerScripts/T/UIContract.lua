@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 
+local AutoAreaTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("AutoAreaTheta"))
+local AutoAreaSceneTheta = require(theta:WaitForChild("Scene"):WaitForChild("AutoAreaSceneTheta"))
+local AutoAreaDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("AutoAreaDisplayTheta"))
 local HUDPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("HUDPanelTheta"))
 local FloatingGainTheta = require(theta:WaitForChild("UI"):WaitForChild("FloatingGainTheta"))
 local RebirthPanelTheta = require(theta:WaitForChild("UI"):WaitForChild("RebirthPanelTheta"))
@@ -486,6 +489,51 @@ local function validateBarbellDisplay()
 	}
 end
 
+local function validateAutoAreaDisplay()
+	local fieldPathSpecs = requirePathMap(
+		AutoAreaDisplayTheta.FieldPathSpecs,
+		"AutoAreaDisplayTheta.FieldPathSpecs",
+		{ "PowerText", "RebirthText", "Locked", "Unlocked" }
+	)
+	for key, pathSpec in pairs(fieldPathSpecs) do
+		requirePathRoot(pathSpec, "AutoAreaInstance", "AutoAreaDisplayTheta.FieldPathSpecs." .. key)
+	end
+
+	local instances = {}
+	local instanceCount = 0
+	for instanceId, instanceConfig in pairs(requireTable(AutoAreaSceneTheta.Instances, "AutoAreaSceneTheta.Instances")) do
+		local context = "AutoAreaSceneTheta.Instances." .. tostring(instanceId)
+		requireString(instanceId, context .. " key")
+		instanceConfig = requireTable(instanceConfig, context)
+
+		local areaId = requireString(instanceConfig.AreaId, context .. ".AreaId")
+		local areaConfig = requireTable(AutoAreaTheta[areaId], context .. ".AreaId gameplay config")
+		requireNumber(areaConfig.Multiplier, "AutoAreaTheta." .. areaId .. ".Multiplier")
+		local requiredRebirth = requireNumber(
+			areaConfig.RequiredRebirth,
+			"AutoAreaTheta." .. areaId .. ".RequiredRebirth"
+		)
+		assert(
+			requiredRebirth >= 0 and requiredRebirth % 1 == 0,
+			"AutoAreaTheta." .. areaId .. ".RequiredRebirth must be a non-negative integer."
+		)
+
+		local touchPathSpec = requirePath(instanceConfig.TouchPathSpec, context .. ".TouchPathSpec")
+		requirePathRoot(touchPathSpec, "Workspace", context .. ".TouchPathSpec")
+		instances[instanceId] = {
+			AreaId = areaId,
+			TouchPathSpec = touchPathSpec,
+		}
+		instanceCount += 1
+	end
+	assert(instanceCount > 0, "AutoAreaSceneTheta.Instances must not be empty.")
+
+	return {
+		FieldPathSpecs = fieldPathSpecs,
+		Instances = instances,
+	}
+end
+
 function UIContract.ValidateAll()
 	if validatedConfigs then
 		return validatedConfigs
@@ -500,6 +548,7 @@ function UIContract.ValidateAll()
 		PetInventory = validatePetInventory(),
 		TravelPanel = validateTravelPanel(),
 		BarbellDisplay = validateBarbellDisplay(),
+		AutoAreaDisplay = validateAutoAreaDisplay(),
 	}
 
 	return validatedConfigs

@@ -115,10 +115,11 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 
 ## 其他客户端 UI 四层
 
-- `HUDPanelTheta`、`FloatingGainTheta`、`RebirthPanelTheta`、`BarbellDisplayTheta` 分别描述 HUD、飘字、重生面板、杠铃场景展示的语义合同。
+- `HUDPanelTheta`、`FloatingGainTheta`、`RebirthPanelTheta`、`BarbellDisplayTheta`、`AutoAreaDisplayTheta` 分别描述 HUD、飘字、重生面板、杠铃场景展示、自动区场景展示的语义合同。
 - `T/HUD` 只刷新长期 HUD 数值和经验条；训练力量飘字与奖杯增长飘字由 `T/FloatingGain` 独立处理。
 - `T/RebirthPanel` 只处理重生面板展示和请求按钮，不决定服务端是否允许重生。
 - `T/BarbellDisplay` 只同步场景展示状态，不决定杠铃装备事实。
+- `T/AutoAreaDisplay` 使用 `AutoAreaTheta` 和玩家快照派生倍率、重生条件及解锁文案，不决定服务端自动区解锁权限。
 
 ## 客户端输入拆分
 
@@ -169,6 +170,7 @@ u 收请求 -> y 验事实 -> T 读 S/theta -> T 判断规则 -> T 改变并写�
 - `ResultTemplate`：已经解析出的蛋抽奖结果模板根节点。
 - `PetCard`：已经克隆出的宠物卡根节点。
 - `DisplayModel`：已经解析出的场景展示模型。
+- `AutoAreaInstance`：通过自动区 `Touch.Parent` 解析出的单个自动器械根节点。
 - `ReturnNode`：已经通过奖杯语义查询得到的 Free/VIP 领奖节点。
 
 Scene 配置中的固定路径字段统一使用 `*PathSpec` 命名，例如 `TouchPathSpec`、`HolderPathSpec`、`TrackPathSpec`、`RootPathSpec`；客户端共享场景源同样使用 `ClientTrainEquipmentPathSpec`、`ClientPetSourcePathSpec`。

@@ -14,6 +14,7 @@ end
 
 local modules = script.Parent:WaitForChild("ClientInputModules")
 
+local AutoAreaDisplayController = require(script.Parent.Parent.T.AutoAreaDisplay.Controller)
 local BarbellDisplayController = require(script.Parent.Parent.T.BarbellDisplay.Controller)
 local EggPanelController = require(script.Parent.Parent.T.EggPanel.Controller)
 local EggRevealPanelController = require(script.Parent.Parent.T.EggRevealPanel.Controller)
@@ -47,6 +48,7 @@ local petInventoryView = PetInventoryController.Init(player)	--初始化宠物�
 local rebirthPanelView = RebirthPanelController.Init(player)
 local eggPanelView = EggPanelController.Init(player)
 local eggRevealView = EggRevealPanelController.Init(player)
+local autoAreaDisplayView = AutoAreaDisplayController.Init()
 local barbellDisplayView = BarbellDisplayController.Init()
 local travelPanelView = TravelPanelController.Init(player)
 
@@ -56,6 +58,7 @@ local snapshotController = SnapshotController.Init(remoteClient, {
 	PetInventory = petInventoryView,
 	RebirthPanel = rebirthPanelView,
 	EggPanel = eggPanelView,
+	AutoAreaDisplay = autoAreaDisplayView,
 	BarbellDisplay = barbellDisplayView,
 })
 local sceneQuery = SceneQuery.Init(player)

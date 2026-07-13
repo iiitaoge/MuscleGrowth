@@ -544,4 +544,55 @@ function UIRefs.ResolveBarbellDisplay()
 	}
 end
 
+-- ===== AutoAreaDisplay =====
+
+local function warnAutoAreaDisplay(instanceId, fieldName, detail)
+	warn(
+		("[AutoAreaDisplay] instanceId=%s field=%s %s"):format(
+			tostring(instanceId),
+			tostring(fieldName),
+			tostring(detail)
+		)
+	)
+end
+
+function UIRefs.ResolveAutoAreaDisplayInstance(instanceId, instanceConfig)
+	local config = UIContract.GetConfig("AutoAreaDisplay")
+	local touch = InstancePath.WaitSpec({ Workspace = Workspace }, instanceConfig.TouchPathSpec, SCENE_WAIT_SECONDS)
+	if not touch then
+		warnAutoAreaDisplay(instanceId, "Touch", "was not found")
+		return nil
+	end
+	if not touch:IsA("BasePart") then
+		warnAutoAreaDisplay(instanceId, "Touch", "must be a BasePart")
+		return nil
+	end
+
+	local autoAreaInstance = touch.Parent
+	if not autoAreaInstance then
+		warnAutoAreaDisplay(instanceId, "AutoAreaInstance", "could not be resolved from Touch.Parent")
+		return nil
+	end
+
+	local displayNode = {}
+	for fieldName, pathSpec in pairs(config.FieldPathSpecs) do
+		local field = InstancePath.WaitSpec({ AutoAreaInstance = autoAreaInstance }, pathSpec, SCENE_WAIT_SECONDS)
+		if not field then
+			warnAutoAreaDisplay(
+				instanceId,
+				fieldName,
+				"was not found at " .. InstancePath.Format(pathSpec)
+			)
+			return nil
+		end
+		if not field:IsA("TextLabel") then
+			warnAutoAreaDisplay(instanceId, fieldName, "must be a TextLabel, got " .. field.ClassName)
+			return nil
+		end
+		displayNode[fieldName] = field
+	end
+
+	return displayNode
+end
+
 return UIRefs

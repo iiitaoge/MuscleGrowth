@@ -20,6 +20,7 @@ function SnapshotController.Init(remoteClient, views)
 		-- 宠物背包打开时主动刷新，避免常驻重绘。
 		views.RebirthPanel.Refresh(snapshot)
 		views.EggPanel.Refresh(snapshot)
+		views.AutoAreaDisplay.Refresh(snapshot)
 		views.BarbellDisplay.Refresh(snapshot)
 
 		return snapshot
