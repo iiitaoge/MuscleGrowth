@@ -15,6 +15,7 @@ function PlayerLifecycleTransition.Init(player, progressState)
 	PlayerVisualStateSync.Refresh(player)
 	PlayerVisualStateSync.SetTrainingActive(player, false)
 	PlayerVisualStateSync.SetPushBallActive(player, false, "")
+	PlayerVisualStateSync.SetAutoWinEnabled(player, false)
 end
 
 function PlayerLifecycleTransition.Remove(player)

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SceneTheta = require(ReplicatedStorage:WaitForChild("theta"):WaitForChild("Scene"):WaitForChild("SceneTheta"))
 
+local AutoWinTransition = require(script.Parent.Parent.T.Transitions.AutoWinTransition)
 local BarbellTransition = require(script.Parent.Parent.T.Transitions.BarbellEquipTransition)
 local CharacterBodyVisualTransition = require(script.Parent.Parent.T.Transitions.CharacterBodyVisualTransition)
 local PlayerLifecycleTransition = require(script.Parent.Parent.T.Transitions.PlayerLifecycleTransition)
@@ -18,6 +19,7 @@ local PushBallWorldSync = require(script.Parent.Parent.T.WorldSync.PushBallWorld
 local TrophyTransition = require(script.Parent.Parent.T.Transitions.TrophyTransition)
 local TrainingTransition = require(script.Parent.Parent.T.Transitions.TrainingTransition)
 local TravelTransition = require(script.Parent.Parent.T.Transitions.TravelTransition)
+local TransitionResult = require(script.Parent.Parent.T.Transitions.TransitionResult)
 local EggWorldSync = require(script.Parent.Parent.T.WorldSync.EggWorldSync)
 
 local REMOTE_EVENT_MIN_INTERVALS = {
@@ -37,6 +39,10 @@ local removingPlayers = setmetatable({}, { __mode = "k" })
 BarbellTransition.InitWorld()
 TrophyTransition.InitWorld()
 PushBallWorldSync.InitWorld(function(player, ballInstanceId)
+	if AutoWinTransition.IsEnabled(player) then
+		return
+	end
+
 	local result = PushBallTransition.RequestStart(player, ballInstanceId)
 	if result.Success == false and result.Message and result.Message ~= "Push ball does not match current stage" then
 		warn(result.Message)
@@ -79,6 +85,7 @@ local function initPlayer(player)
 	end
 
 	CharacterBodyVisualTransition.InitPlayer(player)
+	AutoWinTransition.InitPlayer(player)
 	player:SetAttribute(DATA_LOADED_ATTRIBUTE, true)
 	initializingPlayers[player] = nil
 end
@@ -92,6 +99,7 @@ local function removePlayer(player)
 	player:SetAttribute(DATA_LOADED_ATTRIBUTE, false)
 
 	RemoteBinder.RemovePlayer(player)
+	AutoWinTransition.RemovePlayer(player)
 	PushBallTransition.RemovePlayer(player)
 	TrophyTransition.RemovePlayer(player)
 	CharacterBodyVisualTransition.RemovePlayer(player)
@@ -134,6 +142,7 @@ RemoteBinder.BindFunctions({
 	RequestRebirth = function(player)
 		local result = RebirthTransition.Request(player)
 		if result.Success then
+			AutoWinTransition.Stop(player)
 			PushBallTransition.RequestStop(player)
 			TrainingTransition.ResetActivity(player)
 
@@ -152,9 +161,24 @@ RemoteBinder.BindFunctions({
 	RequestPetUnequip = PetEquipTransition.RequestUnequip,
 	RequestPetRoll = PetRollTransition.RequestRoll,
 	RequestPetDelete = PetDeleteTransition.RequestDelete,
-	RequestTravelDestination = TravelTransition.Request,
-	RequestStartPushBall = PushBallTransition.RequestStart,
-	RequestStopPushBall = PushBallTransition.RequestStop,
+	RequestTravelDestination = function(player, destinationId)
+		local result = TravelTransition.Request(player, destinationId)
+		if result.Success then
+			AutoWinTransition.Stop(player)
+		end
+		return result
+	end,
+	RequestStartPushBall = function(player, ballInstanceId)
+		if AutoWinTransition.IsEnabled(player) then
+			return TransitionResult.New(false, "Auto Win is active")
+		end
+		return PushBallTransition.RequestStart(player, ballInstanceId)
+	end,
+	RequestStopPushBall = function(player)
+		AutoWinTransition.Stop(player)
+		return PushBallTransition.RequestStop(player)
+	end,
+	RequestSetAutoWin = AutoWinTransition.RequestSet,
 })
 
 Players.PlayerAdded:Connect(initPlayer)
@@ -168,6 +192,7 @@ end
 game:BindToClose(function()
 	for _, player in ipairs(Players:GetPlayers()) do
 		player:SetAttribute(DATA_LOADED_ATTRIBUTE, false)
+		AutoWinTransition.RemovePlayer(player)
 		PushBallTransition.RemovePlayer(player)
 		TrainingTransition.RemoveRuntime(player)
 	end

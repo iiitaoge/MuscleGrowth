@@ -127,6 +127,12 @@ function UIRefs.ResolveHUD(player)
 			waitForPath(hud, paths.RebirthProgressText, "HUD RebirthProgressText"),
 			"HUD RebirthProgressText"
 		),
+		AutoWinButton = requireGuiButton(
+			waitForPath(hud, paths.AutoWinButton, "HUD AutoWinButton"),
+			"HUD AutoWinButton"
+		),
+		AutoWinOn = requireGuiObject(waitForPath(hud, paths.AutoWinOn, "HUD AutoWinOn"), "HUD AutoWinOn"),
+		AutoWinOff = requireGuiObject(waitForPath(hud, paths.AutoWinOff, "HUD AutoWinOff"), "HUD AutoWinOff"),
 	}
 end
 

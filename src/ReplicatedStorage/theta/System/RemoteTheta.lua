@@ -63,6 +63,10 @@ local RemoteTheta = {
 		Name = "RequestStopPushBall",
 		ClassName = "RemoteFunction",
 	},
+	RequestSetAutoWin = {
+		Name = "RequestSetAutoWin",
+		ClassName = "RemoteFunction",
+	},
 	PushBallLateralInput = {
 		Name = "PushBallLateralInput",
 		ClassName = "RemoteEvent",

@@ -29,6 +29,7 @@ local SceneTheta = {
 		CurrentBarbellId = "MG_CurrentBarbellId",
 		IsTraining = "MG_IsTraining",
 		IsPushingBall = "MG_IsPushingBall",
+		IsAutoWinEnabled = "MG_IsAutoWinEnabled",
 		EquippedPetsJson = "MG_EquippedPetsJson",
 		LastTrainingGainSerial = "MG_LastTrainingGainSerial",
 		LastTrainingStrengthGain = "MG_LastTrainingStrengthGain",

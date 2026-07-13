@@ -11,9 +11,9 @@
 ## 映射关系
 
 - `S_p` 玩家持久进度状态：`Strength`、`Trophies`、`Exp`、`RebirthCount`、`CurrentBarbellId`、`OwnedPets`、`EquippedPetInstanceIds`、`NextPetInstanceId`。
-- `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`NextGrowthAt`、`GrowthLoopToken`、`LastPetRollTime`。
+- `S_r` 服务端运行时状态：`IsMoving`、`CurrentAutoAreaId`、`GrowthLoopActive`、`NextGrowthAt`、`GrowthLoopToken`、`LastPetRollTime`、`IsAutoWinEnabled` 和 Auto Win 循环令牌。
 - `theta` 规则参数：自动区、杠铃、宠物、宠物蛋拆分配置、宠物背包 UI 合同、宠物系统、重生、等级经验、初始状态、Remote 协议。
-- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求。
+- `u` 输入适配：Remote、玩家生命周期、客户端移动、区域触碰声明、E 键切换杠铃请求、宠物蛋抽奖请求、宠物装备请求、Auto Win 开关请求。
 - `y` 观测验证：服务端 Workspace 空间查询、角色 RootPart 状态、区域 id 合法性、杠铃展示距离验证、宠物蛋交互距离验证。
 - `T` 状态转移：初始化、清理、移动更新、区域接触确认、训练结算、重生、杠铃切换、宠物抽奖、宠物装备、奖杯奖励、快照生成、UI 渲染。
 - `O` 输出数据：玩家数据快照、重生响应、杠铃切换响应、宠物抽奖响应、宠物装备响应、客户端 UI 实例和文本状态。
@@ -39,6 +39,7 @@
 - 加载成功并取得服务器会话租约后，玩家属性 `MuscleGrowthDataLoaded` 才会变为 `true`。
 - 加载失败、存档损坏、版本不兼容或会话仍被其他服务器持有时，不能创建默认状态覆盖原记录。
 - `S_r`、推球过程、移动状态、抽宠冷却和客户端 UI 状态不持久化。
+- Auto Win 状态不持久化；客户端只读取 `MG_IsAutoWinEnabled`，关卡选择、推球完成和奖励结算均由服务端决定。
 - 服务端每 60 秒自动保存；正常离开和关服时保存并释放会话租约。
 
 ## 功能链路模板

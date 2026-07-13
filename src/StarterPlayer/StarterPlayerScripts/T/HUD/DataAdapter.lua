@@ -25,15 +25,19 @@ end
 
 -- 根据玩家快照生成 HUD 显示模型。
 function DataAdapter.BuildModel(data)
+	local isMaxLevel = data.Level >= data.MaxLevel
+
 	return {
 		StrengthText = NumberFormatter.Format(data.Strength),
 		TrophiesText = NumberFormatter.Format(data.Trophies),
 		RebirthMultiplierText = formatMultiplier(data.RebirthMultiplier),
 		BarbellMultiplierText = formatMultiplier(data.BarbellMultiplier),
 		PetMultiplierText = formatMultiplier(data.PetMultiplier),
-		ExpRatio = getProgressRatio(data.Exp, data.MaxExp),
+		ExpRatio = isMaxLevel and 1 or getProgressRatio(data.Exp, data.MaxExp),
 		LevelText = "Level " .. NumberFormatter.Format(data.Level),
-		ExpText = NumberFormatter.Format(data.Exp) .. "/" .. NumberFormatter.Format(data.MaxExp),
+		ExpText = isMaxLevel
+			and "MAX LEVEL"
+			or NumberFormatter.Format(data.Exp) .. "/" .. NumberFormatter.Format(data.MaxExp),
 		RebirthProgressText = formatRebirthProgress(data.Level, data.MaxLevel),
 	}
 end

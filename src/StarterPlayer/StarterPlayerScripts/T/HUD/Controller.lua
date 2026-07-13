@@ -1,5 +1,5 @@
 -- HUD/Controller
--- 编排 HUD 长期数值刷新，并暴露重生入口按钮。
+-- 编排 HUD 长期数值刷新，并暴露重生与 Auto Win 入口。
 
 local DataAdapter = require(script.Parent.DataAdapter)
 local Renderer = require(script.Parent.Renderer)
@@ -25,10 +25,20 @@ function Controller.Init(player)
 		return refs.StrengthIconGlow
 	end
 
+	local function setAutoWinEnabled(isEnabled)
+		Renderer.SetAutoWinEnabled(refs, isEnabled)
+	end
+
+	local function getAutoWinButton()
+		return Renderer.GetAutoWinButton(refs)
+	end
+
 	return {
 		Refresh = refresh,
 		GetRebirthButton = getRebirthButton,
 		GetStrengthGainTarget = getStrengthGainTarget,
+		SetAutoWinEnabled = setAutoWinEnabled,
+		GetAutoWinButton = getAutoWinButton,
 	}
 end
 

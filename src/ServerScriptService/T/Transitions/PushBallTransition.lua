@@ -393,32 +393,39 @@ local function normalizeCompletedStage(value)
 	return math.max(0, math.floor(tonumber(value) or 0))
 end
 
+local function getTrackInfo(trackId)
+	local trackConfig = type(PushBallTheta.Tracks) == "table" and PushBallTheta.Tracks[trackId] or nil
+	if type(trackId) ~= "string" or type(trackConfig) ~= "table" then
+		return nil
+	end
+
+	local firstStageId = math.max(1, math.floor(tonumber(trackConfig.FirstStageId) or 1))
+	local lastStageId = math.max(firstStageId, math.floor(tonumber(trackConfig.LastStageId) or firstStageId))
+	return {
+		TrackId = trackId,
+		FirstStageId = firstStageId,
+		LastStageId = lastStageId,
+		TravelDestinationId = type(trackConfig.TravelDestinationId) == "string"
+			and trackConfig.TravelDestinationId
+			or trackId,
+	}
+end
+
 local function getTrackInfoForStage(stageId)
 	if type(PushBallTheta.Tracks) ~= "table" then
 		return nil
 	end
 
 	local matchedTrackInfo = nil
-	for trackId, trackConfig in pairs(PushBallTheta.Tracks) do
-		if type(trackId) == "string" and type(trackConfig) == "table" then
-			local firstStageId = math.max(1, math.floor(tonumber(trackConfig.FirstStageId) or 1))
-			local lastStageId = math.max(
-				firstStageId,
-				math.floor(tonumber(trackConfig.LastStageId) or firstStageId)
-			)
-			if stageId >= firstStageId and stageId <= lastStageId then
+	for trackId in pairs(PushBallTheta.Tracks) do
+		local trackInfo = getTrackInfo(trackId)
+		if trackInfo then
+			if stageId >= trackInfo.FirstStageId and stageId <= trackInfo.LastStageId then
 				if matchedTrackInfo then
 					return nil
 				end
 
-				matchedTrackInfo = {
-					TrackId = trackId,
-					FirstStageId = firstStageId,
-					LastStageId = lastStageId,
-					TravelDestinationId = type(trackConfig.TravelDestinationId) == "string"
-						and trackConfig.TravelDestinationId
-						or trackId,
-				}
+				matchedTrackInfo = trackInfo
 			end
 		end
 	end
@@ -606,6 +613,23 @@ local function cleanupState(player, options)
 
 	stopHeartbeatIfIdle()
 
+	if type(state.AutoCompletion) == "function" then
+		local completion = state.AutoCompletion
+		local completionResult = {
+			StageId = state.StageId,
+			TrackId = state.TrackId,
+			Passed = type(options) == "table" and options.Passed == true,
+			Cancelled = type(options) ~= "table" or options.Cancelled == true,
+			Reason = type(options) == "table" and options.Reason or "Cancelled",
+		}
+		task.defer(function()
+			local ok, err = pcall(completion, completionResult)
+			if not ok then
+				warn("Auto push completion callback failed: " .. tostring(err))
+			end
+		end)
+	end
+
 end
 
 local function markStageCompleted(player, state)
@@ -626,7 +650,10 @@ local function handleStageReached(player, state)
 	local stageId = state.StageId
 	local _, gameplayConfig = getStageConfig(stageId)
 	if not gameplayConfig then
-		cleanupState(player)
+		cleanupState(player, {
+			Cancelled = true,
+			Reason = "MissingStageConfig",
+		})
 		return
 	end
 
@@ -646,21 +673,30 @@ local function handleStageReached(player, state)
 
 	if strength >= requiredStrength then
 		if not markStageCompleted(player, state) then
-			cleanupState(player)
+			cleanupState(player, {
+				Cancelled = true,
+				Reason = "RuntimeStateChanged",
+			})
 			return
 		end
 
 		cleanupState(player, {
 			TeleportStageId = stageId,
+			Passed = true,
+			Reason = "StageCompleted",
 		})
 	else
 		if stageId == state.FirstStageId then
 			cleanupState(player, {
 				TravelDestinationId = state.TravelDestinationId,
+				Passed = false,
+				Reason = "InsufficientStrength",
 			})
 		else
 			cleanupState(player, {
 				TeleportStageId = stageId - 1,
+				Passed = false,
+				Reason = "InsufficientStrength",
 			})
 		end
 	end
@@ -720,13 +756,19 @@ end
 local function updateState(player, state, dt)
 	if state.TravelRevision ~= TravelTransition.GetRevision(player) then
 		runtimeStates[player] = nil
-		cleanupState(player)
+		cleanupState(player, {
+			Cancelled = true,
+			Reason = "TravelChanged",
+		})
 		return
 	end
 
 	local character, humanoid, root = getCharacterParts(player)
 	if character ~= state.Character or humanoid ~= state.Humanoid or root ~= state.RootPart then
-		cleanupState(player)
+		cleanupState(player, {
+			Cancelled = true,
+			Reason = "CharacterChanged",
+		})
 		return
 	end
 
@@ -944,7 +986,46 @@ local function createState(
 	}
 end
 
-function PushBallTransition.RequestStart(player, ballInstanceId)
+local function positionCharacterAtSource(character, root, sourceBall, trackSurfaces, wall)
+	local sourcePivot = getPivot(sourceBall)
+	local wallPivot = getPivot(wall)
+	if not sourcePivot or not wallPivot then
+		return false
+	end
+
+	local exclusions = { sourceBall, character }
+	local forward = getStageForward(sourcePivot, wallPivot)
+	local lateral = getStageLateral(forward)
+	local targetPosition = getPlayerTargetPosition(sourcePivot.Position, forward, lateral)
+	local raycastQuery = buildTrackRaycastQuery(trackSurfaces, exclusions)
+	local groundPosition = raycastTrackPosition(raycastQuery, targetPosition, forward)
+
+	if not groundPosition and addStartSurfaceFromWorldHit(
+		trackSurfaces,
+		raycastWorldGround(targetPosition, exclusions)
+	) then
+		raycastQuery = buildTrackRaycastQuery(trackSurfaces, exclusions)
+		groundPosition = raycastTrackPosition(raycastQuery, targetPosition, forward)
+	end
+
+	if not groundPosition then
+		return false
+	end
+
+	local playerGroundOffsetY = tonumber(PushBallTheta.PlayerGroundOffsetY) or 3.5
+	local playerPosition = groundPosition + UP_VECTOR * playerGroundOffsetY
+	clearCharacterVelocity(character)
+	character:PivotTo(CFrame.lookAt(playerPosition, playerPosition + forward))
+	clearCharacterVelocity(character)
+	return (root.Position - sourcePivot.Position).Magnitude <= math.max(
+		0,
+		tonumber(PushBallTheta.InteractionDistance) or 14
+	)
+end
+
+local function requestStart(player, ballInstanceId, options)
+	options = type(options) == "table" and options or {}
+
 	if activeStates[player] then
 		return result(false, "Already pushing ball", activeStates[player].StageId)
 	end
@@ -963,6 +1044,9 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 	local trackInfo = getTrackInfoForStage(ballStageId)
 	if not trackInfo then
 		return result(false, "Missing or overlapping push ball track config", ballStageId)
+	end
+	if type(options.TrackId) == "string" and options.TrackId ~= trackInfo.TrackId then
+		return result(false, "Push ball does not belong to Auto Win track", ballStageId)
 	end
 
 	local stageId, runtimeState = getNextStageId(player, trackInfo)
@@ -1017,6 +1101,12 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Missing push ball wall: " .. pathToString(sceneConfig.WallPathSpec), stageId)
 	end
 
+	if options.PositionAtSource == true
+		and not positionCharacterAtSource(character, root, sourceBall, trackSurfaces, wall)
+	then
+		return result(false, "Unable to position player at push ball", stageId)
+	end
+
 	if not isPlayerNearSourceBall(root, sourceBall) then
 		return result(false, "Too far from push ball", stageId)
 	end
@@ -1039,6 +1129,9 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 		return result(false, "Invalid push ball source", stageId)
 	end
 
+	state.IsAutoWin = options.IsAutoWin == true
+	state.AutoCompletion = type(options.AutoCompletion) == "function" and options.AutoCompletion or nil
+
 	activeStates[player] = state
 	setCharacterPushLocked(state, true)
 	TrainingTransition.SetMoving(player, false)
@@ -1049,9 +1142,33 @@ function PushBallTransition.RequestStart(player, ballInstanceId)
 	return result(true, "Push ball started", stageId)
 end
 
+function PushBallTransition.RequestStart(player, ballInstanceId)
+	return requestStart(player, ballInstanceId)
+end
+
+function PushBallTransition.RequestAutoStart(player, trackId, ballInstanceId, onComplete)
+	if not getTrackInfo(trackId) then
+		return result(false, "Invalid Auto Win track")
+	end
+	if type(onComplete) ~= "function" then
+		return result(false, "Missing Auto Win completion callback")
+	end
+
+	return requestStart(player, ballInstanceId, {
+		TrackId = trackId,
+		PositionAtSource = true,
+		IsAutoWin = true,
+		AutoCompletion = onComplete,
+	})
+end
+
 function PushBallTransition.SetLateralInput(player, lateralInput)
 	local state = activeStates[player]
 	if not state then
+		return false
+	end
+	if state.IsAutoWin then
+		state.LateralInput = 0
 		return false
 	end
 
@@ -1069,8 +1186,41 @@ end
 
 function PushBallTransition.RequestStop(player)
 	local stageId = activeStates[player] and activeStates[player].StageId or nil
-	cleanupState(player)
+	cleanupState(player, {
+		Cancelled = true,
+		Reason = "Stopped",
+	})
 	return result(true, "Push ball stopped", stageId)
+end
+
+function PushBallTransition.RequestStopAuto(player)
+	local state = activeStates[player]
+	if not state or not state.IsAutoWin then
+		return result(true, "Auto push ball is not active")
+	end
+
+	local stageId = state.StageId
+	cleanupState(player, {
+		Cancelled = true,
+		Reason = "AutoWinStopped",
+	})
+	return result(true, "Auto push ball stopped", stageId)
+end
+
+function PushBallTransition.GetTrackProgress(player, trackId)
+	local trackInfo = getTrackInfo(trackId)
+	if not trackInfo then
+		return nil
+	end
+
+	local nextStageId, runtimeState = getNextStageId(player, trackInfo)
+	return {
+		TrackId = trackInfo.TrackId,
+		FirstStageId = trackInfo.FirstStageId,
+		LastStageId = trackInfo.LastStageId,
+		CompletedStage = normalizeCompletedStage(runtimeState.CompletedStage),
+		NextStageId = nextStageId,
+	}
 end
 
 function PushBallTransition.ConsumeClaimableStageReward(player, stageId)
@@ -1099,7 +1249,10 @@ function PushBallTransition.ResetRuntimeState(player)
 end
 
 function PushBallTransition.RemovePlayer(player)
-	cleanupState(player)
+	cleanupState(player, {
+		Cancelled = true,
+		Reason = "PlayerRemoved",
+	})
 	runtimeStates[player] = nil
 end
 

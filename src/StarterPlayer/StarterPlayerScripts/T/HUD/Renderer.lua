@@ -1,5 +1,5 @@
 -- HUD/Renderer
--- 只负责写入 HUD 文本和经验条尺寸。
+-- 只负责写入 HUD 文本、经验条尺寸和 Auto Win 可见状态。
 
 local Renderer = {}
 
@@ -27,6 +27,16 @@ end
 
 function Renderer.GetRebirthButton(refs)
 	return refs.RebirthButton
+end
+
+function Renderer.SetAutoWinEnabled(refs, isEnabled)
+	local enabled = isEnabled == true
+	refs.AutoWinOn.Visible = enabled
+	refs.AutoWinOff.Visible = not enabled
+end
+
+function Renderer.GetAutoWinButton(refs)
+	return refs.AutoWinButton
 end
 
 return Renderer

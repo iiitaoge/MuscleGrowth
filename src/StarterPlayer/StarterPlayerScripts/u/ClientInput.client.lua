@@ -26,6 +26,7 @@ local RebirthPanelController = require(script.Parent.Parent.T.RebirthPanel.Contr
 local TravelPanelController = require(script.Parent.Parent.T.TravelPanel.Controller)
 local UIContract = require(script.Parent.Parent.T.UIContract)
 
+local AutoWinActionController = require(modules.AutoWinActionController)
 local AutoAreaController = require(modules.AutoAreaController)
 local EggInteractionController = require(modules.EggInteractionController)
 local MovementController = require(modules.MovementController)
@@ -68,6 +69,7 @@ local eggInteractionController = EggInteractionController.Init(sceneQuery, eggPa
 local pushBallController = PushBallController.Init(player, remoteClient, movementController)
 
 PlayerVisualSync.Init()
+AutoWinActionController.Init(player, snapshotController, hudView)
 TrainingGainAttributeController.Init(player, floatingGainView, snapshotController)
 RebirthActionController.Init(snapshotController, hudView, rebirthPanelView)
 PetActionController.Init(snapshotController, petInventoryView)	-- 宠物的实际动作：视图接口和事件接口

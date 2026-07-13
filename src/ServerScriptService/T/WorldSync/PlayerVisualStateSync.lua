@@ -78,6 +78,12 @@ function PlayerVisualStateSync.SetPushBallActive(player, isPushingBall, ballInst
 	player:SetAttribute(ATTRIBUTES.IsPushingBall, active)
 end
 
+function PlayerVisualStateSync.SetAutoWinEnabled(player, isEnabled)
+	if player then
+		player:SetAttribute(ATTRIBUTES.IsAutoWinEnabled, isEnabled == true)
+	end
+end
+
 function PlayerVisualStateSync.PublishTrainingGain(player, strengthGain)
 	if not player then
 		return
@@ -96,6 +102,7 @@ function PlayerVisualStateSync.Clear(player)
 	player:SetAttribute(ATTRIBUTES.CurrentBarbellId, "")
 	player:SetAttribute(ATTRIBUTES.IsTraining, false)
 	player:SetAttribute(ATTRIBUTES.IsPushingBall, false)
+	player:SetAttribute(ATTRIBUTES.IsAutoWinEnabled, false)
 	player:SetAttribute(ATTRIBUTES.EquippedPetsJson, "[]")
 	player:SetAttribute(ATTRIBUTES.LastTrainingGainSerial, 0)
 	player:SetAttribute(ATTRIBUTES.LastTrainingStrengthGain, 0)

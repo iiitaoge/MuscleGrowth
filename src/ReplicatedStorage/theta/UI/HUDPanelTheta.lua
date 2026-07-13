@@ -28,6 +28,10 @@ local HUDPanelTheta = {
 		RebirthButton = { RootKey = "ScreenGui", Path = { "LeftButtons", "Button", "Rebirth" } },
 		-- 左侧重生入口当前进度文本。
 		RebirthProgressText = { RootKey = "ScreenGui", Path = { "LeftButtons", "Button", "Rebirth", "robux", "Title" } },
+		-- 自动推球开关及其两种视觉状态。
+		AutoWinButton = { RootKey = "ScreenGui", Path = { "LeftButtons", "AutoWin" } },
+		AutoWinOn = { RootKey = "ScreenGui", Path = { "LeftButtons", "AutoWin", "on" } },
+		AutoWinOff = { RootKey = "ScreenGui", Path = { "LeftButtons", "AutoWin", "off" } },
 	},
 }
 
