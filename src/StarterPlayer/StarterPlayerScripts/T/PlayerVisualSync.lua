@@ -13,6 +13,7 @@ local PlayerVisualSync = {}
 local ATTRIBUTES = SceneTheta.Attributes
 local VISUAL_BARBELL_NAME = "MG_ClientBarbell"
 local VISUAL_PET_FOLDER_NAME = "MG_ClientPets"
+local CHARACTER_HAND_WAIT_SECONDS = 10
 
 -- 杠铃跟随右手；左手是否握住另一端由训练动画里的手部姿势决定。
 -- Position 是相对右手的位置：主要调 X 把杠铃中心推到两手之间，再调 Y/Z 贴合手掌。
@@ -117,11 +118,29 @@ local function prepareWeldedVisual(instance)
 end
 
 local function getBarbellGripHand(character)
-	return character and (
-		character:FindFirstChild("RightHand")
-		or character:FindFirstChild("Right Arm")
-		or character:FindFirstChild("HumanoidRootPart")
-	)
+	if not character then
+		return nil
+	end
+
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	return hand and hand:IsA("BasePart") and hand or nil
+end
+
+local function waitForBarbellGripHand(character)
+	local hand = getBarbellGripHand(character)
+	if hand then
+		return hand
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+		or character:WaitForChild("Humanoid", CHARACTER_HAND_WAIT_SECONDS)
+	if not humanoid or not humanoid:IsA("Humanoid") then
+		return nil
+	end
+
+	local handName = humanoid.RigType == Enum.HumanoidRigType.R15 and "RightHand" or "Right Arm"
+	local loadedHand = character:WaitForChild(handName, CHARACTER_HAND_WAIT_SECONDS)
+	return loadedHand and loadedHand:IsA("BasePart") and loadedHand or nil
 end
 
 local function getBarbellGripCFrame(hand)
@@ -345,6 +364,21 @@ local function refreshAll(player)
 	refreshPushBallAnimation(player)
 end
 
+local function refreshAllForCharacter(player, character)
+	refreshAll(player)
+
+	if not character or getBarbellGripHand(character) then
+		return
+	end
+
+	task.spawn(function()
+		local hand = waitForBarbellGripHand(character)
+		if hand and player.Character == character and playerStates[player] then
+			refreshAll(player)
+		end
+	end)
+end
+
 local function disconnectConnection(connection)
 	local ok = true
 
@@ -409,15 +443,13 @@ local function bindPlayer(player)
 		refreshBarbell(player)
 		refreshPushBallAnimation(player)
 	end))
-	table.insert(state.connections, player.CharacterAdded:Connect(function()
+	table.insert(state.connections, player.CharacterAdded:Connect(function(character)
 		stopTrainingTrack(state)
 		stopPushBallTrack(state)
-		task.defer(function()
-			refreshAll(player)
-		end)
+		refreshAllForCharacter(player, character)
 	end))
 
-	refreshAll(player)
+	refreshAllForCharacter(player, player.Character)
 end
 
 local function unbindPlayer(player)
