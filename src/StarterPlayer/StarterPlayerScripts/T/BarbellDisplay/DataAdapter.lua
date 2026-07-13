@@ -5,21 +5,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
 
 local DataAdapter = {}
 
--- 将数字格式化成展示文本。
-local function formatNumber(value)
-	if value == math.floor(value) then
-		return string.format("%.0f", value)
-	end
-
-	return string.format("%.2f", value)
-end
-
 -- 将倍率格式化成展示文本。
 local function formatMultiplier(value)
-	return "x" .. string.format("%.1f", value)
+	return "x" .. NumberFormatter.Format(value, 1)
 end
 
 -- 根据玩家快照生成所有杠铃展示模型。
@@ -36,7 +28,7 @@ function DataAdapter.BuildModels(data)
 		table.insert(models, {
 			BarbellId = barbellId,
 			PowerText = formatMultiplier(barbellConfig.Multiplier) .. " Gain",
-			CostText = formatNumber(requiredTrophies),
+			CostText = NumberFormatter.Format(requiredTrophies),
 			IsUnlocked = isUnlocked,
 			IsEquipped = isEquipped,
 		})

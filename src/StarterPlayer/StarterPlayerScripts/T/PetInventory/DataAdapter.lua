@@ -5,13 +5,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local PetSystemTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetSystemTheta"))
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
 local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}
 
 -- 将倍率数值格式化成宠物卡文本。
 local function formatMultiplier(value)
-	return "x" .. string.format("%.1f", value)
+	return "x" .. NumberFormatter.Format(value, 1)
 end
 
 -- 统计快照表里的条目数量。
@@ -73,7 +74,11 @@ end
 -- 生成装备数量文本。
 function DataAdapter.BuildEquippedText(equippedCount, maxEquippedPets)
 	local format = UIContract.GetConfig("PetInventory").EquippedTextFormat
-	return string.format(format, equippedCount, maxEquippedPets)
+	return string.format(
+		format,
+		NumberFormatter.Format(equippedCount),
+		NumberFormatter.Format(maxEquippedPets)
+	)
 end
 
 -- 根据拥有宠物快照生成实例 id 集合。

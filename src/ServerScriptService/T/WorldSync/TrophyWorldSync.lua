@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local StageTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("StageTheta"))
@@ -17,11 +18,7 @@ local bindingStarted = false
 
 local function formatNumber(value)
 	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
-	end
-
-	return string.format("%.2f", numberValue)
+	return NumberFormatter.Format(numberValue)
 end
 
 local function getStageReward(stageId)

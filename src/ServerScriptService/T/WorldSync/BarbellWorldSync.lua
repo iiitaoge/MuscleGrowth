@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local InstancePath = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("InstancePath"))
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
 
 local theta = ReplicatedStorage:WaitForChild("theta")
 local BarbellTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("BarbellTheta"))
@@ -81,16 +82,12 @@ end
 
 local function formatNumber(value)
 	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
-	end
-
-	return string.format("%.2f", numberValue)
+	return NumberFormatter.Format(numberValue)
 end
 
 local function formatMultiplier(value)
 	local numberValue = tonumber(value) or 1
-	return "x" .. string.format("%.1f", numberValue)
+	return "x" .. NumberFormatter.Format(numberValue, 1)
 end
 
 local function getRotationOffsetCFrame(rotationDegrees)

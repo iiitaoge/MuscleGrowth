@@ -8,6 +8,7 @@ local EggCostTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggCos
 local EggDisplayTheta = require(theta:WaitForChild("UI"):WaitForChild("EggDisplayTheta"))
 local EggRewardTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("EggRewardTheta"))
 local PetTheta = require(theta:WaitForChild("Gameplay"):WaitForChild("PetTheta"))
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
 local UIContract = require(script.Parent.Parent.UIContract)
 
 local DataAdapter = {}
@@ -15,11 +16,7 @@ local DataAdapter = {}
 -- 将数字格式化成 UI 文本。
 local function formatNumber(value)
 	local numberValue = tonumber(value) or 0
-	if numberValue == math.floor(numberValue) then
-		return string.format("%.0f", numberValue)
-	end
-
-	return string.format("%.2f", numberValue)
+	return NumberFormatter.Format(numberValue)
 end
 
 -- 将奖池权重转换成概率文本。

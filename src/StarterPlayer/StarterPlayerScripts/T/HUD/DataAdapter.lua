@@ -1,20 +1,15 @@
 -- HUD/DataAdapter
 -- 把玩家快照转换成 HUD 长期数值显示模型。
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
+
 local DataAdapter = {}
-
--- 将普通数字格式化成 HUD 文本。
-local function formatNumber(value)
-	if value == math.floor(value) then
-		return string.format("%.0f", value)
-	end
-
-	return string.format("%.2f", value)
-end
 
 -- 将倍率数字格式化成 HUD 倍率文本。
 local function formatMultiplier(value)
-	return "x" .. string.format("%.1f", value)
+	return "x" .. NumberFormatter.Format(value, 1)
 end
 
 -- 计算经验条填充比例。
@@ -31,14 +26,14 @@ end
 -- 根据玩家快照生成 HUD 显示模型。
 function DataAdapter.BuildModel(data)
 	return {
-		StrengthText = formatNumber(data.Strength),
-		TrophiesText = formatNumber(data.Trophies),
+		StrengthText = NumberFormatter.Format(data.Strength),
+		TrophiesText = NumberFormatter.Format(data.Trophies),
 		RebirthMultiplierText = formatMultiplier(data.RebirthMultiplier),
 		BarbellMultiplierText = formatMultiplier(data.BarbellMultiplier),
 		PetMultiplierText = formatMultiplier(data.PetMultiplier),
 		ExpRatio = getProgressRatio(data.Exp, data.MaxExp),
-		LevelText = "Level " .. formatNumber(data.Level),
-		ExpText = formatNumber(data.Exp) .. "/" .. formatNumber(data.MaxExp),
+		LevelText = "Level " .. NumberFormatter.Format(data.Level),
+		ExpText = NumberFormatter.Format(data.Exp) .. "/" .. NumberFormatter.Format(data.MaxExp),
 		RebirthProgressText = formatRebirthProgress(data.Level, data.MaxLevel),
 	}
 end

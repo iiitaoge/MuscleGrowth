@@ -1,20 +1,15 @@
 -- RebirthPanel/DataAdapter
 -- 把重生快照转换成重生面板显示模型。
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
+
 local DataAdapter = {}
-
--- 将数字格式化成面板文本。
-local function formatNumber(value)
-	if value == math.floor(value) then
-		return string.format("%.0f", value)
-	end
-
-	return string.format("%.2f", value)
-end
 
 -- 将倍率格式化成面板文本。
 local function formatMultiplier(value)
-	return "x" .. string.format("%.1f", value)
+	return "x" .. NumberFormatter.Format(value, 1)
 end
 
 -- 计算进度条比例。
@@ -34,33 +29,36 @@ function DataAdapter.BuildModel(data)
 	local tipText = ""
 
 	if data.CanRebirth then
-		tipText = "Ready at Level " .. formatNumber(currentLevel)
+		tipText = "Ready at Level " .. NumberFormatter.Format(currentLevel)
 	else
-		tipText = "Level " .. formatNumber(currentLevel)
-			.. "/" .. formatNumber(data.MaxLevel)
+		tipText = "Level " .. NumberFormatter.Format(currentLevel)
+			.. "/" .. NumberFormatter.Format(data.MaxLevel)
 			.. "  Exp "
-			.. formatNumber(data.Exp)
+			.. NumberFormatter.Format(data.Exp)
 			.. "/"
-			.. formatNumber(data.MaxExp)
+			.. NumberFormatter.Format(data.MaxExp)
 	end
 
 	return {
 		TitleText = "Rebirth " .. formatMultiplier(currentMultiplier),
 		TipText = tipText,
 		RebirthTexts = {
-			formatNumber(currentRebirthCount),
-			formatNumber(nextRebirthCount),
+			NumberFormatter.Format(currentRebirthCount),
+			NumberFormatter.Format(nextRebirthCount),
 		},
 		PowerTexts = {
 			formatMultiplier(currentMultiplier) .. " Power",
 			formatMultiplier(nextMultiplier) .. " Power",
 		},
 		MaxLevelTexts = {
-			"Max Level " .. formatNumber(currentMaxLevel),
-			"Max Level " .. formatNumber(nextMaxLevel),
+			"Max Level " .. NumberFormatter.Format(currentMaxLevel),
+			"Max Level " .. NumberFormatter.Format(nextMaxLevel),
 		},
 		LevelProgressRatio = getProgressRatio(currentLevel, currentMaxLevel),
-		LevelProgressText = "Lv." .. formatNumber(currentLevel) .. "/" .. formatNumber(currentMaxLevel),
+		LevelProgressText = "Lv."
+			.. NumberFormatter.Format(currentLevel)
+			.. "/"
+			.. NumberFormatter.Format(currentMaxLevel),
 		RequestText = "Rebirth ",
 	}
 end

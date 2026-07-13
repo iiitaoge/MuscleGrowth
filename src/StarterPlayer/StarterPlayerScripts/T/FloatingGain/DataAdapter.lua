@@ -1,6 +1,10 @@
 -- FloatingGain/DataAdapter
 -- 把训练增长和奖杯差值转换成飘字文本。
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local NumberFormatter = require(ReplicatedStorage:WaitForChild("T"):WaitForChild("NumberFormatter"))
+
 local DataAdapter = {}
 
 local function requireNumber(value, context)
@@ -8,19 +12,11 @@ local function requireNumber(value, context)
 	return value
 end
 
-local function formatNumber(value)
-	if value == math.floor(value) then
-		return string.format("%.0f", value)
-	end
-
-	return string.format("%.2f", value)
-end
-
 function DataAdapter.BuildGainText(amount)
 	local numberAmount = requireNumber(amount, "Floating gain amount")
 	assert(numberAmount > 0, "Floating gain amount must be greater than 0.")
 
-	return "+" .. formatNumber(numberAmount)
+	return "+" .. NumberFormatter.Format(numberAmount)
 end
 
 function DataAdapter.BuildSplitGainTexts(amount, partCount)

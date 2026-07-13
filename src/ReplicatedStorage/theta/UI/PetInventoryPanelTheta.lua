@@ -44,7 +44,7 @@ local PetInventoryPanelTheta = {
 	},
 
 	-- 装备数量文本格式。
-	EquippedTextFormat = "Equipped ( %d/%d Pets)",
+	EquippedTextFormat = "Equipped ( %s/%s Pets)",
 }
 
 return PetInventoryPanelTheta
