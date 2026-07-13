@@ -698,6 +698,25 @@ local function isLogicalBallTouchingFinishWall(state, logicalBallPosition)
 	return false
 end
 
+local function isWorldHitInsideStageFinishPlatform(state, logicalBallPosition)
+	local worldHit = raycastWorldGround(logicalBallPosition, state.TrackRaycastQuery.Exclusions)
+	local current = worldHit and worldHit.Instance or nil
+	local expectedPlatformName = "M" .. tostring(state.StageId)
+
+	while current and current ~= Workspace do
+		if current.Name == expectedPlatformName
+			and current.Parent
+			and current.Parent.Name == "Mid"
+		then
+			return true
+		end
+
+		current = current.Parent
+	end
+
+	return false
+end
+
 local function updateState(player, state, dt)
 	if state.TravelRevision ~= TravelTransition.GetRevision(player) then
 		runtimeStates[player] = nil
@@ -735,6 +754,12 @@ local function updateState(player, state, dt)
 
 	local ballGroundPosition = raycastTrackPosition(state.TrackRaycastQuery, logicalBallPosition, state.Forward)
 	if not ballGroundPosition then
+		-- 有些终点装饰会先于配置墙覆盖球心射线；进入当前关的 M 平台即视为到达终点。
+		if isWorldHitInsideStageFinishPlatform(state, logicalBallPosition) then
+			handleStageReached(player, state)
+			return
+		end
+
 		warnRaycastMiss(state, "ball", logicalBallPosition)
 		return
 	end
